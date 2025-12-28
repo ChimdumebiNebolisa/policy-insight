@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title != null ? title : 'PolicyInsight'}">PolicyInsight</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <header>
+        <h1>PolicyInsight</h1>
+        <p>Analyze legal documents. Understand what you're agreeing to.</p>
+    </header>
+
+    <main>
+        <div th:replace="${content}"></div>
+
+        <section id="disclaimer" class="warning-box">
+            <strong>⚠️ Not Legal Advice</strong>
+            <p>PolicyInsight provides clarity and risk surfacing. It is not a substitute for legal counsel.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>Built with Spring Boot, Vertex AI, and Datadog.</p>
+    </footer>
+</body>
+</html>
+
