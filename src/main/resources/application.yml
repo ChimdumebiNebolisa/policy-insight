@@ -80,3 +80,14 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
+# Google Cloud Storage configuration
+gcs:
+  bucket-name: ${GCS_BUCKET_NAME:policyinsight-bucket}
+  # For local emulator: set STORAGE_EMULATOR_HOST=http://localhost:9023
+
+# Google Cloud Pub/Sub configuration
+pubsub:
+  project-id: ${GOOGLE_CLOUD_PROJECT:local-project}
+  topic-name: ${PUBSUB_TOPIC_NAME:document-analysis-topic}
+  # For local emulator: set PUBSUB_EMULATOR_HOST=http://localhost:8085
+
