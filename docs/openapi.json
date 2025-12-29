@@ -1,0 +1,159 @@
+﻿{
+    "openapi":  "3.0.1",
+    "info":  {
+                 "title":  "PolicyInsight API",
+                 "description":  "Production-grade legal document analysis service with Datadog observability",
+                 "contact":  {
+                                 "name":  "PolicyInsight Team",
+                                 "email":  "support@policyinsight.example.com"
+                             },
+                 "license":  {
+                                 "name":  "Apache 2.0",
+                                 "url":  "https://www.apache.org/licenses/LICENSE-2.0.html"
+                             },
+                 "version":  "1.0.0"
+             },
+    "servers":  [
+                    {
+                        "url":  "http://localhost:8080",
+                        "description":  "Generated server url"
+                    }
+                ],
+    "tags":  [
+                 {
+                     "name":  "Documents",
+                     "description":  "Document upload and status endpoints"
+                 }
+             ],
+    "paths":  {
+                  "/api/documents/upload":  {
+                                                "post":  {
+                                                             "tags":  [
+                                                                          "Documents"
+                                                                      ],
+                                                             "summary":  "Upload a PDF document for analysis",
+                                                             "description":  "Accepts a PDF file and returns a job ID for tracking the analysis process",
+                                                             "operationId":  "uploadDocument",
+                                                             "requestBody":  {
+                                                                                 "content":  {
+                                                                                                 "application/json":  {
+                                                                                                                          "schema":  {
+                                                                                                                                         "required":  [
+                                                                                                                                                          "file"
+                                                                                                                                                      ],
+                                                                                                                                         "type":  "object",
+                                                                                                                                         "properties":  {
+                                                                                                                                                            "file":  {
+                                                                                                                                                                         "type":  "string",
+                                                                                                                                                                         "description":  "PDF file to upload (max 20 MB)",
+                                                                                                                                                                         "format":  "binary"
+                                                                                                                                                                     }
+                                                                                                                                                        }
+                                                                                                                                     }
+                                                                                                                      }
+                                                                                             }
+                                                                             },
+                                                             "responses":  {
+                                                                               "200":  {
+                                                                                           "description":  "OK",
+                                                                                           "content":  {
+                                                                                                           "*/*":  {
+                                                                                                                       "schema":  {
+                                                                                                                                      "type":  "object",
+                                                                                                                                      "additionalProperties":  {
+                                                                                                                                                                   "type":  "object"
+                                                                                                                                                               }
+                                                                                                                                  }
+                                                                                                                   }
+                                                                                                       }
+                                                                                       }
+                                                                           }
+                                                         }
+                                            },
+                  "/readiness":  {
+                                     "get":  {
+                                                 "tags":  [
+                                                              "readiness-endpoint"
+                                                          ],
+                                                 "operationId":  "readiness",
+                                                 "responses":  {
+                                                                   "200":  {
+                                                                               "description":  "OK",
+                                                                               "content":  {
+                                                                                               "*/*":  {
+                                                                                                           "schema":  {
+                                                                                                                          "type":  "object",
+                                                                                                                          "additionalProperties":  {
+                                                                                                                                                       "type":  "object"
+                                                                                                                                                   }
+                                                                                                                      }
+                                                                                                       }
+                                                                                           }
+                                                                           }
+                                                               }
+                                             }
+                                 },
+                  "/health":  {
+                                  "get":  {
+                                              "tags":  [
+                                                           "health-controller"
+                                                       ],
+                                              "operationId":  "health",
+                                              "responses":  {
+                                                                "200":  {
+                                                                            "description":  "OK",
+                                                                            "content":  {
+                                                                                            "*/*":  {
+                                                                                                        "schema":  {
+                                                                                                                       "type":  "object",
+                                                                                                                       "additionalProperties":  {
+                                                                                                                                                    "type":  "object"
+                                                                                                                                                }
+                                                                                                                   }
+                                                                                                    }
+                                                                                        }
+                                                                        }
+                                                            }
+                                          }
+                              },
+                  "/api/documents/{id}/status":  {
+                                                     "get":  {
+                                                                 "tags":  [
+                                                                              "Documents"
+                                                                          ],
+                                                                 "summary":  "Get document processing status",
+                                                                 "description":  "Returns the current status of a document analysis job",
+                                                                 "operationId":  "getDocumentStatus",
+                                                                 "parameters":  [
+                                                                                    {
+                                                                                        "name":  "id",
+                                                                                        "in":  "path",
+                                                                                        "description":  "Job ID returned from upload endpoint",
+                                                                                        "required":  true,
+                                                                                        "schema":  {
+                                                                                                       "type":  "string"
+                                                                                                   }
+                                                                                    }
+                                                                                ],
+                                                                 "responses":  {
+                                                                                   "200":  {
+                                                                                               "description":  "OK",
+                                                                                               "content":  {
+                                                                                                               "*/*":  {
+                                                                                                                           "schema":  {
+                                                                                                                                          "type":  "object",
+                                                                                                                                          "additionalProperties":  {
+                                                                                                                                                                       "type":  "object"
+                                                                                                                                                                   }
+                                                                                                                                      }
+                                                                                                                       }
+                                                                                                           }
+                                                                                           }
+                                                                               }
+                                                             }
+                                                 }
+              },
+    "components":  {
+
+                   }
+}
