@@ -1,7 +1,6 @@
 package com.policyinsight.config;
 
 import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.HealthContributorRegistry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,12 +12,9 @@ import java.util.Map;
 @RestController
 public class HealthController {
 
-    private final HealthContributorRegistry healthContributorRegistry;
     private final ReadinessHealthIndicator readinessHealthIndicator;
 
-    public HealthController(HealthContributorRegistry healthContributorRegistry,
-                         ReadinessHealthIndicator readinessHealthIndicator) {
-        this.healthContributorRegistry = healthContributorRegistry;
+    public HealthController(ReadinessHealthIndicator readinessHealthIndicator) {
         this.readinessHealthIndicator = readinessHealthIndicator;
     }
 

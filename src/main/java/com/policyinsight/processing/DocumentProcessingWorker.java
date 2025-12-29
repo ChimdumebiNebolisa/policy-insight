@@ -3,11 +3,8 @@ package com.policyinsight.processing;
 import com.google.cloud.pubsub.v1.AckReplyConsumer;
 import com.google.cloud.pubsub.v1.MessageReceiver;
 import com.google.cloud.pubsub.v1.Subscriber;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import com.google.pubsub.v1.PubsubMessage;
-import com.policyinsight.api.storage.GcsStorageService;
+import com.policyinsight.api.storage.StorageService;
 import com.policyinsight.processing.model.ExtractedText;
 import com.policyinsight.processing.model.TextChunk;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,10 +36,10 @@ import java.util.UUID;
 
 /**
  * Worker service that consumes Pub/Sub messages and processes documents.
- * Only loads when pubsub.enabled=true and worker.enabled=true.
+ * Only loads when app.messaging.mode=gcp.
  */
 @Service
-@ConditionalOnProperty(prefix = "worker", name = "enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(name = "app.messaging.mode", havingValue = "gcp")
 public class DocumentProcessingWorker {
 
     private static final Logger logger = LoggerFactory.getLogger(DocumentProcessingWorker.class);
@@ -82,16 +79,13 @@ public class DocumentProcessingWorker {
     private ReportRepository reportRepository;
 
     @Autowired
-    private GcsStorageService gcsStorageService;
-
-    private final Storage storage;
+    private StorageService storageService;
 
     public DocumentProcessingWorker(
             @Value("${pubsub.project-id:#{T(java.lang.System).getenv('GOOGLE_CLOUD_PROJECT')}}") String projectId,
             @Value("${pubsub.subscription-name:document-analysis-sub}") String subscriptionName) {
         this.projectId = projectId != null && !projectId.isEmpty() ? projectId : "local-project";
         this.subscriptionName = subscriptionName;
-        this.storage = StorageOptions.getDefaultInstance().getService();
     }
 
     @PostConstruct
@@ -181,28 +175,18 @@ public class DocumentProcessingWorker {
             job.setStartedAt(Instant.now());
             policyJobRepository.save(job);
 
-            // Download PDF from GCS
-            String gcsPath = job.getPdfGcsPath();
-            if (gcsPath == null || !gcsPath.startsWith("gs://")) {
-                throw new IllegalArgumentException("Invalid GCS path: " + gcsPath);
+            // Download PDF from storage
+            String storagePath = job.getPdfGcsPath();
+            if (storagePath == null || storagePath.isEmpty()) {
+                throw new IllegalArgumentException("Storage path is null or empty");
             }
 
-            // Parse GCS path: gs://bucket-name/jobId/filename
-            String pathWithoutPrefix = gcsPath.replace("gs://", "");
-            int firstSlash = pathWithoutPrefix.indexOf('/');
-            if (firstSlash < 0) {
-                throw new IllegalArgumentException("Invalid GCS path format: " + gcsPath);
-            }
-            String bucketName = pathWithoutPrefix.substring(0, firstSlash);
-            String objectName = pathWithoutPrefix.substring(firstSlash + 1);
-
-            logger.info("Downloading PDF from GCS: gs://{}/{}", bucketName, objectName);
-            byte[] pdfBytes = storage.readAllBytes(BlobId.of(bucketName, objectName));
+            logger.info("Downloading PDF from storage: {}", storagePath);
+            byte[] pdfBytes = storageService.downloadFile(storagePath);
             InputStream pdfStream = new ByteArrayInputStream(pdfBytes);
 
             // Extract text (try Document AI first, fallback to PDFBox)
             ExtractedText extractedText;
-            boolean usedFallback = false;
 
             if (documentAiService != null) {
                 try {
@@ -212,12 +196,10 @@ public class DocumentProcessingWorker {
                     logger.warn("Document AI extraction failed, using fallback: {}", e.getMessage());
                     pdfStream = new ByteArrayInputStream(pdfBytes); // Reset stream
                     extractedText = fallbackOcrService.extractText(pdfStream);
-                    usedFallback = true;
                 }
             } else {
                 logger.info("Document AI not available, using fallback");
                 extractedText = fallbackOcrService.extractText(pdfStream);
-                usedFallback = true;
             }
 
             // Chunk text
@@ -319,15 +301,15 @@ public class DocumentProcessingWorker {
                         "termination_triggers", reportDataMap.get("termination_triggers"),
                         "risk_taxonomy", reportDataMap.get("risk_taxonomy")
                 ));
-                String reportGcsPath = gcsStorageService.uploadFile(
+                String reportStoragePath = storageService.uploadFile(
                         jobId, "report.json",
                         new ByteArrayInputStream(reportJson.getBytes()),
                         "application/json");
-                report.setGcsPath(reportGcsPath);
-                job.setReportGcsPath(reportGcsPath);
-                logger.info("Report JSON uploaded to GCS: {}", reportGcsPath);
+                report.setGcsPath(reportStoragePath);
+                job.setReportGcsPath(reportStoragePath);
+                logger.info("Report JSON uploaded to storage: {}", reportStoragePath);
             } catch (Exception e) {
-                logger.warn("Failed to upload report JSON to GCS, continuing without GCS path: {}", e.getMessage());
+                logger.warn("Failed to upload report JSON to storage, continuing without storage path: {}", e.getMessage());
             }
 
             reportRepository.save(report);

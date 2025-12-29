@@ -27,19 +27,11 @@ import com.policyinsight.processing.model.ExtractedText;
 public class DocumentAiService {
 
     private static final Logger logger = LoggerFactory.getLogger(DocumentAiService.class);
-    private static final int TIMEOUT_SECONDS = 30;
-    private static final int MAX_RETRIES = 3;
 
-    private final String projectId;
-    private final String location;
     private final String processorId;
 
     public DocumentAiService(
-            @Value("${documentai.project-id:#{T(java.lang.System).getenv('GOOGLE_CLOUD_PROJECT')}}") String projectId,
-            @Value("${documentai.location:us}") String location,
             @Value("${documentai.processor-id:}") String processorId) {
-        this.projectId = projectId != null && !projectId.isEmpty() ? projectId : "local-project";
-        this.location = location;
         this.processorId = processorId;
     }
 
