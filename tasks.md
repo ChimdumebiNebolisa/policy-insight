@@ -243,8 +243,8 @@ This file tracks the implementation milestones for PolicyInsight, derived from t
 - [x] Milestone 3: Document upload + cloud storage
 - [x] Milestone 4: Document processing pipeline
 - [x] Milestone 5: Risk analysis + report generation
-- [ ] Milestone 6: Q&A system + UI foundation
-- [ ] Milestone 7: Export & sharing
+- [x] Milestone 6: Q&A system + UI foundation
+- [x] Milestone 7: Export & sharing
 - [ ] Milestone 8: Datadog observability
 - [ ] Milestone 9: Cloud deployment + CI/CD
 

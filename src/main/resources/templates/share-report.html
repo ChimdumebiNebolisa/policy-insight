@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolicyInsight – Shared Report</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <header>
+        <h1>PolicyInsight</h1>
+        <p>Shared Document Analysis Report</p>
+    </header>
+
+    <main>
+        <!-- Read-Only Banner -->
+        <div style="margin-bottom: 2rem; padding: 1rem; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+            <p><strong>📋 Read-Only View</strong></p>
+            <p>This is a shared read-only view of a PolicyInsight report.</p>
+            <p th:if="${expiresAt}">
+                <strong>Expires:</strong> <span th:text="${#temporals.format(expiresAt, 'yyyy-MM-dd HH:mm')}">-</span>
+            </p>
+            <p style="color: #856404; font-size: 0.9rem;">
+                You cannot modify this report or ask questions. This link expires after 7 days.
+            </p>
+        </div>
+
+        <!-- Document Overview Section -->
+        <section id="overview">
+            <h2>Document Overview</h2>
+            <div th:if="${reportData.documentOverview}">
+                <p><strong>File:</strong> <span th:text="${job.pdfFilename}">document.pdf</span></p>
+                <p><strong>Type:</strong> <span th:text="${job.classification}">Unknown</span></p>
+                <p th:if="${job.classificationConfidence}">
+                    <strong>Confidence:</strong>
+                    <span th:text="${#numbers.formatDecimal(job.classificationConfidence, 0, 2)}">0.00</span>
+                </p>
+                <p><strong>Analyzed:</strong> <span th:text="${#temporals.format(job.completedAt, 'yyyy-MM-dd HH:mm')}">-</span></p>
+            </div>
+        </section>
+
+        <!-- Plain-English Summary Section -->
+        <section id="summary">
+            <h2>Plain-English Summary</h2>
+            <div th:if="${reportData.summaryBullets}">
+                <ul th:if="${reportData.summaryBullets.bullets}" style="list-style-type: disc; padding-left: 2rem;">
+                    <li th:each="bullet : ${reportData.summaryBullets.bullets}" style="margin-bottom: 0.5rem;">
+                        <span th:text="${bullet.text}">Summary bullet</span>
+                        <span th:if="${bullet.chunk_ids}" style="color: #3498db; font-size: 0.9rem;">
+                            [<a th:href="'#chunk-' + ${bullet.chunk_ids[0]}"
+                                th:text="'Page ' + ${bullet.page_refs ? bullet.page_refs[0] : 'N/A'}"
+                                style="color: #3498db; text-decoration: none;">Citation</a>]
+                        </span>
+                    </li>
+                </ul>
+                <p th:unless="${reportData.summaryBullets.bullets}">No summary available.</p>
+            </div>
+        </section>
+
+        <!-- Obligations & Restrictions Section -->
+        <section id="obligations">
+            <h2>Obligations & Restrictions</h2>
+            <div th:if="${reportData.obligations}">
+                <h3>Obligations</h3>
+                <ul th:if="${reportData.obligations.items}" style="list-style-type: disc; padding-left: 2rem;">
+                    <li th:each="item : ${reportData.obligations.items}" style="margin-bottom: 0.5rem;">
+                        <span th:text="${item.text}">Obligation</span>
+                        <span th:if="${item.citations}" style="color: #3498db; font-size: 0.9rem;">
+                            [<a th:href="'#chunk-' + ${item.citations[0].chunk_id}"
+                                th:text="'Page ' + ${item.citations[0].page_number}"
+                                style="color: #3498db; text-decoration: none;">Citation</a>]
+                        </span>
+                    </li>
+                </ul>
+            </div>
+            <div th:if="${reportData.restrictions}">
+                <h3>Restrictions</h3>
+                <ul th:if="${reportData.restrictions.items}" style="list-style-type: disc; padding-left: 2rem;">
+                    <li th:each="item : ${reportData.restrictions.items}" style="margin-bottom: 0.5rem;">
+                        <span th:text="${item.text}">Restriction</span>
+                        <span th:if="${item.citations}" style="color: #3498db; font-size: 0.9rem;">
+                            [<a th:href="'#chunk-' + ${item.citations[0].chunk_id}"
+                                th:text="'Page ' + ${item.citations[0].page_number}"
+                                style="color: #3498db; text-decoration: none;">Citation</a>]
+                        </span>
+                    </li>
+                </ul>
+            </div>
+            <div th:if="${reportData.terminationTriggers}">
+                <h3>Termination Triggers</h3>
+                <ul th:if="${reportData.terminationTriggers.items}" style="list-style-type: disc; padding-left: 2rem;">
+                    <li th:each="item : ${reportData.terminationTriggers.items}" style="margin-bottom: 0.5rem;">
+                        <span th:text="${item.text}">Termination trigger</span>
+                        <span th:if="${item.citations}" style="color: #3498db; font-size: 0.9rem;">
+                            [<a th:href="'#chunk-' + ${item.citations[0].chunk_id}"
+                                th:text="'Page ' + ${item.citations[0].page_number}"
+                                style="color: #3498db; text-decoration: none;">Citation</a>]
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Risk Taxonomy Section -->
+        <section id="risks">
+            <h2>Risk Taxonomy</h2>
+            <div th:if="${reportData.riskTaxonomy}">
+                <div th:each="category : ${reportData.riskTaxonomy}" style="margin-bottom: 1.5rem;">
+                    <h3 th:text="${category.name}">Risk Category</h3>
+                    <div th:if="${category.detected && category.detected.size() > 0}">
+                        <p><strong>Detected Risks:</strong></p>
+                        <ul style="list-style-type: disc; padding-left: 2rem;">
+                            <li th:each="risk : ${category.detected}" style="margin-bottom: 0.5rem;">
+                                <span th:text="${risk.text}">Risk description</span>
+                                <span th:if="${risk.citations}" style="color: #3498db; font-size: 0.9rem;">
+                                    [<a th:href="'#chunk-' + ${risk.citations[0].chunk_id}"
+                                        th:text="'Page ' + ${risk.citations[0].page_number}"
+                                        style="color: #3498db; text-decoration: none;">Citation</a>]
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div th:if="${!category.detected || category.detected.size() == 0}">
+                        <p style="color: #27ae60;"><strong>✓ Not detected</strong> – No risks found in this category.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Note: Q&A section is NOT included in read-only view -->
+
+        <!-- Chunks Section (for citation links) -->
+        <section id="chunks" style="display: none;">
+            <h2>Document Chunks</h2>
+            <div th:each="chunk : ${chunks}">
+                <div th:id="'chunk-' + ${chunk.id}" style="margin-bottom: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+                    <p><strong>Chunk ID:</strong> <span th:text="${chunk.id}">-</span></p>
+                    <p><strong>Page:</strong> <span th:text="${chunk.pageNumber}">-</span></p>
+                    <p th:text="${chunk.text}">Chunk text</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="disclaimer" class="warning-box">
+            <strong>⚠️ Not Legal Advice</strong>
+            <p>PolicyInsight provides clarity and risk surfacing. It is not a substitute for legal counsel.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>Built with Spring Boot, Vertex AI, and Datadog.</p>
+    </footer>
+</body>
+</html>
+

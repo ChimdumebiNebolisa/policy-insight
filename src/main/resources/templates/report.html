@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolicyInsight – Report</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <header>
+        <h1>PolicyInsight</h1>
+        <p>Document Analysis Report</p>
+    </header>
+
+    <main>
+        <div style="margin-bottom: 2rem;">
+            <a href="/" style="color: #3498db; text-decoration: none;">← Back to Home</a>
+        </div>
+
+        <!-- Document Overview Section -->
+        <section id="overview">
+            <h2>Document Overview</h2>
+            <div th:if="${reportData.documentOverview}">
+                <p><strong>File:</strong> <span th:text="${job.pdfFilename}">document.pdf</span></p>
+                <p><strong>Type:</strong> <span th:text="${job.classification}">Unknown</span></p>
+                <p th:if="${job.classificationConfidence}">
+                    <strong>Confidence:</strong>
+                    <span th:text="${#numbers.formatDecimal(job.classificationConfidence, 0, 2)}">0.00</span>
+                </p>
+                <p><strong>Analyzed:</strong> <span th:text="${#temporals.format(job.completedAt, 'yyyy-MM-dd HH:mm')}">-</span></p>
+            </div>
+        </section>
+
+        <!-- Plain-English Summary Section -->
+        <section id="summary">
+            <h2>Plain-English Summary</h2>
+            <div th:if="${reportData.summaryBullets}">
+                <ul th:if="${reportData.summaryBullets.bullets}" style="list-style-type: disc; padding-left: 2rem;">
+                    <li th:each="bullet : ${reportData.summaryBullets.bullets}" style="margin-bottom: 0.5rem;">
+                        <span th:text="${bullet.text}">Summary bullet</span>
+                        <span th:if="${bullet.chunk_ids}" style="color: #3498db; font-size: 0.9rem;">
+                            [<a th:href="'#chunk-' + ${bullet.chunk_ids[0]}"
+                                th:text="'Page ' + ${bullet.page_refs ? bullet.page_refs[0] : 'N/A'}"
+                                style="color: #3498db; text-decoration: none;">Citation</a>]
+                        </span>
+                    </li>
+                </ul>
+                <p th:unless="${reportData.summaryBullets.bullets}">No summary available.</p>
+            </div>
+        </section>
+
+        <!-- Obligations & Restrictions Section -->
+        <section id="obligations">
+            <h2>Obligations & Restrictions</h2>
+            <div th:if="${reportData.obligations}">
+                <h3>Obligations</h3>
+                <ul th:if="${reportData.obligations.items}" style="list-style-type: disc; padding-left: 2rem;">
+                    <li th:each="item : ${reportData.obligations.items}" style="margin-bottom: 0.5rem;">
+                        <span th:text="${item.text}">Obligation</span>
+                        <span th:if="${item.citations}" style="color: #3498db; font-size: 0.9rem;">
+                            [<a th:href="'#chunk-' + ${item.citations[0].chunk_id}"
+                                th:text="'Page ' + ${item.citations[0].page_number}"
+                                style="color: #3498db; text-decoration: none;">Citation</a>]
+                        </span>
+                    </li>
+                </ul>
+            </div>
+            <div th:if="${reportData.restrictions}">
+                <h3>Restrictions</h3>
+                <ul th:if="${reportData.restrictions.items}" style="list-style-type: disc; padding-left: 2rem;">
+                    <li th:each="item : ${reportData.restrictions.items}" style="margin-bottom: 0.5rem;">
+                        <span th:text="${item.text}">Restriction</span>
+                        <span th:if="${item.citations}" style="color: #3498db; font-size: 0.9rem;">
+                            [<a th:href="'#chunk-' + ${item.citations[0].chunk_id}"
+                                th:text="'Page ' + ${item.citations[0].page_number}"
+                                style="color: #3498db; text-decoration: none;">Citation</a>]
+                        </span>
+                    </li>
+                </ul>
+            </div>
+            <div th:if="${reportData.terminationTriggers}">
+                <h3>Termination Triggers</h3>
+                <ul th:if="${reportData.terminationTriggers.items}" style="list-style-type: disc; padding-left: 2rem;">
+                    <li th:each="item : ${reportData.terminationTriggers.items}" style="margin-bottom: 0.5rem;">
+                        <span th:text="${item.text}">Termination trigger</span>
+                        <span th:if="${item.citations}" style="color: #3498db; font-size: 0.9rem;">
+                            [<a th:href="'#chunk-' + ${item.citations[0].chunk_id}"
+                                th:text="'Page ' + ${item.citations[0].page_number}"
+                                style="color: #3498db; text-decoration: none;">Citation</a>]
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Risk Taxonomy Section -->
+        <section id="risks">
+            <h2>Risk Taxonomy</h2>
+            <div th:if="${reportData.riskTaxonomy}">
+                <div th:each="category : ${reportData.riskTaxonomy}" style="margin-bottom: 1.5rem;">
+                    <h3 th:text="${category.name}">Risk Category</h3>
+                    <div th:if="${category.detected && category.detected.size() > 0}">
+                        <p><strong>Detected Risks:</strong></p>
+                        <ul style="list-style-type: disc; padding-left: 2rem;">
+                            <li th:each="risk : ${category.detected}" style="margin-bottom: 0.5rem;">
+                                <span th:text="${risk.text}">Risk description</span>
+                                <span th:if="${risk.citations}" style="color: #3498db; font-size: 0.9rem;">
+                                    [<a th:href="'#chunk-' + ${risk.citations[0].chunk_id}"
+                                        th:text="'Page ' + ${risk.citations[0].page_number}"
+                                        style="color: #3498db; text-decoration: none;">Citation</a>]
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div th:if="${!category.detected || category.detected.size() == 0}">
+                        <p style="color: #27ae60;"><strong>✓ Not detected</strong> – No risks found in this category.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Q&A Section -->
+        <section id="qa">
+            <h2>Ask a Question</h2>
+            <p style="margin-bottom: 1rem;">
+                Questions asked: <span th:text="${questionCount}">0</span>/<span th:text="${maxQuestions}">3</span>
+            </p>
+
+            <div th:if="${canAskMore}">
+                <form id="qa-form"
+                      hx-post="/api/questions"
+                      hx-target="#qa-results"
+                      hx-swap="beforeend"
+                      hx-indicator="#qa-spinner"
+                      hx-headers='{"HX-Request": "true"}'
+                      hx-encoding="application/x-www-form-urlencoded"
+                      onsubmit="this.querySelector('button[type=submit]').disabled=true; setTimeout(() => { this.querySelector('button[type=submit]').disabled=false; this.reset(); }, 1000);">
+                    <input type="hidden" name="document_id" th:value="${job.jobUuid}">
+                    <div class="form-group">
+                        <label for="question-input">Your Question:</label>
+                        <textarea id="question-input"
+                                  name="question"
+                                  placeholder="Ask a question about this document..."
+                                  maxlength="500"
+                                  required
+                                  style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; min-height: 100px;"></textarea>
+                        <small>Max 500 characters. You can ask up to 3 questions per document.</small>
+                    </div>
+                    <button type="submit" class="btn-primary">Ask Question</button>
+                    <span id="qa-spinner" class="htmx-indicator" style="margin-left: 1rem;">Processing...</span>
+                </form>
+            </div>
+            <div th:unless="${canAskMore}">
+                <p style="color: #e74c3c;">You have reached the maximum number of questions (3) for this document.</p>
+            </div>
+
+            <div id="qa-results" style="margin-top: 2rem;">
+                <div th:each="interaction : ${qaInteractions}" style="margin-bottom: 1.5rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+                    <p><strong>Q:</strong> <span th:text="${interaction.question}">Question</span></p>
+                    <p><strong>A:</strong> <span th:text="${interaction.answer}">Answer</span></p>
+                    <p th:if="${interaction.confidence == 'ABSTAINED'}" style="color: #e74c3c; font-size: 0.9rem;">
+                        <em>Insufficient evidence</em>
+                    </p>
+                    <p th:if="${interaction.confidence == 'CONFIDENT'}" style="color: #27ae60; font-size: 0.9rem;">
+                        <em>Grounded answer with citations</em>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chunks Section (for citation links) -->
+        <section id="chunks" style="display: none;">
+            <h2>Document Chunks</h2>
+            <div th:each="chunk : ${chunks}">
+                <div th:id="'chunk-' + ${chunk.id}" style="margin-bottom: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+                    <p><strong>Chunk ID:</strong> <span th:text="${chunk.id}">-</span></p>
+                    <p><strong>Page:</strong> <span th:text="${chunk.pageNumber}">-</span></p>
+                    <p th:text="${chunk.text}">Chunk text</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Export & Share Actions -->
+        <section id="actions" style="margin-top: 2rem; padding: 1.5rem; background-color: #f8f9fa; border-radius: 8px;">
+            <h3>Export & Share</h3>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <a th:href="@{'/api/documents/' + ${job.jobUuid} + '/export/pdf'}" 
+                   class="btn-primary" 
+                   style="display: inline-block; padding: 0.75rem 1.5rem; background-color: #3498db; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                    📥 Download PDF
+                </a>
+                <button id="share-btn" 
+                        class="btn-secondary" 
+                        style="padding: 0.75rem 1.5rem; background-color: #27ae60; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;"
+                        onclick="generateShareLink()">
+                    🔗 Get Share Link
+                </button>
+            </div>
+            <div id="share-result" style="margin-top: 1rem; display: none; padding: 1rem; background-color: #d4edda; border-radius: 4px; border: 1px solid #c3e6cb;">
+                <p><strong>Share Link:</strong></p>
+                <input type="text" id="share-url" readonly style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 0.9rem;">
+                <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #155724;">
+                    <span id="share-expires"></span>
+                </p>
+            </div>
+        </section>
+
+        <section id="disclaimer" class="warning-box">
+            <strong>⚠️ Not Legal Advice</strong>
+            <p>PolicyInsight provides clarity and risk surfacing. It is not a substitute for legal counsel.</p>
+        </section>
+    </main>
+
+    <script>
+        function generateShareLink() {
+            const btn = document.getElementById('share-btn');
+            const resultDiv = document.getElementById('share-result');
+            const urlInput = document.getElementById('share-url');
+            const expiresSpan = document.getElementById('share-expires');
+            
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            
+            const jobId = /*[[${job.jobUuid}]]*/ '';
+            fetch('/api/documents/' + jobId + '/share', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.shareUrl) {
+                    urlInput.value = data.shareUrl;
+                    if (data.expiresAt) {
+                        const expiresDate = new Date(data.expiresAt);
+                        expiresSpan.textContent = 'Expires: ' + expiresDate.toLocaleString();
+                    }
+                    resultDiv.style.display = 'block';
+                    urlInput.select();
+                } else {
+                    alert('Failed to generate share link: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to generate share link');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = '🔗 Get Share Link';
+            });
+        }
+    </script>
+
+    <footer>
+        <p>Built with Spring Boot, Vertex AI, and Datadog.</p>
+    </footer>
+</body>
+</html>
+

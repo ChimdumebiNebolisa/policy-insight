@@ -51,6 +51,10 @@ server:
     include-stacktrace: on_param
     include-exception: false
 
+# Application configuration
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+
 management:
   endpoints:
     web:
