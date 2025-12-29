@@ -116,6 +116,12 @@
             <artifactId>google-cloud-pubsub</artifactId>
         </dependency>
 
+        <!-- Google Cloud Vertex AI (Gemini) -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-aiplatform</artifactId>
+        </dependency>
+
         <!-- Google Cloud Document AI -->
         <!-- Note: Document AI is optional - if not available, fallback OCR will be used -->
         <!-- For local development, Document AI can be disabled via documentai.enabled=false -->

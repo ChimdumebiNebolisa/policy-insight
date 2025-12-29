@@ -10,10 +10,13 @@ import com.google.pubsub.v1.PubsubMessage;
 import com.policyinsight.api.storage.GcsStorageService;
 import com.policyinsight.processing.model.ExtractedText;
 import com.policyinsight.processing.model.TextChunk;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.policyinsight.shared.model.DocumentChunk;
 import com.policyinsight.shared.model.PolicyJob;
+import com.policyinsight.shared.model.Report;
 import com.policyinsight.shared.repository.DocumentChunkRepository;
 import com.policyinsight.shared.repository.PolicyJobRepository;
+import com.policyinsight.shared.repository.ReportRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +32,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -60,10 +65,19 @@ public class DocumentProcessingWorker {
     private DocumentClassifierService documentClassifierService;
 
     @Autowired
+    private RiskAnalysisService riskAnalysisService;
+
+    @Autowired
+    private ReportGenerationService reportGenerationService;
+
+    @Autowired
     private PolicyJobRepository policyJobRepository;
 
     @Autowired
     private DocumentChunkRepository documentChunkRepository;
+
+    @Autowired
+    private ReportRepository reportRepository;
 
     @Autowired
     private GcsStorageService gcsStorageService;
@@ -221,6 +235,9 @@ public class DocumentProcessingWorker {
 
             logger.info("Stored {} chunks for job: {}", chunks.size(), jobId);
 
+            // Retrieve stored chunks from DB to get IDs
+            List<DocumentChunk> storedChunks = documentChunkRepository.findByJobUuidOrderByChunkIndex(jobId);
+
             // Classify document
             String fullText = extractedText.getFullText();
             DocumentClassifierService.ClassificationResult classification =
@@ -228,6 +245,59 @@ public class DocumentProcessingWorker {
 
             job.setClassification(classification.getClassification());
             job.setClassificationConfidence(classification.getConfidence());
+
+            // Risk analysis (5 categories)
+            logger.info("Starting risk analysis for job: {}", jobId);
+            Map<String, Object> riskTaxonomy = riskAnalysisService.analyzeRisks(storedChunks);
+            logger.info("Risk analysis completed for job: {}", jobId);
+
+            // Generate report sections
+            logger.info("Generating report sections for job: {}", jobId);
+            Map<String, Object> documentOverview = reportGenerationService.generateDocumentOverview(job, storedChunks);
+            Map<String, Object> summary = reportGenerationService.generateSummary(storedChunks);
+            Map<String, Object> obligationsAndRestrictions = reportGenerationService.generateObligationsAndRestrictions(storedChunks);
+
+            // Create and save Report
+            Report report = new Report(jobId);
+            report.setDocumentOverview(documentOverview);
+            report.setSummaryBullets(summary);
+            // obligationsAndRestrictions contains arrays, wrap them in maps for JSONB storage
+            @SuppressWarnings("unchecked")
+            Map<String, Object> obligationsMap = Map.of("items", obligationsAndRestrictions.get("obligations"));
+            @SuppressWarnings("unchecked")
+            Map<String, Object> restrictionsMap = Map.of("items", obligationsAndRestrictions.get("restrictions"));
+            @SuppressWarnings("unchecked")
+            Map<String, Object> terminationTriggersMap = Map.of("items", obligationsAndRestrictions.get("termination_triggers"));
+            report.setObligations(obligationsMap);
+            report.setRestrictions(restrictionsMap);
+            report.setTerminationTriggers(terminationTriggersMap);
+            report.setRiskTaxonomy(riskTaxonomy);
+            report.setGeneratedAt(Instant.now());
+
+            // Optionally upload report JSON to GCS
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                String reportJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(Map.of(
+                        "document_overview", documentOverview,
+                        "summary_bullets", summary,
+                        "obligations", obligationsAndRestrictions.get("obligations"),
+                        "restrictions", obligationsAndRestrictions.get("restrictions"),
+                        "termination_triggers", obligationsAndRestrictions.get("termination_triggers"),
+                        "risk_taxonomy", riskTaxonomy
+                ));
+                String reportGcsPath = gcsStorageService.uploadFile(
+                        jobId, "report.json", 
+                        new ByteArrayInputStream(reportJson.getBytes()), 
+                        "application/json");
+                report.setGcsPath(reportGcsPath);
+                job.setReportGcsPath(reportGcsPath);
+                logger.info("Report JSON uploaded to GCS: {}", reportGcsPath);
+            } catch (Exception e) {
+                logger.warn("Failed to upload report JSON to GCS, continuing without GCS path: {}", e.getMessage());
+            }
+
+            reportRepository.save(report);
+            logger.info("Report saved to database for job: {}", jobId);
 
             // Update job status
             job.setStatus("SUCCESS");
