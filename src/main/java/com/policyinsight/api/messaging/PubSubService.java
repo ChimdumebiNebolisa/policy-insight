@@ -8,6 +8,7 @@ import com.google.pubsub.v1.TopicName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -18,9 +19,11 @@ import java.util.concurrent.TimeUnit;
 /**
  * Service for publishing messages to Google Cloud Pub/Sub.
  * Supports both real Pub/Sub and local emulator (via PUBSUB_EMULATOR_HOST).
+ * Only loads when pubsub.enabled=true.
  */
 @Service
-public class PubSubService {
+@ConditionalOnProperty(prefix = "pubsub", name = "enabled", havingValue = "true")
+public class PubSubService implements JobPublisher {
 
     private static final Logger logger = LoggerFactory.getLogger(PubSubService.class);
 
@@ -61,9 +64,9 @@ public class PubSubService {
      *
      * @param jobId Job UUID
      * @param gcsPath GCS path to the uploaded PDF
-     * @throws Exception if publish fails
      */
-    public void publishJobMessage(UUID jobId, String gcsPath) throws Exception {
+    @Override
+    public void publishJobQueued(UUID jobId, String gcsPath) {
         // Create message payload as JSON string
         String payload = String.format("{\"job_id\":\"%s\",\"gcs_path\":\"%s\"}", jobId.toString(), gcsPath);
 
@@ -75,10 +78,14 @@ public class PubSubService {
 
         logger.debug("Publishing message to Pub/Sub topic: {} for job: {}", topicName, jobId);
 
-        ApiFuture<String> future = publisher.publish(message);
-        String messageId = future.get(10, TimeUnit.SECONDS);
-
-        logger.info("Successfully published message to Pub/Sub. Message ID: {}, Job ID: {}", messageId, jobId);
+        try {
+            ApiFuture<String> future = publisher.publish(message);
+            String messageId = future.get(10, TimeUnit.SECONDS);
+            logger.info("Successfully published message to Pub/Sub. Message ID: {}, Job ID: {}", messageId, jobId);
+        } catch (Exception e) {
+            logger.error("Failed to publish message to Pub/Sub for job: {}", jobId, e);
+            throw new RuntimeException("Failed to publish message to Pub/Sub", e);
+        }
     }
 
     @PreDestroy

@@ -1,6 +1,6 @@
 package com.policyinsight.api;
 
-import com.policyinsight.api.messaging.PubSubService;
+import com.policyinsight.api.messaging.JobPublisher;
 import com.policyinsight.api.storage.GcsStorageService;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.PolicyJobRepository;
@@ -30,15 +30,15 @@ public class DocumentController {
     private static final String PDF_CONTENT_TYPE = "application/pdf";
 
     private final GcsStorageService gcsStorageService;
-    private final PubSubService pubSubService;
+    private final JobPublisher jobPublisher;
     private final PolicyJobRepository policyJobRepository;
 
     public DocumentController(
             GcsStorageService gcsStorageService,
-            PubSubService pubSubService,
+            JobPublisher jobPublisher,
             PolicyJobRepository policyJobRepository) {
         this.gcsStorageService = gcsStorageService;
-        this.pubSubService = pubSubService;
+        this.jobPublisher = jobPublisher;
         this.policyJobRepository = policyJobRepository;
     }
 
@@ -94,8 +94,8 @@ public class DocumentController {
             logger.info("Job record created in database: jobId={}", jobId);
 
             // Publish Pub/Sub message
-            pubSubService.publishJobMessage(jobId, gcsPath);
-            logger.info("Pub/Sub message published for job: {}", jobId);
+            jobPublisher.publishJobQueued(jobId, gcsPath);
+            logger.info("Job queued event published for job: {}", jobId);
 
             // Build response
             Map<String, Object> response = new HashMap<>();
@@ -110,7 +110,7 @@ public class DocumentController {
             logger.error("Failed to upload file to GCS for job: {}", jobId, e);
             throw new RuntimeException("Failed to upload file to storage", e);
         } catch (Exception e) {
-            logger.error("Failed to publish Pub/Sub message for job: {}", jobId, e);
+            logger.error("Failed to queue job for processing: {}", jobId, e);
             throw new RuntimeException("Failed to queue job for processing", e);
         }
     }
