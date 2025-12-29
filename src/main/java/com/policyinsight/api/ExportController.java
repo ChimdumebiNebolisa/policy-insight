@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 /**
@@ -66,34 +66,28 @@ public class ExportController {
             jobUuid = UUID.fromString(id);
         } catch (IllegalArgumentException e) {
             logger.warn("Invalid document ID format: {}", id);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid document ID format");
+            throw new IllegalArgumentException("Invalid document ID format: " + id);
         }
 
         // Fetch job
         PolicyJob job = policyJobRepository.findByJobUuid(jobUuid)
-                .orElse(null);
-        if (job == null) {
-            logger.warn("Job not found: {}", jobUuid);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Document not found");
-        }
+                .orElseThrow(() -> {
+                    logger.warn("Job not found: {}", jobUuid);
+                    return new NoSuchElementException("Document not found: " + jobUuid);
+                });
 
         // Check if document is completed
         if (!"SUCCESS".equals(job.getStatus())) {
             logger.warn("Document not ready for export: status={}", job.getStatus());
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("Document still processing. Status: " + job.getStatus());
+            throw new IllegalStateException("Document still processing. Status: " + job.getStatus());
         }
 
         // Fetch report
         Report report = reportRepository.findByJobUuid(jobUuid)
-                .orElse(null);
-        if (report == null) {
-            logger.warn("Report not found for job: {}", jobUuid);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Report not available");
-        }
+                .orElseThrow(() -> {
+                    logger.warn("Report not found for job: {}", jobUuid);
+                    return new NoSuchElementException("Report not available for job: " + jobUuid);
+                });
 
         // Fetch chunks for citations
         List<DocumentChunk> chunks = chunkRepository.findByJobUuidOrderByChunkIndex(jobUuid);
@@ -120,8 +114,7 @@ public class ExportController {
 
         } catch (Exception e) {
             logger.error("Failed to generate PDF for job: {}", jobUuid, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to generate PDF: " + e.getMessage());
+            throw new RuntimeException("Failed to generate PDF: " + e.getMessage(), e);
         }
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 /**
@@ -55,28 +56,24 @@ public class ShareController {
             jobUuid = UUID.fromString(id);
         } catch (IllegalArgumentException e) {
             logger.warn("Invalid document ID format: {}", id);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid document ID format");
+            throw new IllegalArgumentException("Invalid document ID format: " + id);
         }
 
         // Verify job exists and is completed
         PolicyJob job = policyJobRepository.findByJobUuid(jobUuid)
-                .orElse(null);
-        if (job == null) {
-            logger.warn("Job not found: {}", jobUuid);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Document not found");
-        }
+                .orElseThrow(() -> {
+                    logger.warn("Job not found: {}", jobUuid);
+                    return new NoSuchElementException("Document not found: " + jobUuid);
+                });
 
         if (!"SUCCESS".equals(job.getStatus())) {
             logger.warn("Document not ready for sharing: status={}", job.getStatus());
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("Document still processing. Status: " + job.getStatus());
+            throw new IllegalStateException("Document still processing. Status: " + job.getStatus());
         }
 
         try {
             ShareLinkResponse response = shareLinkService.generateShareLink(jobUuid, baseUrl);
-            logger.info("Share link generated: jobUuid={}, token={}", 
+            logger.info("Share link generated: jobUuid={}, token={}",
                     jobUuid, response.getShareUrl());
 
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -84,8 +81,7 @@ public class ShareController {
 
         } catch (Exception e) {
             logger.error("Failed to generate share link for job: {}", jobUuid, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to generate share link: " + e.getMessage());
+            throw new RuntimeException("Failed to generate share link: " + e.getMessage(), e);
         }
     }
 }
