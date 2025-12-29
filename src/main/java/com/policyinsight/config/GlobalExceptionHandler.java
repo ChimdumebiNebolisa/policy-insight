@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleMaxUploadSizeException(MaxUploadSizeExceededException ex) {
         Map<String, Object> response = new HashMap<>();
         response.put("error", "FileSizeExceeded");
-        response.put("message", "File size exceeds maximum allowed size (20 MB)");
+        response.put("message", "File size exceeds maximum allowed size (50 MB)");
         response.put("timestamp", Instant.now().toString());
         response.put("traceId", MDC.get("correlationId"));
 

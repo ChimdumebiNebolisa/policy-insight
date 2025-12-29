@@ -26,7 +26,7 @@ import java.util.UUID;
 public class DocumentController {
 
     private static final Logger logger = LoggerFactory.getLogger(DocumentController.class);
-    private static final long MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+    private static final long MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
     private static final String PDF_CONTENT_TYPE = "application/pdf";
 
     private final GcsStorageService gcsStorageService;
@@ -47,7 +47,7 @@ public class DocumentController {
                description = "Accepts a PDF file and returns a job ID for tracking the analysis process")
     @Transactional
     public ResponseEntity<Map<String, Object>> uploadDocument(
-            @Parameter(description = "PDF file to upload (max 20 MB)")
+            @Parameter(description = "PDF file to upload (max 50 MB)")
             @RequestParam("file") MultipartFile file) {
 
         logger.info("Received upload request: filename={}, size={}, contentType={}",
@@ -58,10 +58,10 @@ public class DocumentController {
             throw new IllegalArgumentException("File is empty");
         }
 
-        // Validate file size (20 MB max)
+        // Validate file size (50 MB max)
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
             throw new IllegalArgumentException(
-                    String.format("File size (%d bytes) exceeds maximum allowed size (%d bytes / 20 MB)",
+                    String.format("File size (%d bytes) exceeds maximum allowed size (%d bytes / 50 MB)",
                             file.getSize(), MAX_FILE_SIZE_BYTES));
         }
 

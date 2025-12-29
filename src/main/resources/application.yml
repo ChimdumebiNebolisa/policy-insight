@@ -40,8 +40,8 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 20MB
-      max-request-size: 20MB
+      max-file-size: 50MB
+      max-request-size: 50MB
 
 server:
   port: ${SERVER_PORT:8080}
@@ -105,4 +105,11 @@ documentai:
 worker:
   enabled: ${WORKER_ENABLED:false}
   # Set to true to enable Pub/Sub message consumption and document processing
+
+# Vertex AI Gemini configuration
+vertexai:
+  enabled: ${VERTEX_AI_ENABLED:false}
+  project-id: ${GOOGLE_CLOUD_PROJECT:local-project}
+  location: ${VERTEX_AI_LOCATION:us-central1}
+  model: ${VERTEX_AI_MODEL:gemini-2.0-flash-exp}
 
