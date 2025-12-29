@@ -90,5 +90,19 @@ pubsub:
   enabled: false
   project-id: ${GOOGLE_CLOUD_PROJECT:local-project}
   topic-name: ${PUBSUB_TOPIC_NAME:document-analysis-topic}
+  subscription-name: ${PUBSUB_SUBSCRIPTION_NAME:document-analysis-sub}
   # For local emulator: set PUBSUB_EMULATOR_HOST=http://localhost:8085
+
+# Google Cloud Document AI configuration
+documentai:
+  enabled: ${DOCUMENT_AI_ENABLED:false}
+  project-id: ${GOOGLE_CLOUD_PROJECT:local-project}
+  location: ${DOCUMENT_AI_LOCATION:us}
+  processor-id: ${DOCUMENT_AI_PROCESSOR_ID:}
+  # For local development without Document AI, set enabled=false to use fallback
+
+# Document Processing Worker configuration
+worker:
+  enabled: ${WORKER_ENABLED:false}
+  # Set to true to enable Pub/Sub message consumption and document processing
 

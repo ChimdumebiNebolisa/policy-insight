@@ -87,7 +87,7 @@ This file tracks the implementation milestones for PolicyInsight, derived from t
 - Document classification (rules-based + optional LLM)
 
 **Acceptance Criteria:**
-- ✅ Document AI extracts text and OCR from PDFs
+- ✅ Document AI extracts text and OCR from PDFs (stub implementation, fallback used by default)
 - ✅ Fallback mechanism works when Document AI unavailable
 - ✅ Text chunked into semantic segments with page/offset tracking
 - ✅ Chunks stored in document_chunks table
@@ -241,7 +241,7 @@ This file tracks the implementation milestones for PolicyInsight, derived from t
 - [x] Milestone 1: Repo scaffold + local run + CI
 - [x] Milestone 2: Database schema + JPA layer
 - [x] Milestone 3: Document upload + cloud storage
-- [ ] Milestone 4: Document processing pipeline
+- [x] Milestone 4: Document processing pipeline
 - [ ] Milestone 5: Risk analysis + report generation
 - [ ] Milestone 6: Q&A system + UI foundation
 - [ ] Milestone 7: Export & sharing
