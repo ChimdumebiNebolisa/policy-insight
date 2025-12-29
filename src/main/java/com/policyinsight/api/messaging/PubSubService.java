@@ -39,10 +39,10 @@ public class PubSubService {
     public void initialize() {
         try {
             TopicName topic = TopicName.of(projectId, topicName);
-            
+
             // Publisher will automatically use PUBSUB_EMULATOR_HOST env var if set
             this.publisher = Publisher.newBuilder(topic).build();
-            
+
             String emulatorHost = System.getenv("PUBSUB_EMULATOR_HOST");
             if (emulatorHost != null && !emulatorHost.isEmpty()) {
                 logger.info("Using Pub/Sub emulator at: {}", emulatorHost);
@@ -66,7 +66,7 @@ public class PubSubService {
     public void publishJobMessage(UUID jobId, String gcsPath) throws Exception {
         // Create message payload as JSON string
         String payload = String.format("{\"job_id\":\"%s\",\"gcs_path\":\"%s\"}", jobId.toString(), gcsPath);
-        
+
         PubsubMessage message = PubsubMessage.newBuilder()
                 .setData(ByteString.copyFromUtf8(payload))
                 .putAttributes("job_id", jobId.toString())
@@ -74,10 +74,10 @@ public class PubSubService {
                 .build();
 
         logger.debug("Publishing message to Pub/Sub topic: {} for job: {}", topicName, jobId);
-        
+
         ApiFuture<String> future = publisher.publish(message);
         String messageId = future.get(10, TimeUnit.SECONDS);
-        
+
         logger.info("Successfully published message to Pub/Sub. Message ID: {}, Job ID: {}", messageId, jobId);
     }
 

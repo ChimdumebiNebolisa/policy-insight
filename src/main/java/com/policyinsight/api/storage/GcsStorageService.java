@@ -32,7 +32,7 @@ public class GcsStorageService {
         // For real GCS, use Application Default Credentials (gcloud auth application-default login)
         // or service account JSON via GOOGLE_APPLICATION_CREDENTIALS env var
         this.storage = StorageOptions.getDefaultInstance().getService();
-        
+
         String emulatorHost = System.getenv("STORAGE_EMULATOR_HOST");
         if (emulatorHost != null && !emulatorHost.isEmpty()) {
             logger.info("Using GCS emulator at: {}", emulatorHost);
@@ -60,7 +60,7 @@ public class GcsStorageService {
                 .build();
 
         logger.debug("Uploading file to GCS: gs://{}/{}", bucketName, objectName);
-        
+
         try {
             storage.createFrom(blobInfo, content);
             String gcsPath = "gs://" + bucketName + "/" + objectName;
