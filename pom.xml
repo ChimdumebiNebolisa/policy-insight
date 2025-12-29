@@ -121,9 +121,11 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-aiplatform</artifactId>
         </dependency>
+        <!-- Google Gen AI SDK (replaces deprecated google-cloud-vertexai) -->
         <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-vertexai</artifactId>
+            <groupId>com.google.genai</groupId>
+            <artifactId>google-genai</artifactId>
+            <version>1.32.0</version>
         </dependency>
 
         <!-- Google Cloud Document AI -->
