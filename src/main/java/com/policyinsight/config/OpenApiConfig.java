@@ -21,8 +21,7 @@ public class OpenApiConfig {
                                 .name("PolicyInsight Team")
                                 .email("support@policyinsight.example.com"))
                         .license(new License()
-                                .name("Apache 2.0")
-                                .url("https://www.apache.org/licenses/LICENSE-2.0.html")));
+                                .name("Apache 2.0")));
     }
 }
 

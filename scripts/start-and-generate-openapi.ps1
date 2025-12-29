@@ -1,9 +1,9 @@
-﻿# Start application and generate OpenAPI spec
+# Start application and generate OpenAPI spec
 # Usage: .\scripts\start-and-generate-openapi.ps1
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "ðŸš€ Starting PolicyInsight application for OpenAPI generation..." -ForegroundColor Cyan
+Write-Host "[START] Starting PolicyInsight application for OpenAPI generation..." -ForegroundColor Cyan
 Write-Host ""
 
 # Step 1: Check if Docker is running
@@ -15,7 +15,7 @@ try {
     } else {
         $errorOutput = $dockerCheck -join "`n"
         if ($errorOutput -match "docker.*not.*running" -or $errorOutput -match "Cannot connect" -or $errorOutput -match "dockerDesktopLinuxEngine") {
-            Write-Host "âŒ ERROR: Docker Desktop is not running!" -ForegroundColor Red
+            Write-Host "[ERR] ERROR: Docker Desktop is not running!" -ForegroundColor Red
             Write-Host ""
             Write-Host "Please:" -ForegroundColor Yellow
             Write-Host "  1. Open Docker Desktop application" -ForegroundColor Cyan
@@ -24,12 +24,12 @@ try {
             Write-Host ""
             exit 1
         } else {
-            Write-Host "âš ï¸  Warning: Docker check returned an error, but continuing..." -ForegroundColor Yellow
+            Write-Host "[WARN]  Warning: Docker check returned an error, but continuing..." -ForegroundColor Yellow
             Write-Host "Error: $errorOutput" -ForegroundColor Gray
         }
     }
 } catch {
-    Write-Host "âŒ ERROR: Docker is not running. Please start Docker Desktop." -ForegroundColor Red
+    Write-Host "[ERR] ERROR: Docker is not running. Please start Docker Desktop." -ForegroundColor Red
     Write-Host "Exception: $($_.Exception.Message)" -ForegroundColor Gray
     exit 1
 }
@@ -43,7 +43,7 @@ $dockerCheck2 = docker ps 2>&1
 if ($LASTEXITCODE -ne 0) {
     $errorOutput = $dockerCheck2 -join "`n"
     if ($errorOutput -match "docker.*not.*running" -or $errorOutput -match "Cannot connect" -or $errorOutput -match "dockerDesktopLinuxEngine") {
-        Write-Host "âŒ ERROR: Docker Desktop connection lost!" -ForegroundColor Red
+        Write-Host "[ERR] ERROR: Docker Desktop connection lost!" -ForegroundColor Red
         Write-Host ""
         Write-Host "Please:" -ForegroundColor Yellow
         Write-Host "  1. Open Docker Desktop application" -ForegroundColor Cyan
@@ -70,7 +70,7 @@ if ($postgresRunning) {
     if ($composeExitCode -ne 0) {
         # Only fail on real errors, not informational messages
         if ($composeOutput -match "docker.*not.*running" -or $composeOutput -match "Cannot connect" -or $composeOutput -match "dockerDesktopLinuxEngine" -or ($composeOutput -match "error" -and -not $composeOutput -match "Recreate")) {
-            Write-Host "âŒ ERROR: Docker Desktop is not running or docker-compose failed!" -ForegroundColor Red
+            Write-Host "[ERR] ERROR: Docker Desktop is not running or docker-compose failed!" -ForegroundColor Red
             Write-Host ""
             Write-Host "Please:" -ForegroundColor Yellow
             Write-Host "  1. Open Docker Desktop application" -ForegroundColor Cyan
@@ -92,7 +92,7 @@ if ($postgresRunning) {
         if ($verifyRunning) {
             Write-Host "[OK] PostgreSQL container is running" -ForegroundColor Green
         } else {
-            Write-Host "âš ï¸  Warning: Container may not have started. Output: $composeOutput" -ForegroundColor Yellow
+            Write-Host "[WARN]  Warning: Container may not have started. Output: $composeOutput" -ForegroundColor Yellow
         }
     }
 
@@ -115,7 +115,7 @@ if ($postgresRunning) {
     }
 
     if ($elapsed -eq $maxWait) {
-        Write-Host "âŒ ERROR: PostgreSQL failed to start within ${maxWait} seconds" -ForegroundColor Red
+        Write-Host "[ERR] ERROR: PostgreSQL failed to start within ${maxWait} seconds" -ForegroundColor Red
         exit 1
     }
 }
@@ -142,11 +142,11 @@ try {
             $dbPort = "5432"
         }
     } else {
-        Write-Host "⚠️  docker port command failed, falling back to default 5432" -ForegroundColor Yellow
+        Write-Host "[WARN]  docker port command failed, falling back to default 5432" -ForegroundColor Yellow
         $dbPort = "5432"
     }
 } catch {
-    Write-Host "âš ï¸  Port detection failed, using default 5432" -ForegroundColor Yellow
+    Write-Host "[WARN]  Port detection failed, using default 5432" -ForegroundColor Yellow
     Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Gray
     $dbPort = "5432"
 }
@@ -157,7 +157,7 @@ $portTest = Test-NetConnection -ComputerName localhost -Port $dbPort -WarningAct
 if ($portTest.TcpTestSucceeded) {
     Write-Host "[OK] Port $dbPort is accessible from host" -ForegroundColor Green
 } else {
-    Write-Host "âŒ ERROR: Port $dbPort is not accessible from host!" -ForegroundColor Red
+    Write-Host "[ERR] ERROR: Port $dbPort is not accessible from host!" -ForegroundColor Red
     Write-Host "   This may indicate a port conflict or container issue." -ForegroundColor Yellow
     Write-Host "   Run .\scripts\db-doctor.ps1 for diagnostics" -ForegroundColor Cyan
     exit 1
@@ -169,10 +169,10 @@ Write-Host "Getting server fingerprint from container (via TCP)..." -ForegroundC
 $fingerprintQuery = "SELECT COALESCE(inet_server_addr()::text, ''), COALESCE(inet_server_port()::text, ''), current_setting('port'), current_database(), current_user, substring(version(), 1, 50);"
 $containerFingerprint = docker exec policyinsight-postgres psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -tAc "$fingerprintQuery" 2>&1
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "Š Container server fingerprint: $($containerFingerprint.Trim())" -ForegroundColor Gray
+    Write-Host "Container server fingerprint: $($containerFingerprint.Trim())" -ForegroundColor Gray
     Write-Host "   (Connection method: docker exec with TCP)" -ForegroundColor Gray
 } else {
-    Write-Host "âš ï¸  Could not get container fingerprint" -ForegroundColor Yellow
+    Write-Host "[WARN]  Could not get container fingerprint" -ForegroundColor Yellow
 }
 
 try {
@@ -188,7 +188,7 @@ try {
         if ($LASTEXITCODE -eq 0 -and -not ($createResult -match "ERROR")) {
             Write-Host "[OK] Database created successfully" -ForegroundColor Green
         } else {
-            Write-Host "âš ï¸  Warning: Database creation may have failed" -ForegroundColor Yellow
+            Write-Host "[WARN]  Warning: Database creation may have failed" -ForegroundColor Yellow
             Write-Host "Output: $createResult" -ForegroundColor Gray
         }
     }
@@ -198,7 +198,7 @@ try {
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[OK] Verified connection to 'policyinsight' database (inside container)" -ForegroundColor Green
     } else {
-        Write-Host "âš ï¸  Warning: Could not verify connection to database" -ForegroundColor Yellow
+        Write-Host "[WARN]  Warning: Could not verify connection to database" -ForegroundColor Yellow
     }
 
     # Verify we can connect from HOST to the same server (critical for Flyway)
@@ -209,7 +209,7 @@ try {
         $hostFingerprint = psql -h localhost -p $dbPort -U postgres -d postgres -tAc "$fingerprintQuery" 2>&1
         $env:PGPASSWORD = $null
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "Š Host server fingerprint: $($hostFingerprint.Trim())" -ForegroundColor Gray
+            Write-Host "Host server fingerprint: $($hostFingerprint.Trim())" -ForegroundColor Gray
             Write-Host "   (Connection method: psql -h localhost -p $dbPort)" -ForegroundColor Gray
             if ($containerFingerprint -and $hostFingerprint) {
                 $containerFpTrim = $containerFingerprint.Trim()
@@ -238,13 +238,13 @@ try {
 
                     if ($configPortMatch -and $dbMatch -and $userMatch -and $versionMatch) {
                         if ($addrDiff -or $portDiff) {
-                            Write-Host "✅ Container and host fingerprints match (same server)!" -ForegroundColor Green
+                            Write-Host "[OK] Container and host fingerprints match (same server)!" -ForegroundColor Green
                             Write-Host "   Note: Server addr/port differ (socket vs TCP), but this is expected" -ForegroundColor Gray
                         } else {
-                            Write-Host "✅ Container and host fingerprints match - same server!" -ForegroundColor Green
+                            Write-Host "[OK] Container and host fingerprints match - same server!" -ForegroundColor Green
                         }
                     } else {
-                        Write-Host "❌ ERROR: Container and host fingerprints DO NOT match!" -ForegroundColor Red
+                        Write-Host "[ERR] ERROR: Container and host fingerprints DO NOT match!" -ForegroundColor Red
                         Write-Host "   This indicates we're connecting to different PostgreSQL servers." -ForegroundColor Yellow
                         Write-Host "   Container: $containerFpTrim" -ForegroundColor Yellow
                         Write-Host "   Host:      $hostFpTrim" -ForegroundColor Yellow
@@ -255,16 +255,16 @@ try {
                     }
                 } elseif ($containerFpTrim -eq $hostFpTrim) {
                     # Fallback: exact match
-                    Write-Host "✅ Container and host fingerprints match - same server!" -ForegroundColor Green
+                    Write-Host "[OK] Container and host fingerprints match - same server!" -ForegroundColor Green
                 } else {
                     # If parsing fails, check if only difference is NULL addr/port
                     $containerNormalized = $containerFpTrim -replace '\|\|', '|NULL|NULL|'
                     $hostNormalized = $hostFpTrim -replace '^\d+\.\d+\.\d+\.\d+\|\d+\|', 'NULL|NULL|'
                     if ($containerNormalized -eq $hostNormalized) {
-                        Write-Host "✅ Container and host fingerprints match (same server)!" -ForegroundColor Green
+                        Write-Host "[OK] Container and host fingerprints match (same server)!" -ForegroundColor Green
                         Write-Host "   Note: Server addr/port differ (socket vs TCP), but this is expected" -ForegroundColor Gray
                     } else {
-                        Write-Host "⚠️  Warning: Could not parse fingerprints for detailed comparison" -ForegroundColor Yellow
+                        Write-Host "[WARN]  Warning: Could not parse fingerprints for detailed comparison" -ForegroundColor Yellow
                         Write-Host "   Container: $containerFpTrim" -ForegroundColor Gray
                         Write-Host "   Host:      $hostFpTrim" -ForegroundColor Gray
                         Write-Host "   Proceeding anyway (may be false positive)" -ForegroundColor Yellow
@@ -272,14 +272,14 @@ try {
                 }
             }
         } else {
-            Write-Host "âš ï¸  Could not connect from host (psql may not be installed)" -ForegroundColor Yellow
+            Write-Host "[WARN]  Could not connect from host (psql may not be installed)" -ForegroundColor Yellow
             Write-Host "   This is OK if Docker port is correct, but verification is limited" -ForegroundColor Gray
         }
     } else {
-        Write-Host "âš ï¸  psql not found on host, skipping host verification" -ForegroundColor Yellow
+        Write-Host "[WARN]  psql not found on host, skipping host verification" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "âš ï¸  Warning: Could not verify/create database: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "[WARN]  Warning: Could not verify/create database: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
 # Step 3: Clean and run Flyway migrations
@@ -299,7 +299,7 @@ $dropResult = docker exec policyinsight-postgres psql -U postgres -d postgres -c
 if ($LASTEXITCODE -ne 0) {
     $errorOutput = $dropResult -join "`n"
     if ($errorOutput -notmatch "does not exist") {
-        Write-Host "âš ï¸  Warning: Database drop may have failed: $errorOutput" -ForegroundColor Yellow
+        Write-Host "[WARN]  Warning: Database drop may have failed: $errorOutput" -ForegroundColor Yellow
     }
 }
 # Wait a moment for drop to complete
@@ -312,7 +312,7 @@ if ($LASTEXITCODE -ne 0) {
     if ($errorOutput -match "already exists") {
         Write-Host "Database already exists, continuing..." -ForegroundColor Yellow
     } else {
-        Write-Host "âŒ ERROR: Database creation failed: $errorOutput" -ForegroundColor Red
+        Write-Host "[ERR] ERROR: Database creation failed: $errorOutput" -ForegroundColor Red
         exit 1
     }
 } else {
@@ -338,7 +338,7 @@ while ($verifyAttempts -lt $maxVerifyAttempts) {
 }
 
 if (-not $dbVerified) {
-    Write-Host "âŒ ERROR: Database is not accessible after creation" -ForegroundColor Red
+    Write-Host "[ERR] ERROR: Database is not accessible after creation" -ForegroundColor Red
     exit 1
 }
 
@@ -347,7 +347,7 @@ Write-Host "Final verification before Flyway..." -ForegroundColor Cyan
 $finalCheck = docker exec policyinsight-postgres psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='policyinsight';" 2>&1
 $finalCheck = $finalCheck.Trim()
 if ($finalCheck -ne "1") {
-    Write-Host "âŒ ERROR: Database 'policyinsight' does not exist in container!" -ForegroundColor Red
+    Write-Host "[ERR] ERROR: Database 'policyinsight' does not exist in container!" -ForegroundColor Red
     Write-Host "Attempting to create it again..." -ForegroundColor Yellow
     docker exec policyinsight-postgres psql -U postgres -d postgres -c "CREATE DATABASE policyinsight;" 2>&1 | Out-Null
     Start-Sleep -Seconds 2
@@ -355,7 +355,7 @@ if ($finalCheck -ne "1") {
     $finalCheck2 = docker exec policyinsight-postgres psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='policyinsight';" 2>&1
     $finalCheck2 = $finalCheck2.Trim()
     if ($finalCheck2 -ne "1") {
-        Write-Host "âŒ ERROR: Failed to create database!" -ForegroundColor Red
+        Write-Host "[ERR] ERROR: Failed to create database!" -ForegroundColor Red
         exit 1
     }
 }
@@ -371,7 +371,7 @@ if ($psqlPath) {
     if ($LASTEXITCODE -eq 0 -and $hostDbCheck -eq "1") {
         Write-Host "[OK] Database 'policyinsight' is visible from HOST on port $dbPort" -ForegroundColor Green
     } else {
-        Write-Host "âŒ ERROR: Database 'policyinsight' is NOT visible from HOST on port $dbPort!" -ForegroundColor Red
+        Write-Host "[ERR] ERROR: Database 'policyinsight' is NOT visible from HOST on port $dbPort!" -ForegroundColor Red
         Write-Host "   This indicates a port/server mismatch. Flyway will fail." -ForegroundColor Yellow
         Write-Host "   Container check result: $finalCheck" -ForegroundColor Gray
         Write-Host "   Host check result: $hostDbCheck" -ForegroundColor Gray
@@ -379,7 +379,7 @@ if ($psqlPath) {
         exit 1
     }
 } else {
-    Write-Host "âš ï¸  psql not available for host verification, proceeding with Flyway anyway" -ForegroundColor Yellow
+    Write-Host "[WARN]  psql not available for host verification, proceeding with Flyway anyway" -ForegroundColor Yellow
 }
 
 Write-Host "Running Flyway migrations on port $dbPort..." -ForegroundColor Cyan
@@ -394,13 +394,13 @@ try {
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[OK] Migrations completed" -ForegroundColor Green
     } else {
-        Write-Host "âŒ ERROR: Migrations failed (exit code: $LASTEXITCODE)" -ForegroundColor Red
+        Write-Host "[ERR] ERROR: Migrations failed (exit code: $LASTEXITCODE)" -ForegroundColor Red
         Write-Host "Verifying database state..." -ForegroundColor Yellow
         docker exec policyinsight-postgres psql -U postgres -d postgres -c "\l" | Select-String "policyinsight"
         exit 1
     }
 } catch {
-    Write-Host "âŒ ERROR: Migrations failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "[ERR] ERROR: Migrations failed: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Verifying database state..." -ForegroundColor Yellow
     docker exec policyinsight-postgres psql -U postgres -d postgres -c "\l" | Select-String "policyinsight"
     exit 1
@@ -413,7 +413,7 @@ try {
     .\mvnw.cmd clean package -DskipTests
     Write-Host "[OK] Build completed" -ForegroundColor Green
 } catch {
-    Write-Host "âŒ ERROR: Build failed" -ForegroundColor Red
+    Write-Host "[ERR] ERROR: Build failed" -ForegroundColor Red
     exit 1
 }
 
@@ -432,7 +432,7 @@ if ($port8080) {
         Write-Host "[OK] Stopped process $processId" -ForegroundColor Green
         Start-Sleep -Seconds 2
     } catch {
-        Write-Host "âš ï¸  Could not stop process $processId. Trying to continue..." -ForegroundColor Yellow
+        Write-Host "[WARN]  Could not stop process $processId. Trying to continue..." -ForegroundColor Yellow
     }
 } else {
     Write-Host "[OK] Port 8080 is available" -ForegroundColor Green
@@ -441,7 +441,7 @@ if ($port8080) {
 # Find the JAR file (exclude .original files)
 $jarFile = Get-ChildItem -Path "target" -Filter "policy-insight-*.jar" | Where-Object { $_.Name -notlike "*.original" } | Select-Object -First 1
 if (-not $jarFile) {
-    Write-Host "âŒ ERROR: JAR file not found in target/" -ForegroundColor Red
+    Write-Host "[ERR] ERROR: JAR file not found in target/" -ForegroundColor Red
     Write-Host "Available files in target/:" -ForegroundColor Yellow
     Get-ChildItem -Path "target" -Filter "*.jar" | ForEach-Object { Write-Host "  - $($_.Name)" }
     exit 1
@@ -484,10 +484,10 @@ try {
     if ($testConn.TcpTestSucceeded) {
         Write-Host "[OK] Database port $dbPort is accessible" -ForegroundColor Green
     } else {
-        Write-Host "âš ï¸  Warning: Cannot connect to database on port $dbPort" -ForegroundColor Yellow
+        Write-Host "[WARN]  Warning: Cannot connect to database on port $dbPort" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "âš ï¸  Warning: Could not verify database port accessibility" -ForegroundColor Yellow
+    Write-Host "[WARN]  Warning: Could not verify database port accessibility" -ForegroundColor Yellow
 }
 
 # Build Java arguments with system properties
@@ -564,7 +564,7 @@ while ($elapsed -lt $maxWait) {
 Write-Host ""
 
 if (-not $ready) {
-    Write-Host "âŒ ERROR: Application failed to start within ${maxWait} seconds" -ForegroundColor Red
+    Write-Host "[ERR] ERROR: Application failed to start within ${maxWait} seconds" -ForegroundColor Red
     Write-Host "Application logs:" -ForegroundColor Yellow
     if (Test-Path "app.log") {
         Get-Content "app.log" -Tail 20
@@ -587,7 +587,7 @@ try {
     Write-Host ""
     Write-Host "[OK] OpenAPI spec generated successfully!" -ForegroundColor Green
 } catch {
-    Write-Host "âŒ ERROR: Failed to generate OpenAPI spec" -ForegroundColor Red
+    Write-Host "[ERR] ERROR: Failed to generate OpenAPI spec" -ForegroundColor Red
     Write-Host $_.Exception.Message
 }
 
@@ -598,11 +598,11 @@ try {
     Stop-Process -Id $appProcess.Id -Force -ErrorAction SilentlyContinue
     Write-Host "[OK] Application stopped" -ForegroundColor Green
 } catch {
-    Write-Host "âš ï¸  Warning: Could not stop application process" -ForegroundColor Yellow
+    Write-Host "[WARN]  Warning: Could not stop application process" -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "âœ¨ Done! OpenAPI spec is available at: docs/openapi.json" -ForegroundColor Green
+Write-Host "[DONE] Done! OpenAPI spec is available at: docs/openapi.json" -ForegroundColor Green
 
 
 
