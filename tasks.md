@@ -238,8 +238,8 @@ This file tracks the implementation milestones for PolicyInsight, derived from t
 
 ## Progress Tracking
 
-- [ ] Milestone 1: Repo scaffold + local run + CI
-- [ ] Milestone 2: Database schema + JPA layer
+- [x] Milestone 1: Repo scaffold + local run + CI
+- [x] Milestone 2: Database schema + JPA layer
 - [ ] Milestone 3: Document upload + cloud storage
 - [ ] Milestone 4: Document processing pipeline
 - [ ] Milestone 5: Risk analysis + report generation
