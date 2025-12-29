@@ -87,6 +87,7 @@ gcs:
 
 # Google Cloud Pub/Sub configuration
 pubsub:
+  enabled: false
   project-id: ${GOOGLE_CLOUD_PROJECT:local-project}
   topic-name: ${PUBSUB_TOPIC_NAME:document-analysis-topic}
   # For local emulator: set PUBSUB_EMULATOR_HOST=http://localhost:8085
