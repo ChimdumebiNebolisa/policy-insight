@@ -14,7 +14,7 @@ import com.policyinsight.processing.model.ExtractedText;
 /**
  * Service for extracting text from PDFs using Google Cloud Document AI.
  * Only loads when documentai.enabled=true.
- * 
+ *
  * NOTE: This is a stub implementation for local development.
  * In production with Document AI enabled, replace this with the actual Document AI client implementation.
  * The real implementation would use:
@@ -45,7 +45,7 @@ public class DocumentAiService {
 
     /**
      * Extracts text from a PDF using Document AI.
-     * 
+     *
      * NOTE: This is a stub that throws an exception.
      * In production, implement the actual Document AI client calls here.
      *

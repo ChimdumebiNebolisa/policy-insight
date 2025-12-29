@@ -23,11 +23,11 @@ public class DocumentClassifierService {
     private static final Pattern TOS_PATTERNS = Pattern.compile(
             "(?i)(terms\\s+of\\s+service|terms\\s+and\\s+conditions|agree\\s+to|bound\\s+by|acceptance)",
             Pattern.CASE_INSENSITIVE);
-    
+
     private static final Pattern PRIVACY_PATTERNS = Pattern.compile(
             "(?i)(privacy\\s+policy|data\\s+collect|personal\\s+information|process\\s+data|cookie)",
             Pattern.CASE_INSENSITIVE);
-    
+
     private static final Pattern LEASE_PATTERNS = Pattern.compile(
             "(?i)(lease\\s+agreement|rent|tenant|landlord|property|monthly\\s+rent|security\\s+deposit)",
             Pattern.CASE_INSENSITIVE);
@@ -44,8 +44,8 @@ public class DocumentClassifierService {
         }
 
         // Use first 2000 chars for classification (per PRD)
-        String classificationText = fullText.length() > CLASSIFICATION_TEXT_LENGTH 
-                ? fullText.substring(0, CLASSIFICATION_TEXT_LENGTH) 
+        String classificationText = fullText.length() > CLASSIFICATION_TEXT_LENGTH
+                ? fullText.substring(0, CLASSIFICATION_TEXT_LENGTH)
                 : fullText;
 
         // Rules-based classification
@@ -75,7 +75,7 @@ public class DocumentClassifierService {
         // If confidence < 0.90, we would use LLM fallback (for Milestone 5)
         // For now, we return the rules-based result
         if (confidence < RULES_CONFIDENCE_THRESHOLD) {
-            logger.warn("Classification confidence {} below threshold {}, but LLM fallback not yet implemented", 
+            logger.warn("Classification confidence {} below threshold {}, but LLM fallback not yet implemented",
                     confidence, RULES_CONFIDENCE_THRESHOLD);
         }
 

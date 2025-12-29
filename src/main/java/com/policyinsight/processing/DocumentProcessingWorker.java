@@ -158,7 +158,7 @@ public class DocumentProcessingWorker {
         }
 
         PolicyJob job = jobOpt.get();
-        
+
         try {
             // Update status to PROCESSING
             job.setStatus("PROCESSING");
@@ -223,7 +223,7 @@ public class DocumentProcessingWorker {
 
             // Classify document
             String fullText = extractedText.getFullText();
-            DocumentClassifierService.ClassificationResult classification = 
+            DocumentClassifierService.ClassificationResult classification =
                     documentClassifierService.classify(fullText);
 
             job.setClassification(classification.getClassification());
@@ -234,7 +234,7 @@ public class DocumentProcessingWorker {
             job.setCompletedAt(Instant.now());
             policyJobRepository.save(job);
 
-            logger.info("Document processing completed for job: {}, classification: {}", 
+            logger.info("Document processing completed for job: {}, classification: {}",
                     jobId, classification.getClassification());
 
         } catch (Exception e) {

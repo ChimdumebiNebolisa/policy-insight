@@ -52,13 +52,13 @@ public class TextChunkerService {
                 }
 
                 // If adding this paragraph would exceed max size, finalize current chunk
-                if (currentChunk.length() > 0 && 
+                if (currentChunk.length() > 0 &&
                     currentChunk.length() + paragraph.length() + 1 > MAX_CHUNK_SIZE_CHARS) {
-                    
+
                     if (currentChunk.length() >= MIN_CHUNK_SIZE_CHARS) {
-                        chunks.add(createChunk(chunkIndex++, currentChunk.toString(), 
-                                page.getPageNumber(), currentOffset, 
-                                currentOffset + currentChunk.length(), 
+                        chunks.add(createChunk(chunkIndex++, currentChunk.toString(),
+                                page.getPageNumber(), currentOffset,
+                                currentOffset + currentChunk.length(),
                                 page.getConfidence()));
                         currentOffset += currentChunk.length();
                     }
@@ -73,9 +73,9 @@ public class TextChunkerService {
 
                 // If chunk is large enough, finalize it
                 if (currentChunk.length() >= MAX_CHUNK_SIZE_CHARS) {
-                    chunks.add(createChunk(chunkIndex++, currentChunk.toString(), 
-                            page.getPageNumber(), currentOffset, 
-                            currentOffset + currentChunk.length(), 
+                    chunks.add(createChunk(chunkIndex++, currentChunk.toString(),
+                            page.getPageNumber(), currentOffset,
+                            currentOffset + currentChunk.length(),
                             page.getConfidence()));
                     currentOffset += currentChunk.length();
                     currentChunk = new StringBuilder();
@@ -84,9 +84,9 @@ public class TextChunkerService {
 
             // Finalize any remaining chunk for this page
             if (currentChunk.length() >= MIN_CHUNK_SIZE_CHARS) {
-                chunks.add(createChunk(chunkIndex++, currentChunk.toString(), 
-                        page.getPageNumber(), currentOffset, 
-                        currentOffset + currentChunk.length(), 
+                chunks.add(createChunk(chunkIndex++, currentChunk.toString(),
+                        page.getPageNumber(), currentOffset,
+                        currentOffset + currentChunk.length(),
                         page.getConfidence()));
             }
         }
@@ -95,7 +95,7 @@ public class TextChunkerService {
         return chunks;
     }
 
-    private TextChunk createChunk(int chunkIndex, String text, int pageNumber, 
+    private TextChunk createChunk(int chunkIndex, String text, int pageNumber,
                                    int startOffset, int endOffset, double confidence) {
         BigDecimal spanConfidence = BigDecimal.valueOf(confidence)
                 .setScale(2, RoundingMode.HALF_UP);
