@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -66,7 +67,25 @@ public class GlobalExceptionHandler {
         response.put("timestamp", Instant.now().toString());
         response.put("traceId", MDC.get("correlationId"));
 
+        // Check if it's a UUID parsing error
+        if (ex.getMessage() != null && (ex.getMessage().contains("Invalid UUID") ||
+                ex.getMessage().contains("Invalid job ID") ||
+                ex.getMessage().contains("Invalid document ID"))) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<Map<String, Object>> handleNoSuchElementException(NoSuchElementException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "NotFound");
+        response.put("message", ex.getMessage() != null ? ex.getMessage() : "Resource not found");
+        response.put("timestamp", Instant.now().toString());
+        response.put("traceId", MDC.get("correlationId"));
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 }
 
