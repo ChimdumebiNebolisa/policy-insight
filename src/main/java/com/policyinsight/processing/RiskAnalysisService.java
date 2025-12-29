@@ -81,9 +81,9 @@ public class RiskAnalysisService {
      * @param category Risk category to analyze
      * @return Result map with "detected" boolean and "items" array
      */
-    private Map<String, Object> analyzeCategory(List<DocumentChunk> chunks, RiskCategory category) 
+    private Map<String, Object> analyzeCategory(List<DocumentChunk> chunks, RiskCategory category)
             throws IOException, TimeoutException {
-        
+
         // Build prompt for Gemini
         String prompt = buildRiskAnalysisPrompt(chunks, category);
 
@@ -93,19 +93,19 @@ public class RiskAnalysisService {
 
             // Validate and extract results
             Map<String, Object> result = new HashMap<>();
-            
+
             if (jsonResponse.has("detected") && jsonResponse.get("detected").asBoolean()) {
                 result.put("detected", true);
-                
+
                 List<Map<String, Object>> items = new ArrayList<>();
                 if (jsonResponse.has("items") && jsonResponse.get("items").isArray()) {
                     for (JsonNode item : jsonResponse.get("items")) {
                         Map<String, Object> riskItem = new HashMap<>();
-                        
+
                         if (item.has("text")) {
                             riskItem.put("text", item.get("text").asText());
                         }
-                        
+
                         if (item.has("severity")) {
                             String severity = item.get("severity").asText().toLowerCase();
                             // Validate severity
@@ -117,7 +117,7 @@ public class RiskAnalysisService {
                         } else {
                             riskItem.put("severity", "medium"); // Default
                         }
-                        
+
                         // Extract chunk IDs and validate they exist
                         List<Long> chunkIds = new ArrayList<>();
                         if (item.has("chunk_ids") && item.get("chunk_ids").isArray()) {
@@ -132,7 +132,7 @@ public class RiskAnalysisService {
                             }
                         }
                         riskItem.put("chunk_ids", chunkIds);
-                        
+
                         items.add(riskItem);
                     }
                 }
@@ -166,12 +166,12 @@ public class RiskAnalysisService {
         prompt.append(category.getDescription());
         prompt.append(".\n\n");
         prompt.append("Document excerpts:\n");
-        
+
         for (DocumentChunk chunk : chunks) {
-            prompt.append(String.format("[Chunk ID: %d, Page: %d]\n%s\n\n", 
+            prompt.append(String.format("[Chunk ID: %d, Page: %d]\n%s\n\n",
                     chunk.getId(), chunk.getPageNumber(), chunk.getText()));
         }
-        
+
         prompt.append("Return a JSON response with this structure:\n");
         prompt.append("{\n");
         prompt.append("  \"detected\": true/false,\n");

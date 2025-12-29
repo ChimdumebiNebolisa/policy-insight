@@ -42,9 +42,9 @@ public class ReportGenerationService {
      */
     public Map<String, Object> generateDocumentOverview(PolicyJob job, List<DocumentChunk> chunks) {
         Map<String, Object> overview = new HashMap<>();
-        
+
         overview.put("document_type", job.getClassification() != null ? job.getClassification() : "UNKNOWN");
-        overview.put("classification_confidence", job.getClassificationConfidence() != null 
+        overview.put("classification_confidence", job.getClassificationConfidence() != null
                 ? job.getClassificationConfidence() : 0.0);
         overview.put("filename", job.getPdfFilename());
         overview.put("file_size_bytes", job.getFileSizeBytes());
@@ -88,7 +88,7 @@ public class ReportGenerationService {
                     }
 
                     Map<String, Object> bullet = new HashMap<>();
-                    
+
                     if (bulletNode.has("text")) {
                         bullet.put("text", bulletNode.get("text").asText());
                     }
@@ -138,7 +138,7 @@ public class ReportGenerationService {
      * @param chunks Document chunks
      * @return Map with "obligations", "restrictions", and "termination_triggers" arrays
      */
-    public Map<String, Object> generateObligationsAndRestrictions(List<DocumentChunk> chunks) 
+    public Map<String, Object> generateObligationsAndRestrictions(List<DocumentChunk> chunks)
             throws IOException, TimeoutException {
         logger.info("Generating obligations and restrictions from {} chunks", chunks.size());
 
@@ -153,10 +153,10 @@ public class ReportGenerationService {
 
             // Extract obligations
             result.put("obligations", extractItems(jsonResponse, "obligations", chunks, validChunkIds));
-            
+
             // Extract restrictions
             result.put("restrictions", extractItems(jsonResponse, "restrictions", chunks, validChunkIds));
-            
+
             // Extract termination triggers
             result.put("termination_triggers", extractItems(jsonResponse, "termination_triggers", chunks, validChunkIds));
 
@@ -176,12 +176,12 @@ public class ReportGenerationService {
         StringBuilder prompt = new StringBuilder();
         prompt.append("Summarize the key findings from this legal document in plain English.\n\n");
         prompt.append("Document excerpts:\n");
-        
+
         for (DocumentChunk chunk : chunks) {
-            prompt.append(String.format("[Chunk ID: %d, Page: %d]\n%s\n\n", 
+            prompt.append(String.format("[Chunk ID: %d, Page: %d]\n%s\n\n",
                     chunk.getId(), chunk.getPageNumber(), chunk.getText()));
         }
-        
+
         prompt.append("Return a JSON response with this structure:\n");
         prompt.append("{\n");
         prompt.append("  \"bullets\": [\n");
@@ -201,12 +201,12 @@ public class ReportGenerationService {
         StringBuilder prompt = new StringBuilder();
         prompt.append("Extract obligations, restrictions, and termination triggers from this legal document.\n\n");
         prompt.append("Document excerpts:\n");
-        
+
         for (DocumentChunk chunk : chunks) {
-            prompt.append(String.format("[Chunk ID: %d, Page: %d]\n%s\n\n", 
+            prompt.append(String.format("[Chunk ID: %d, Page: %d]\n%s\n\n",
                     chunk.getId(), chunk.getPageNumber(), chunk.getText()));
         }
-        
+
         prompt.append("Return a JSON response with this structure:\n");
         prompt.append("{\n");
         prompt.append("  \"obligations\": [\n");
@@ -224,18 +224,18 @@ public class ReportGenerationService {
         return prompt.toString();
     }
 
-    private List<Map<String, Object>> extractItems(JsonNode jsonResponse, String key, 
+    private List<Map<String, Object>> extractItems(JsonNode jsonResponse, String key,
                                                     List<DocumentChunk> chunks, Set<Long> validChunkIds) {
         List<Map<String, Object>> items = new ArrayList<>();
-        
+
         if (jsonResponse.has(key) && jsonResponse.get(key).isArray()) {
             for (JsonNode itemNode : jsonResponse.get(key)) {
                 Map<String, Object> item = new HashMap<>();
-                
+
                 if (itemNode.has("text")) {
                     item.put("text", itemNode.get("text").asText());
                 }
-                
+
                 if (itemNode.has("severity")) {
                     String severity = itemNode.get("severity").asText().toLowerCase();
                     if (severity.equals("low") || severity.equals("medium") || severity.equals("high")) {
@@ -246,7 +246,7 @@ public class ReportGenerationService {
                 } else {
                     item.put("severity", "medium");
                 }
-                
+
                 List<Long> chunkIds = new ArrayList<>();
                 if (itemNode.has("chunk_ids") && itemNode.get("chunk_ids").isArray()) {
                     for (JsonNode chunkIdNode : itemNode.get("chunk_ids")) {

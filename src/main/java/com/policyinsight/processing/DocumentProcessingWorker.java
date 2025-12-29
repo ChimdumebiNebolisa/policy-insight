@@ -28,10 +28,9 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.transaction.Transactional;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +68,9 @@ public class DocumentProcessingWorker {
 
     @Autowired
     private ReportGenerationService reportGenerationService;
+
+    @Autowired
+    private ReportGroundingValidator reportGroundingValidator;
 
     @Autowired
     private PolicyJobRepository policyJobRepository;
@@ -257,37 +259,69 @@ public class DocumentProcessingWorker {
             Map<String, Object> summary = reportGenerationService.generateSummary(storedChunks);
             Map<String, Object> obligationsAndRestrictions = reportGenerationService.generateObligationsAndRestrictions(storedChunks);
 
-            // Create and save Report
+            // Prepare report data for validation (cite-or-abstain enforcement)
+            logger.info("Validating report grounding for job: {}", jobId);
+            Map<String, Object> reportDataMap = new HashMap<>();
+            reportDataMap.put("summary_bullets", summary);
+            reportDataMap.put("obligations", obligationsAndRestrictions.get("obligations"));
+            reportDataMap.put("restrictions", obligationsAndRestrictions.get("restrictions"));
+            reportDataMap.put("termination_triggers", obligationsAndRestrictions.get("termination_triggers"));
+            reportDataMap.put("risk_taxonomy", riskTaxonomy);
+
+            ReportGroundingValidator.ValidationResult validationResult = 
+                    reportGroundingValidator.validateReport(reportDataMap, storedChunks);
+
+            if (!validationResult.isValid()) {
+                logger.warn("Report validation found {} violations for job: {}", 
+                        validationResult.getViolations().size(), jobId);
+                for (String violation : validationResult.getViolations()) {
+                    logger.warn("Validation violation: {}", violation);
+                }
+                // Violations are handled by abstain statements in validated data, per PRD
+                // Continue processing with validated (abstained) data
+            } else {
+                logger.info("Report validation passed for job: {}", jobId);
+            }
+
+            // Create and save Report with validated data
             Report report = new Report(jobId);
             report.setDocumentOverview(documentOverview);
-            report.setSummaryBullets(summary);
-            // obligationsAndRestrictions contains arrays, wrap them in maps for JSONB storage
             @SuppressWarnings("unchecked")
-            Map<String, Object> obligationsMap = Map.of("items", obligationsAndRestrictions.get("obligations"));
+            Map<String, Object> validatedSummary = (Map<String, Object>) reportDataMap.get("summary_bullets");
+            report.setSummaryBullets(validatedSummary);
+            // obligations/restrictions/termination_triggers from reportDataMap are already validated
             @SuppressWarnings("unchecked")
-            Map<String, Object> restrictionsMap = Map.of("items", obligationsAndRestrictions.get("restrictions"));
+            List<Map<String, Object>> validatedObligations = (List<Map<String, Object>>) reportDataMap.get("obligations");
             @SuppressWarnings("unchecked")
-            Map<String, Object> terminationTriggersMap = Map.of("items", obligationsAndRestrictions.get("termination_triggers"));
+            List<Map<String, Object>> validatedRestrictions = (List<Map<String, Object>>) reportDataMap.get("restrictions");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> validatedTerminationTriggers = (List<Map<String, Object>>) reportDataMap.get("termination_triggers");
+            Map<String, Object> obligationsMap = Map.of("items", validatedObligations != null ? validatedObligations : Collections.emptyList());
+            Map<String, Object> restrictionsMap = Map.of("items", validatedRestrictions != null ? validatedRestrictions : Collections.emptyList());
+            Map<String, Object> terminationTriggersMap = Map.of("items", validatedTerminationTriggers != null ? validatedTerminationTriggers : Collections.emptyList());
             report.setObligations(obligationsMap);
             report.setRestrictions(restrictionsMap);
             report.setTerminationTriggers(terminationTriggersMap);
-            report.setRiskTaxonomy(riskTaxonomy);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> validatedRiskTaxonomy = (Map<String, Object>) reportDataMap.get("risk_taxonomy");
+            report.setRiskTaxonomy(validatedRiskTaxonomy);
             report.setGeneratedAt(Instant.now());
 
             // Optionally upload report JSON to GCS
             try {
                 ObjectMapper objectMapper = new ObjectMapper();
+                // Use validated report data for GCS upload
                 String reportJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(Map.of(
                         "document_overview", documentOverview,
-                        "summary_bullets", summary,
-                        "obligations", obligationsAndRestrictions.get("obligations"),
-                        "restrictions", obligationsAndRestrictions.get("restrictions"),
-                        "termination_triggers", obligationsAndRestrictions.get("termination_triggers"),
-                        "risk_taxonomy", riskTaxonomy
+                        "summary_bullets", reportDataMap.get("summary_bullets"),
+                        "obligations", reportDataMap.get("obligations"),
+                        "restrictions", reportDataMap.get("restrictions"),
+                        "termination_triggers", reportDataMap.get("termination_triggers"),
+                        "risk_taxonomy", reportDataMap.get("risk_taxonomy")
                 ));
                 String reportGcsPath = gcsStorageService.uploadFile(
-                        jobId, "report.json", 
-                        new ByteArrayInputStream(reportJson.getBytes()), 
+                        jobId, "report.json",
+                        new ByteArrayInputStream(reportJson.getBytes()),
                         "application/json");
                 report.setGcsPath(reportGcsPath);
                 job.setReportGcsPath(reportGcsPath);
