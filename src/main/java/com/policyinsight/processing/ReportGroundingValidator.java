@@ -26,6 +26,24 @@ public class ReportGroundingValidator {
     }
 
     /**
+     * Type-safe helper to convert an Object to Map<String, Object>, copying only String keys.
+     * Returns null if the input is not a Map or if conversion fails.
+     */
+    private static Map<String, Object> toStringObjectMap(Object o) {
+        if (!(o instanceof Map<?, ?>)) {
+            return null;
+        }
+        Map<String, Object> result = new HashMap<>();
+        Map<?, ?> sourceMap = (Map<?, ?>) o;
+        for (Map.Entry<?, ?> entry : sourceMap.entrySet()) {
+            if (entry.getKey() instanceof String) {
+                result.put((String) entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
+    }
+
+    /**
      * Validates the entire report structure and enforces cite-or-abstain.
      *
      * @param reportData The report data structure (Map representation)
@@ -79,7 +97,10 @@ public class ReportGroundingValidator {
 
             List<Map<String, Object>> bullets = new ArrayList<>();
             for (JsonNode bulletNode : summaryNode.get("bullets")) {
-                Map<String, Object> bullet = objectMapper.convertValue(bulletNode, Map.class);
+                Map<String, Object> bullet = toStringObjectMap(objectMapper.convertValue(bulletNode, Map.class));
+                if (bullet == null) {
+                    continue;
+                }
 
                 List<Long> chunkIds = extractChunkIds(bulletNode);
                 if (chunkIds.isEmpty() || !areChunkIdsValid(chunkIds, validChunkIds)) {
@@ -102,9 +123,8 @@ public class ReportGroundingValidator {
             }
 
             // Update the summary data with validated bullets
-            if (summaryData instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> summaryMap = (Map<String, Object>) summaryData;
+            Map<String, Object> summaryMap = toStringObjectMap(summaryData);
+            if (summaryMap != null) {
                 summaryMap.put("bullets", bullets);
             }
         } catch (Exception e) {
@@ -214,7 +234,10 @@ public class ReportGroundingValidator {
     private void validateRiskCategory(JsonNode categoryNode, String categoryName, Set<Long> validChunkIds,
                                      Map<Long, Integer> chunkIdToPageNumber, ValidationResult result) {
         try {
-            Map<String, Object> categoryMap = objectMapper.convertValue(categoryNode, Map.class);
+            Map<String, Object> categoryMap = toStringObjectMap(objectMapper.convertValue(categoryNode, Map.class));
+            if (categoryMap == null) {
+                return;
+            }
 
             if (!categoryNode.has("items") || !categoryNode.get("items").isArray()) {
                 return;
@@ -222,7 +245,10 @@ public class ReportGroundingValidator {
 
             List<Map<String, Object>> items = new ArrayList<>();
             for (JsonNode itemNode : categoryNode.get("items")) {
-                Map<String, Object> item = objectMapper.convertValue(itemNode, Map.class);
+                Map<String, Object> item = toStringObjectMap(objectMapper.convertValue(itemNode, Map.class));
+                if (item == null) {
+                    continue;
+                }
 
                 List<Long> chunkIds = extractChunkIds(itemNode);
                 if (chunkIds.isEmpty() || !areChunkIdsValid(chunkIds, validChunkIds)) {
