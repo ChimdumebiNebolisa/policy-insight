@@ -1,0 +1,10 @@
+HTTP/1.1 500 
+X-Request-ID: b25edf00-1da7-4eeb-9924-47dc75136b19
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Mon, 29 Dec 2025 09:08:56 GMT
+Connection: close
+

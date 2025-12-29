@@ -77,7 +77,7 @@ public class ShareReportController {
 
         // Verify job UUID matches
         if (!shareLink.getJobUuid().equals(jobUuid)) {
-            logger.warn("Job UUID mismatch: expected={}, got={}", 
+            logger.warn("Job UUID mismatch: expected={}, got={}",
                     shareLink.getJobUuid(), jobUuid);
             model.addAttribute("error", "Invalid share link");
             return "error";
@@ -122,7 +122,7 @@ public class ShareReportController {
         reportData.put("riskTaxonomy", report.getRiskTaxonomy());
         model.addAttribute("reportData", reportData);
 
-        logger.info("Shared report page rendered: jobUuid={}, accessCount={}", 
+        logger.info("Shared report page rendered: jobUuid={}, accessCount={}",
                 jobUuid, shareLink.getAccessCount());
 
         return "share-report";

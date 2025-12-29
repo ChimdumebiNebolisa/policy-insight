@@ -19,10 +19,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * Service for publishing messages to Google Cloud Pub/Sub.
  * Supports both real Pub/Sub and local emulator (via PUBSUB_EMULATOR_HOST).
- * Only loads when pubsub.enabled=true.
+ * Only loads when app.messaging.mode=gcp.
  */
 @Service
-@ConditionalOnProperty(prefix = "pubsub", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(name = "app.messaging.mode", havingValue = "gcp")
 public class PubSubService implements JobPublisher {
 
     private static final Logger logger = LoggerFactory.getLogger(PubSubService.class);

@@ -18,6 +18,11 @@ public class ErrorResponse {
         this.timestamp = Instant.now();
     }
 
+    public ErrorResponse(String message) {
+        this.message = message;
+        this.timestamp = Instant.now();
+    }
+
     public ErrorResponse(String error, String message) {
         this.error = error;
         this.message = message;

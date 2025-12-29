@@ -7,6 +7,7 @@ import com.google.cloud.storage.StorageOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -15,9 +16,11 @@ import java.io.InputStream;
 /**
  * Service for storing files in Google Cloud Storage.
  * Supports both real GCS and local emulator (via GCS_EMULATOR_HOST).
+ * Only loads when app.storage.mode=gcp.
  */
 @Service
-public class GcsStorageService {
+@ConditionalOnProperty(name = "app.storage.mode", havingValue = "gcp")
+public class GcsStorageService implements StorageService {
 
     private static final Logger logger = LoggerFactory.getLogger(GcsStorageService.class);
 
@@ -52,6 +55,7 @@ public class GcsStorageService {
      * @return GCS path (gs://bucket-name/jobId/filename)
      * @throws IOException if upload fails
      */
+    @Override
     public String uploadFile(java.util.UUID jobId, String filename, InputStream content, String contentType) throws IOException {
         String objectName = jobId + "/" + filename;
         BlobId blobId = BlobId.of(bucketName, objectName);
@@ -69,6 +73,40 @@ public class GcsStorageService {
         } catch (Exception e) {
             logger.error("Failed to upload file to GCS: gs://{}/{}", bucketName, objectName, e);
             throw new IOException("Failed to upload file to GCS", e);
+        }
+    }
+
+    /**
+     * Downloads a file from GCS by its path.
+     *
+     * @param storagePath GCS path (gs://bucket-name/jobId/filename)
+     * @return File content as byte array
+     * @throws IOException if download fails
+     */
+    @Override
+    public byte[] downloadFile(String storagePath) throws IOException {
+        if (storagePath == null || !storagePath.startsWith("gs://")) {
+            throw new IllegalArgumentException("Invalid GCS path: " + storagePath);
+        }
+
+        // Parse GCS path: gs://bucket-name/jobId/filename
+        String pathWithoutPrefix = storagePath.replace("gs://", "");
+        int firstSlash = pathWithoutPrefix.indexOf('/');
+        if (firstSlash < 0) {
+            throw new IllegalArgumentException("Invalid GCS path format: " + storagePath);
+        }
+        String bucketName = pathWithoutPrefix.substring(0, firstSlash);
+        String objectName = pathWithoutPrefix.substring(firstSlash + 1);
+
+        logger.debug("Downloading file from GCS: gs://{}/{}", bucketName, objectName);
+
+        try {
+            byte[] content = storage.readAllBytes(BlobId.of(bucketName, objectName));
+            logger.info("Successfully downloaded file from GCS: {}", storagePath);
+            return content;
+        } catch (Exception e) {
+            logger.error("Failed to download file from GCS: {}", storagePath, e);
+            throw new IOException("Failed to download file from GCS", e);
         }
     }
 }

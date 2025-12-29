@@ -61,7 +61,7 @@ public class GeminiService implements GeminiServiceInterface {
                     .project(this.projectId)
                     .location(this.location)
                     .vertexAI(true)
-                    .httpOptions(HttpOptions.builder().apiVersion("v1"));
+                    .httpOptions(HttpOptions.builder().apiVersion("v1").build());
 
             Client clientInstance = builder.build();
             logger.info("Google Gen AI SDK client initialized successfully with Vertex AI enabled");

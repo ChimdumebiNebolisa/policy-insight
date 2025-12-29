@@ -36,5 +36,24 @@ public interface PolicyJobRepository extends JpaRepository<PolicyJob, Long> {
      */
     @Query("SELECT p FROM PolicyJob p WHERE p.status = :status ORDER BY p.createdAt DESC")
     java.util.List<PolicyJob> findByStatusOrderByCreatedAtDesc(@Param("status") String status);
+
+    /**
+     * Find the oldest PENDING jobs (up to limit) using SELECT FOR UPDATE SKIP LOCKED
+     * to atomically claim jobs and prevent race conditions in multi-instance scenarios.
+     * This method uses PostgreSQL's SKIP LOCKED feature to ensure only one instance processes a job.
+     * @param limit maximum number of jobs to return
+     * @return list of PolicyJob entities that were successfully locked
+     */
+    @Query(value = "SELECT * FROM policy_jobs WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT :limit FOR UPDATE SKIP LOCKED", nativeQuery = true)
+    java.util.List<PolicyJob> findOldestPendingJobsForUpdate(@Param("limit") int limit);
+
+    /**
+     * Find the oldest PENDING jobs (up to limit) without locking.
+     * Used for non-atomic queries or when locking is not needed.
+     * @param limit maximum number of jobs to return
+     * @return list of PolicyJob entities
+     */
+    @Query(value = "SELECT * FROM policy_jobs WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT :limit", nativeQuery = true)
+    java.util.List<PolicyJob> findOldestPendingJobs(@Param("limit") int limit);
 }
 

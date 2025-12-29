@@ -185,13 +185,13 @@
         <section id="actions" style="margin-top: 2rem; padding: 1.5rem; background-color: #f8f9fa; border-radius: 8px;">
             <h3>Export & Share</h3>
             <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <a th:href="@{'/api/documents/' + ${job.jobUuid} + '/export/pdf'}" 
-                   class="btn-primary" 
+                <a th:href="@{'/api/documents/' + ${job.jobUuid} + '/export/pdf'}"
+                   class="btn-primary"
                    style="display: inline-block; padding: 0.75rem 1.5rem; background-color: #3498db; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
                     📥 Download PDF
                 </a>
-                <button id="share-btn" 
-                        class="btn-secondary" 
+                <button id="share-btn"
+                        class="btn-secondary"
                         style="padding: 0.75rem 1.5rem; background-color: #27ae60; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;"
                         onclick="generateShareLink()">
                     🔗 Get Share Link
@@ -218,10 +218,10 @@
             const resultDiv = document.getElementById('share-result');
             const urlInput = document.getElementById('share-url');
             const expiresSpan = document.getElementById('share-expires');
-            
+
             btn.disabled = true;
             btn.textContent = 'Generating...';
-            
+
             const jobId = /*[[${job.jobUuid}]]*/ '';
             fetch('/api/documents/' + jobId + '/share', {
                 method: 'POST',

@@ -8,11 +8,11 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 /**
- * No-op implementation of JobPublisher for local development when Pub/Sub is disabled.
- * This bean is only registered when pubsub.enabled=false or when the property is missing.
+ * No-op implementation of JobPublisher for local development when messaging mode is local.
+ * This bean is only registered when app.messaging.mode=local or when the property is missing.
  */
 @Service
-@ConditionalOnProperty(prefix = "pubsub", name = "enabled", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.messaging.mode", havingValue = "local", matchIfMissing = true)
 public class NoopJobPublisher implements JobPublisher {
 
     private static final Logger logger = LoggerFactory.getLogger(NoopJobPublisher.class);

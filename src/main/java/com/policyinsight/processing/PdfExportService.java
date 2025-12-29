@@ -195,13 +195,13 @@ public class PdfExportService {
             String text = (String) bullet.get("text");
             if (text != null) {
                 sb.append("• ").append(text);
-                
+
                 // Add citation if available
                 @SuppressWarnings("unchecked")
                 List<Integer> chunkIds = (List<Integer>) bullet.get("chunk_ids");
                 @SuppressWarnings("unchecked")
                 List<Integer> pageRefs = (List<Integer>) bullet.get("page_refs");
-                
+
                 if (chunkIds != null && !chunkIds.isEmpty() && pageRefs != null && !pageRefs.isEmpty()) {
                     sb.append(" [Page ").append(pageRefs.get(0)).append("]");
                 }
@@ -287,8 +287,8 @@ public class PdfExportService {
         }
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> categories = riskTaxonomyObj instanceof List 
-            ? (List<Map<String, Object>>) riskTaxonomyObj 
+        List<Map<String, Object>> categories = riskTaxonomyObj instanceof List
+            ? (List<Map<String, Object>>) riskTaxonomyObj
             : null;
 
         if (categories == null) {
@@ -300,12 +300,12 @@ public class PdfExportService {
                 }
                 String categoryName = entry.getKey();
                 Object categoryData = entry.getValue();
-                
+
                 if (categoryData instanceof Map) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> category = (Map<String, Object>) categoryData;
                     sb.append(categoryName).append(":\n");
-                    
+
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> detected = (List<Map<String, Object>>) category.get("detected");
                     if (detected != null && !detected.isEmpty()) {

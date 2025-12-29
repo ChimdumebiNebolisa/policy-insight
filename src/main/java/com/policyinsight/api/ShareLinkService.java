@@ -50,7 +50,7 @@ public class ShareLinkService {
         // Create new share link
         ShareLink shareLink = new ShareLink(jobUuid);
         shareLink = shareLinkRepository.save(shareLink);
-        logger.info("Created new share link: token={}, expiresAt={}", 
+        logger.info("Created new share link: token={}, expiresAt={}",
                 shareLink.getShareToken(), shareLink.getExpiresAt());
 
         return buildResponse(shareLink, baseUrl);
@@ -76,7 +76,7 @@ public class ShareLinkService {
         }
 
         if (shareLink.isExpired()) {
-            logger.warn("Share link expired: token={}, expiresAt={}", 
+            logger.warn("Share link expired: token={}, expiresAt={}",
                     token, shareLink.getExpiresAt());
             return null;
         }
@@ -84,16 +84,16 @@ public class ShareLinkService {
         // Increment access count
         shareLink.incrementAccessCount();
         shareLinkRepository.save(shareLink);
-        logger.info("Share link accessed: token={}, accessCount={}", 
+        logger.info("Share link accessed: token={}, accessCount={}",
                 token, shareLink.getAccessCount());
 
         return shareLink;
     }
 
     private ShareLinkResponse buildResponse(ShareLink shareLink, String baseUrl) {
-        String shareUrl = baseUrl + "/documents/" + shareLink.getJobUuid() + 
+        String shareUrl = baseUrl + "/documents/" + shareLink.getJobUuid() +
                 "/share/" + shareLink.getShareToken();
-        
+
         return new ShareLinkResponse(
                 shareLink.getJobUuid(),
                 shareUrl,

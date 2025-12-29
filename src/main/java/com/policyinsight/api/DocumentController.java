@@ -1,7 +1,7 @@
 package com.policyinsight.api;
 
 import com.policyinsight.api.messaging.JobPublisher;
-import com.policyinsight.api.storage.GcsStorageService;
+import com.policyinsight.api.storage.StorageService;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.PolicyJobRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,15 +29,15 @@ public class DocumentController {
     private static final long MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
     private static final String PDF_CONTENT_TYPE = "application/pdf";
 
-    private final GcsStorageService gcsStorageService;
+    private final StorageService storageService;
     private final JobPublisher jobPublisher;
     private final PolicyJobRepository policyJobRepository;
 
     public DocumentController(
-            GcsStorageService gcsStorageService,
+            StorageService storageService,
             JobPublisher jobPublisher,
             PolicyJobRepository policyJobRepository) {
-        this.gcsStorageService = gcsStorageService;
+        this.storageService = storageService;
         this.jobPublisher = jobPublisher;
         this.policyJobRepository = policyJobRepository;
     }
@@ -80,21 +80,21 @@ public class DocumentController {
         }
 
         try {
-            // Upload to GCS
-            String gcsPath = gcsStorageService.uploadFile(jobId, filename, file.getInputStream(), contentType);
-            logger.info("File uploaded to GCS: {}", gcsPath);
+            // Upload to storage
+            String storagePath = storageService.uploadFile(jobId, filename, file.getInputStream(), contentType);
+            logger.info("File uploaded to storage: {}", storagePath);
 
             // Create job record in database
             PolicyJob job = new PolicyJob(jobId);
             job.setStatus("PENDING");
-            job.setPdfGcsPath(gcsPath);
+            job.setPdfGcsPath(storagePath);
             job.setPdfFilename(filename);
             job.setFileSizeBytes(file.getSize());
             job = policyJobRepository.save(job);
             logger.info("Job record created in database: jobId={}", jobId);
 
             // Publish Pub/Sub message
-            jobPublisher.publishJobQueued(jobId, gcsPath);
+            jobPublisher.publishJobQueued(jobId, storagePath);
             logger.info("Job queued event published for job: {}", jobId);
 
             // Build response
@@ -107,7 +107,7 @@ public class DocumentController {
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
 
         } catch (IOException e) {
-            logger.error("Failed to upload file to GCS for job: {}", jobId, e);
+            logger.error("Failed to upload file to storage for job: {}", jobId, e);
             throw new RuntimeException("Failed to upload file to storage", e);
         } catch (Exception e) {
             logger.error("Failed to queue job for processing: {}", jobId, e);

@@ -54,6 +54,16 @@ server:
 # Application configuration
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
+  storage:
+    mode: ${APP_STORAGE_MODE:local}  # local (default) | gcp
+    local-dir: ${APP_STORAGE_LOCAL_DIR:.local-storage}
+  messaging:
+    mode: ${APP_MESSAGING_MODE:local}  # local (default) | gcp
+  processing:
+    mode: ${APP_PROCESSING_MODE:local}  # local (default) | gcp - controls job processing (local in-process vs pubsub worker)
+  local-worker:
+    poll-ms: ${APP_LOCAL_WORKER_POLL_MS:2000}  # Poll every 2 seconds
+    batch-size: ${APP_LOCAL_WORKER_BATCH_SIZE:5}  # Process up to 5 jobs per poll
 
 management:
   endpoints:
