@@ -268,11 +268,11 @@ public class DocumentProcessingWorker {
             reportDataMap.put("termination_triggers", obligationsAndRestrictions.get("termination_triggers"));
             reportDataMap.put("risk_taxonomy", riskTaxonomy);
 
-            ReportGroundingValidator.ValidationResult validationResult = 
+            ReportGroundingValidator.ValidationResult validationResult =
                     reportGroundingValidator.validateReport(reportDataMap, storedChunks);
 
             if (!validationResult.isValid()) {
-                logger.warn("Report validation found {} violations for job: {}", 
+                logger.warn("Report validation found {} violations for job: {}",
                         validationResult.getViolations().size(), jobId);
                 for (String violation : validationResult.getViolations()) {
                     logger.warn("Validation violation: {}", violation);

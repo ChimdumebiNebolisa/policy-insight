@@ -2,13 +2,15 @@ package com.policyinsight.processing;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.genai.Client;
+import com.google.genai.types.HttpOptions;
+import com.google.genai.types.GenerateContentResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -28,7 +30,7 @@ public class GeminiService implements GeminiServiceInterface {
     private final String location;
     private final String model;
     private final ObjectMapper objectMapper;
-    private Object vertexAI; // Use Object to handle optional dependency
+    private Client client;
 
     public GeminiService(
             @Value("${vertexai.enabled:false}") boolean enabled,
@@ -44,29 +46,29 @@ public class GeminiService implements GeminiServiceInterface {
         logger.info("GeminiService initialized: enabled={}, projectId={}, location={}, model={}",
                 this.enabled, this.projectId, this.location, this.model);
 
-        // Initialize Vertex AI client only if enabled
+        // Initialize Google Gen AI SDK client only if enabled
         if (this.enabled && !"local-project".equals(projectId)) {
-            this.vertexAI = initializeVertexAI();
+            this.client = initializeClient();
         } else {
             logger.info("Vertex AI disabled or using local project, will use stub mode for local development");
         }
     }
 
-    private Object initializeVertexAI() {
+    private Client initializeClient() {
         try {
-            // Use reflection to initialize VertexAI to handle optional dependency
-            Class<?> vertexAIClass = Class.forName("com.google.cloud.vertexai.VertexAI");
-            Object instance = vertexAIClass.getConstructor(String.class, String.class)
-                    .newInstance(this.projectId, this.location);
-            logger.info("Vertex AI client initialized successfully");
-            return instance;
-        } catch (ClassNotFoundException e) {
-            logger.warn("Vertex AI library not found on classpath, will use stub mode. " +
-                    "Add google-cloud-vertexai dependency to enable real Vertex AI calls.");
-            return null;
+            // Build Vertex AI client using official Google Gen AI SDK pattern
+            Client.Builder builder = Client.builder()
+                    .project(this.projectId)
+                    .location(this.location)
+                    .vertexAI(true)
+                    .httpOptions(HttpOptions.builder().apiVersion("v1"));
+
+            Client clientInstance = builder.build();
+            logger.info("Google Gen AI SDK client initialized successfully with Vertex AI enabled");
+            return clientInstance;
         } catch (Exception e) {
-            logger.error("Failed to initialize Vertex AI client, will use stub mode: {}", e.getMessage(), e);
-            return null;
+            logger.error("Failed to initialize Google Gen AI SDK client: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to initialize Google Gen AI SDK client", e);
         }
     }
 
@@ -96,49 +98,38 @@ public class GeminiService implements GeminiServiceInterface {
     public String generateContent(String prompt, int timeoutSeconds) throws IOException, TimeoutException {
         logger.debug("Calling Gemini API: enabled={}, model={}, promptLength={}", enabled, model, prompt.length());
 
-        // Use stub mode if disabled or vertexAI not initialized
-        if (!enabled || vertexAI == null) {
-            logger.debug("Using stub mode (vertexai.enabled={}, vertexAI={})", enabled, vertexAI != null);
+        // Use stub mode ONLY when disabled
+        if (!enabled) {
+            logger.debug("Using stub mode (vertexai.enabled=false)");
             return generateStubResponse(prompt);
         }
 
-        // Real Vertex AI implementation using reflection for optional dependency
+        // When enabled=true, client must be initialized
+        if (client == null) {
+            throw new IOException("Vertex AI is enabled but client initialization failed");
+        }
+
+        // Real Vertex AI implementation using Google Gen AI SDK
         try {
-            if (vertexAI == null) {
-                logger.warn("Vertex AI client not available, using stub response");
-                return generateStubResponse(prompt);
+            // Pattern: client.models.generateContent(modelId, promptOrContent, null)
+            GenerateContentResponse response = client.models.generateContent(model, prompt, null);
+
+            // Use SDK accessor response.text()
+            String responseText = response.text();
+
+            if (responseText == null || responseText.isBlank()) {
+                throw new IOException("Gemini API returned empty or null response");
             }
 
-            // Use reflection to call Vertex AI API
-            Class<?> generativeModelClass = Class.forName("com.google.cloud.vertexai.generativeai.GenerativeModel");
-            Object genModel = generativeModelClass.getConstructor(String.class, Object.class)
-                    .newInstance(model, vertexAI);
+            logger.debug("Gemini API call successful, responseLength={}", responseText.length());
+            return responseText;
 
-            Method generateContentMethod = genModel.getClass().getMethod("generateContent", String.class);
-            Object response = generateContentMethod.invoke(genModel, prompt);
-
-            // Extract text from response using reflection
-            Method getCandidatesMethod = response.getClass().getMethod("getCandidates", int.class);
-            Object candidate = getCandidatesMethod.invoke(response, 0);
-            
-            Method getContentMethod = candidate.getClass().getMethod("getContent");
-            Object content = getContentMethod.invoke(candidate);
-            
-            Method getPartsMethod = content.getClass().getMethod("getParts", int.class);
-            Object part = getPartsMethod.invoke(content, 0);
-            
-            Method getTextMethod = part.getClass().getMethod("getText");
-            String text = (String) getTextMethod.invoke(part);
-            
-            logger.debug("Gemini API call successful, responseLength={}", text.length());
-            return text;
-
-        } catch (ClassNotFoundException e) {
-            logger.warn("Vertex AI library not found, using stub response");
-            return generateStubResponse(prompt);
+        } catch (IOException e) {
+            logger.error("Gemini API call failed: {}", e.getMessage(), e);
+            throw e;
         } catch (Exception e) {
-            logger.error("Gemini API call failed: {}, falling back to stub", e.getMessage());
-            return generateStubResponse(prompt);
+            logger.error("Gemini API call failed: {}", e.getMessage(), e);
+            throw new IOException("Gemini API call failed: " + e.getMessage(), e);
         }
     }
 
@@ -178,7 +169,7 @@ public class GeminiService implements GeminiServiceInterface {
         // Deterministic stub responses that satisfy schema and citation structure
         // Used for local development and tests when vertexai.enabled=false
         String lowerPrompt = prompt.toLowerCase();
-        
+
         if (lowerPrompt.contains("classify")) {
             return "{\"type\": \"TOS\", \"confidence_score\": 0.85}";
         } else if (lowerPrompt.contains("risk") && (lowerPrompt.contains("data") || lowerPrompt.contains("privacy"))) {
@@ -205,4 +196,3 @@ public class GeminiService implements GeminiServiceInterface {
         }
     }
 }
-

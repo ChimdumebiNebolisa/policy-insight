@@ -27,7 +27,7 @@ public class ReportGroundingValidator {
 
     /**
      * Validates the entire report structure and enforces cite-or-abstain.
-     * 
+     *
      * @param reportData The report data structure (Map representation)
      * @param chunks List of stored chunks for the document
      * @return ValidationResult with validation status and any violations found
@@ -69,7 +69,7 @@ public class ReportGroundingValidator {
     /**
      * Validates summary bullets section.
      */
-    private void validateSummaryBullets(Object summaryData, Set<Long> validChunkIds, 
+    private void validateSummaryBullets(Object summaryData, Set<Long> validChunkIds,
                                        Map<Long, Integer> chunkIdToPageNumber, ValidationResult result) {
         try {
             JsonNode summaryNode = objectMapper.valueToTree(summaryData);
@@ -80,7 +80,7 @@ public class ReportGroundingValidator {
             List<Map<String, Object>> bullets = new ArrayList<>();
             for (JsonNode bulletNode : summaryNode.get("bullets")) {
                 Map<String, Object> bullet = objectMapper.convertValue(bulletNode, Map.class);
-                
+
                 List<Long> chunkIds = extractChunkIds(bulletNode);
                 if (chunkIds.isEmpty() || !areChunkIdsValid(chunkIds, validChunkIds)) {
                     // Abstain: replace with "Not detected / Not stated"
@@ -122,19 +122,19 @@ public class ReportGroundingValidator {
                                Map<Long, Integer> chunkIdToPageNumber, ValidationResult result) {
         try {
             List<Map<String, Object>> itemsList;
-            
+
             // Handle different input types: List, Map with "items" key, or JsonNode
             if (itemsData instanceof List) {
                 itemsList = (List<Map<String, Object>>) itemsData;
             } else {
                 JsonNode itemsNode = objectMapper.valueToTree(itemsData);
-                JsonNode arrayNode = itemsNode.isArray() ? itemsNode : 
+                JsonNode arrayNode = itemsNode.isArray() ? itemsNode :
                         (itemsNode.isObject() && itemsNode.has("items") ? itemsNode.get("items") : itemsNode);
                 if (arrayNode == null || !arrayNode.isArray() || arrayNode.isEmpty()) {
                     // Empty list is valid (no items found)
                     return;
                 }
-                itemsList = objectMapper.convertValue(arrayNode, 
+                itemsList = objectMapper.convertValue(arrayNode,
                         objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
             }
 
@@ -143,7 +143,7 @@ public class ReportGroundingValidator {
                 Map<String, Object> item = itemsList.get(i);
                 Object textObj = item.get("text");
                 String originalText = textObj != null ? textObj.toString() : "";
-                
+
                 // Extract chunk IDs
                 Object chunkIdsObj = item.get("chunk_ids");
                 List<Long> chunkIds = new ArrayList<>();
@@ -154,7 +154,7 @@ public class ReportGroundingValidator {
                         }
                     }
                 }
-                
+
                 if (chunkIds.isEmpty() || !areChunkIdsValid(chunkIds, validChunkIds)) {
                     // Abstain: replace with "Not detected / Not stated"
                     item.put("text", ABSTAIN_MESSAGE);
@@ -215,7 +215,7 @@ public class ReportGroundingValidator {
                                      Map<Long, Integer> chunkIdToPageNumber, ValidationResult result) {
         try {
             Map<String, Object> categoryMap = objectMapper.convertValue(categoryNode, Map.class);
-            
+
             if (!categoryNode.has("items") || !categoryNode.get("items").isArray()) {
                 return;
             }
@@ -223,7 +223,7 @@ public class ReportGroundingValidator {
             List<Map<String, Object>> items = new ArrayList<>();
             for (JsonNode itemNode : categoryNode.get("items")) {
                 Map<String, Object> item = objectMapper.convertValue(itemNode, Map.class);
-                
+
                 List<Long> chunkIds = extractChunkIds(itemNode);
                 if (chunkIds.isEmpty() || !areChunkIdsValid(chunkIds, validChunkIds)) {
                     // Abstain: replace with "Not detected / Not stated"
@@ -237,7 +237,7 @@ public class ReportGroundingValidator {
                 }
                 items.add(item);
             }
-            
+
             categoryMap.put("items", items);
         } catch (Exception e) {
             logger.error("Error validating risk category {}", categoryName, e);

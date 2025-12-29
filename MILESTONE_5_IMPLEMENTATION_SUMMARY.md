@@ -4,7 +4,7 @@
 
 ### 1. GeminiService.java - Real Vertex AI Integration
 - **Added `vertexai.enabled` config flag** to control real vs stub mode
-- **Implemented real Vertex AI Gemini API calls** using reflection (handles optional dependency)
+- **Implemented real Vertex AI Gemini API calls** using Google Gen AI Java SDK (com.google.genai:google-genai)
 - **Kept stub mode** when `vertexai.enabled=false` for local development
 - **Uses ADC (Application Default Credentials)** when enabled=true for Cloud Run compatibility
 - Location: `src/main/java/com/policyinsight/processing/GeminiService.java`
@@ -30,12 +30,12 @@
 - **Validator ensures** page numbers are present in all validated claims
 
 ### 5. pom.xml - Dependency Update
-- **Added google-cloud-vertexai dependency** (optional, uses reflection if not available)
+- **Added google-genai dependency** (Google Gen AI Java SDK, replaces deprecated google-cloud-vertexai)
 - Location: `pom.xml` line 124-127
 
 ## PRD Compliance Checklist
 
-✅ **Real Vertex AI Gemini call path implemented** (via reflection, handles optional dependency)
+✅ **Real Vertex AI Gemini call path implemented** (using Google Gen AI Java SDK)
 ✅ **Local-only path works with NO GCP creds** (stub mode when vertexai.enabled=false)
 ✅ **Cite-or-abstain enforced** (ReportGroundingValidator replaces uncited claims)
 ✅ **Page numbers in citations** (propagated from DocumentChunk.pageNumber)
