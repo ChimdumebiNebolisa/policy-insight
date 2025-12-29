@@ -27,6 +27,18 @@
         <logback-json-classic.version>0.1.5</logback-json-classic.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>2.0.3</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- Spring Boot Starters -->
         <dependency>
@@ -102,8 +114,13 @@
 
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>1.19.3</version>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -119,9 +136,9 @@
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
                 <configuration>
-                    <url>jdbc:postgresql://localhost:5432/policyinsight</url>
-                    <user>postgres</user>
-                    <password>postgres</password>
+                    <!-- Connection properties are passed via -Dflyway.* command-line arguments -->
+                    <!-- No hardcoded defaults here to prevent conflicts with Docker port mappings -->
+                    <!-- The script start-and-generate-openapi.ps1 will pass explicit values -->
                 </configuration>
             </plugin>
         </plugins>
