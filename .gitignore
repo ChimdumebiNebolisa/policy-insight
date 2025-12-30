@@ -78,3 +78,7 @@ coverage/
 # Local storage (test artifacts)
 .local-storage/
 
+
+# local Datadog scratch
+dd-*.json
+

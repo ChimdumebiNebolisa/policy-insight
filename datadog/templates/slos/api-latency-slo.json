@@ -1,0 +1,27 @@
+{
+  "name": "PolicyInsight API Latency SLO",
+  "description": "99% of API requests complete within 2000ms (P95)",
+  "type": "metric",
+  "query": {
+    "numerator": "sum:trace.http.request.duration{service:policy-insight}.as_count().as_rate()",
+    "denominator": "sum:trace.http.request.hits{service:policy-insight}.as_count().as_rate()",
+    "threshold": 2000
+  },
+  "thresholds": [
+    {
+      "timeframe": "7d",
+      "target": 99.0,
+      "warning": 99.5
+    },
+    {
+      "timeframe": "30d",
+      "target": 99.0,
+      "warning": 99.5
+    }
+  ],
+  "tags": [
+    "service:policy-insight",
+    "slo_type:latency"
+  ]
+}
+

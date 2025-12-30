@@ -71,7 +71,7 @@ public class ReportGenerationService {
         String prompt = buildSummaryPrompt(chunks);
 
         try {
-            String response = geminiService.generateContent(prompt, 10);
+            String response = geminiService.generateContent(prompt, 10, "summary");
             JsonNode jsonResponse = geminiService.parseJsonResponse(response);
 
             Map<String, Object> summary = new HashMap<>();
@@ -145,7 +145,7 @@ public class ReportGenerationService {
         String prompt = buildObligationsPrompt(chunks);
 
         try {
-            String response = geminiService.generateContent(prompt, 10);
+            String response = geminiService.generateContent(prompt, 10, "obligations");
             JsonNode jsonResponse = geminiService.parseJsonResponse(response);
 
             Map<String, Object> result = new HashMap<>();

@@ -10,8 +10,13 @@ import com.policyinsight.shared.model.Report;
 import com.policyinsight.shared.repository.DocumentChunkRepository;
 import com.policyinsight.shared.repository.PolicyJobRepository;
 import com.policyinsight.shared.repository.ReportRepository;
+import com.policyinsight.observability.TracingServiceInterface;
+import com.policyinsight.observability.DatadogMetricsServiceInterface;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -72,6 +77,12 @@ public class LocalDocumentProcessingWorker {
 
     @Autowired
     private StorageService storageService;
+
+    @Autowired(required = false)
+    private TracingServiceInterface tracingService;
+
+    @Autowired(required = false)
+    private DatadogMetricsServiceInterface metricsService;
 
     @Value("${app.local-worker.poll-ms:2000}")
     private long pollIntervalMs;
@@ -181,98 +192,281 @@ public class LocalDocumentProcessingWorker {
             policyJobRepository.save(job);
         }
 
-        try {
-            // Download PDF from storage
-            String storagePath = job.getPdfGcsPath();
-            if (storagePath == null || storagePath.isEmpty()) {
-                throw new IllegalArgumentException("Storage path is null or empty");
+        // Add job_id to MDC for logging
+        String jobIdStr = jobId.toString();
+        MDC.put("job_id", jobIdStr);
+
+        long startTime = System.currentTimeMillis();
+
+        // Create parent span for entire job processing
+        Span parentSpan = null;
+        if (tracingService != null) {
+            parentSpan = tracingService.spanBuilder("job.process")
+                    .setAttribute("job_id", jobIdStr)
+                    .setAttribute("document_id", jobIdStr)
+                    .setAttribute("stage", "processing")
+                    .setAttribute("file_size_bytes", job.getFileSizeBytes() != null ? job.getFileSizeBytes() : 0)
+                    .startSpan();
+        }
+
+        try (io.opentelemetry.context.Scope scope = parentSpan != null ? parentSpan.makeCurrent() : null) {
+            processDocumentWithSpans(jobId, job, parentSpan);
+
+            // Record success metrics
+            if (metricsService != null) {
+                long durationMs = System.currentTimeMillis() - startTime;
+                metricsService.recordJobDuration(durationMs, jobIdStr);
+                metricsService.recordJobSuccess(jobIdStr);
             }
 
-            logger.info("Downloading PDF from storage: {}", storagePath);
-            byte[] pdfBytes = storageService.downloadFile(storagePath);
-            InputStream pdfStream = new ByteArrayInputStream(pdfBytes);
+            if (parentSpan != null) {
+                parentSpan.setStatus(StatusCode.OK);
+                parentSpan.setAttribute("status", "SUCCESS");
+            }
+        } catch (Exception e) {
+            logger.error("Failed to process document for job: {}", jobId, e);
+            job.setStatus("FAILED");
+            job.setErrorMessage(e.getMessage());
+            job.setCompletedAt(Instant.now());
+            policyJobRepository.save(job);
 
-            // Extract text (try Document AI first, fallback to PDFBox)
-            ExtractedText extractedText;
+            // Record failure metrics
+            if (metricsService != null) {
+                long durationMs = System.currentTimeMillis() - startTime;
+                metricsService.recordJobDuration(durationMs, jobIdStr);
+                metricsService.recordJobFailure(jobIdStr, e.getClass().getSimpleName());
+            }
 
+            if (parentSpan != null) {
+                parentSpan.setStatus(StatusCode.ERROR);
+                parentSpan.setAttribute("status", "FAILED");
+                parentSpan.setAttribute("error", true);
+                parentSpan.setAttribute("error.message", e.getMessage());
+                parentSpan.recordException(e);
+            }
+        } finally {
+            if (parentSpan != null) {
+                parentSpan.end();
+            }
+            MDC.remove("job_id");
+        }
+    }
+
+    private void processDocumentWithSpans(UUID jobId, PolicyJob job, Span parentSpan) throws Exception {
+        // Download PDF from storage
+        String storagePath = job.getPdfGcsPath();
+        if (storagePath == null || storagePath.isEmpty()) {
+            throw new IllegalArgumentException("Storage path is null or empty");
+        }
+
+        logger.info("Downloading PDF from storage: {}", storagePath);
+        byte[] pdfBytes = storageService.downloadFile(storagePath);
+        InputStream pdfStream = new ByteArrayInputStream(pdfBytes);
+
+        // Extract text (try Document AI first, fallback to PDFBox) - with span
+        ExtractedText extractedText;
+        Span extractSpan = null;
+        if (tracingService != null && parentSpan != null) {
+            extractSpan = tracingService.spanBuilder("extraction")
+                    .setAttribute("job_id", jobId.toString())
+                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("stage", "extraction")
+                    .startSpan();
+        }
+
+        try (io.opentelemetry.context.Scope extractScope = extractSpan != null ? extractSpan.makeCurrent() : null) {
             if (documentAiService != null) {
                 try {
                     extractedText = documentAiService.extractText(pdfStream, "application/pdf");
                     logger.info("Document AI extraction successful");
+                    if (extractSpan != null) {
+                        extractSpan.setAttribute("provider", "document_ai");
+                        extractSpan.setAttribute("fallback_used", false);
+                    }
                 } catch (Exception e) {
                     logger.warn("Document AI extraction failed, using fallback: {}", e.getMessage());
                     pdfStream = new ByteArrayInputStream(pdfBytes); // Reset stream
                     extractedText = fallbackOcrService.extractText(pdfStream);
+                    if (extractSpan != null) {
+                        extractSpan.setAttribute("provider", "fallback");
+                        extractSpan.setAttribute("fallback_used", true);
+                    }
                 }
             } else {
                 logger.info("Document AI not available, using fallback");
                 extractedText = fallbackOcrService.extractText(pdfStream);
+                if (extractSpan != null) {
+                    extractSpan.setAttribute("provider", "fallback");
+                    extractSpan.setAttribute("fallback_used", true);
+                }
             }
-
-            // Chunk text
-            List<TextChunk> chunks = textChunkerService.chunkText(extractedText);
-
-            // Store chunks in database
-            for (TextChunk chunk : chunks) {
-                DocumentChunk docChunk = new DocumentChunk(jobId);
-                docChunk.setChunkIndex(chunk.getChunkIndex());
-                docChunk.setText(chunk.getText());
-                docChunk.setPageNumber(chunk.getPageNumber());
-                docChunk.setStartOffset(chunk.getStartOffset());
-                docChunk.setEndOffset(chunk.getEndOffset());
-                docChunk.setSpanConfidence(chunk.getSpanConfidence());
-                documentChunkRepository.save(docChunk);
+        } finally {
+            if (extractSpan != null) {
+                extractSpan.end();
             }
+        }
 
-            logger.info("Stored {} chunks for job: {}", chunks.size(), jobId);
+        // Chunk text
+        List<TextChunk> chunks = textChunkerService.chunkText(extractedText);
 
-            // Retrieve stored chunks from DB to get IDs
-            List<DocumentChunk> storedChunks = documentChunkRepository.findByJobUuidOrderByChunkIndex(jobId);
+        // Store chunks in database
+        for (TextChunk chunk : chunks) {
+            DocumentChunk docChunk = new DocumentChunk(jobId);
+            docChunk.setChunkIndex(chunk.getChunkIndex());
+            docChunk.setText(chunk.getText());
+            docChunk.setPageNumber(chunk.getPageNumber());
+            docChunk.setStartOffset(chunk.getStartOffset());
+            docChunk.setEndOffset(chunk.getEndOffset());
+            docChunk.setSpanConfidence(chunk.getSpanConfidence());
+            documentChunkRepository.save(docChunk);
+        }
 
-            // Classify document
-            String fullText = extractedText.getFullText();
-            DocumentClassifierService.ClassificationResult classification =
-                    documentClassifierService.classify(fullText);
+        logger.info("Stored {} chunks for job: {}", chunks.size(), jobId);
 
+        // Retrieve stored chunks from DB to get IDs
+        List<DocumentChunk> storedChunks = documentChunkRepository.findByJobUuidOrderByChunkIndex(jobId);
+                if (extractSpan != null) {
+                    extractSpan.setAttribute("chunk_count", (long) chunks.size());
+                }
+
+        // Classify document - with span
+        Span classifySpan = null;
+        if (tracingService != null && parentSpan != null) {
+            classifySpan = tracingService.spanBuilder("classification")
+                    .setAttribute("job_id", jobId.toString())
+                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("stage", "classification")
+                    .startSpan();
+        }
+
+        String fullText = extractedText.getFullText();
+        DocumentClassifierService.ClassificationResult classification;
+        try (io.opentelemetry.context.Scope classifyScope = classifySpan != null ? classifySpan.makeCurrent() : null) {
+            classification = documentClassifierService.classify(fullText);
             job.setClassification(classification.getClassification());
             job.setClassificationConfidence(classification.getConfidence());
 
-            // Risk analysis (5 categories)
+            if (classifySpan != null) {
+                classifySpan.setAttribute("classification", classification.getClassification());
+                if (classification.getConfidence() != null) {
+                    classifySpan.setAttribute("confidence", classification.getConfidence().doubleValue());
+                }
+                classifySpan.setAttribute("provider", "llm");
+            }
+        } finally {
+            if (classifySpan != null) {
+                classifySpan.end();
+            }
+        }
+
+        // Risk analysis (5 categories) - with span
+        Span riskScanSpan = null;
+        if (tracingService != null && parentSpan != null) {
+            riskScanSpan = tracingService.spanBuilder("risk_scan")
+                    .setAttribute("job_id", jobId.toString())
+                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("stage", "risk_scan")
+                    .startSpan();
+        }
+
+        Map<String, Object> riskTaxonomy;
+        try (io.opentelemetry.context.Scope riskScope = riskScanSpan != null ? riskScanSpan.makeCurrent() : null) {
             logger.info("Starting risk analysis for job: {}", jobId);
-            Map<String, Object> riskTaxonomy = riskAnalysisService.analyzeRisks(storedChunks);
+            riskTaxonomy = riskAnalysisService.analyzeRisks(storedChunks);
             logger.info("Risk analysis completed for job: {}", jobId);
 
-            // Generate report sections
-            logger.info("Generating report sections for job: {}", jobId);
-            Map<String, Object> documentOverview = reportGenerationService.generateDocumentOverview(job, storedChunks);
-            Map<String, Object> summary = reportGenerationService.generateSummary(storedChunks);
-            Map<String, Object> obligationsAndRestrictions = reportGenerationService.generateObligationsAndRestrictions(storedChunks);
-
-            // Prepare report data for validation (cite-or-abstain enforcement)
-            logger.info("Validating report grounding for job: {}", jobId);
-            Map<String, Object> reportDataMap = new HashMap<>();
-            reportDataMap.put("summary_bullets", summary);
-            reportDataMap.put("obligations", obligationsAndRestrictions.get("obligations"));
-            reportDataMap.put("restrictions", obligationsAndRestrictions.get("restrictions"));
-            reportDataMap.put("termination_triggers", obligationsAndRestrictions.get("termination_triggers"));
-            reportDataMap.put("risk_taxonomy", riskTaxonomy);
-
-            ReportGroundingValidator.ValidationResult validationResult =
-                    reportGroundingValidator.validateReport(reportDataMap, storedChunks);
-
-            if (!validationResult.isValid()) {
-                logger.warn("Report validation found {} violations for job: {}",
-                        validationResult.getViolations().size(), jobId);
-                for (String violation : validationResult.getViolations()) {
-                    logger.warn("Validation violation: {}", violation);
+            if (riskScanSpan != null) {
+                // Count risks by category
+                int totalRisks = 0;
+                if (riskTaxonomy != null) {
+                    for (String category : List.of("data_privacy", "financial", "legal_rights", "termination", "modification")) {
+                        Object categoryData = riskTaxonomy.get(category);
+                        if (categoryData instanceof Map) {
+                            Object items = ((Map<?, ?>) categoryData).get("items");
+                            if (items instanceof List) {
+                                int count = ((List<?>) items).size();
+                                riskScanSpan.setAttribute("risk_count." + category, count);
+                                totalRisks += count;
+                            }
+                        }
+                    }
                 }
-                // Violations are handled by abstain statements in validated data, per PRD
-                // Continue processing with validated (abstained) data
-            } else {
-                logger.info("Report validation passed for job: {}", jobId);
+                riskScanSpan.setAttribute("risk_count.total", totalRisks);
             }
+        } finally {
+            if (riskScanSpan != null) {
+                riskScanSpan.end();
+            }
+        }
 
-            // Create and save Report with validated data
+        // Generate report sections - with span
+        Span llmSpan = null;
+        if (tracingService != null && parentSpan != null) {
+            llmSpan = tracingService.spanBuilder("llm")
+                    .setAttribute("job_id", jobId.toString())
+                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("stage", "llm")
+                    .setAttribute("provider", "gemini")
+                    .startSpan();
+        }
+
+        Map<String, Object> documentOverview;
+        Map<String, Object> summary;
+        Map<String, Object> obligationsAndRestrictions;
+        try (io.opentelemetry.context.Scope llmScope = llmSpan != null ? llmSpan.makeCurrent() : null) {
+            logger.info("Generating report sections for job: {}", jobId);
+            documentOverview = reportGenerationService.generateDocumentOverview(job, storedChunks);
+            summary = reportGenerationService.generateSummary(storedChunks);
+            obligationsAndRestrictions = reportGenerationService.generateObligationsAndRestrictions(storedChunks);
+
+            if (llmSpan != null) {
+                // Extract summary bullet count
+                if (summary != null && summary.get("bullets") instanceof List) {
+                    int bulletCount = ((List<?>) summary.get("bullets")).size();
+                    llmSpan.setAttribute("summary_bullet_count", bulletCount);
+                }
+            }
+        } finally {
+            if (llmSpan != null) {
+                llmSpan.end();
+            }
+        }
+
+        // Prepare report data for validation (cite-or-abstain enforcement)
+        logger.info("Validating report grounding for job: {}", jobId);
+        Map<String, Object> reportDataMap = new HashMap<>();
+        reportDataMap.put("summary_bullets", summary);
+        reportDataMap.put("obligations", obligationsAndRestrictions.get("obligations"));
+        reportDataMap.put("restrictions", obligationsAndRestrictions.get("restrictions"));
+        reportDataMap.put("termination_triggers", obligationsAndRestrictions.get("termination_triggers"));
+        reportDataMap.put("risk_taxonomy", riskTaxonomy);
+
+        ReportGroundingValidator.ValidationResult validationResult =
+                reportGroundingValidator.validateReport(reportDataMap, storedChunks);
+
+        if (!validationResult.isValid()) {
+            logger.warn("Report validation found {} violations for job: {}",
+                    validationResult.getViolations().size(), jobId);
+            for (String violation : validationResult.getViolations()) {
+                logger.warn("Validation violation: {}", violation);
+            }
+            // Violations are handled by abstain statements in validated data, per PRD
+            // Continue processing with validated (abstained) data
+        } else {
+            logger.info("Report validation passed for job: {}", jobId);
+        }
+
+        // Create and save Report with validated data - with span
+        Span exportSpan = null;
+        if (tracingService != null && parentSpan != null) {
+            exportSpan = tracingService.spanBuilder("export")
+                    .setAttribute("job_id", jobId.toString())
+                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("stage", "export")
+                    .startSpan();
+        }
+
+        try (io.opentelemetry.context.Scope exportScope = exportSpan != null ? exportSpan.makeCurrent() : null) {
             Report report = new Report(jobId);
             report.setDocumentOverview(documentOverview);
             @SuppressWarnings("unchecked")
@@ -315,28 +509,32 @@ public class LocalDocumentProcessingWorker {
                 report.setGcsPath(reportStoragePath);
                 job.setReportGcsPath(reportStoragePath);
                 logger.info("Report JSON uploaded to storage: {}", reportStoragePath);
+                if (exportSpan != null) {
+                    exportSpan.setAttribute("report_stored", true);
+                    exportSpan.setAttribute("report_path", reportStoragePath);
+                }
             } catch (Exception e) {
                 logger.warn("Failed to upload report JSON to storage, continuing without storage path: {}", e.getMessage());
+                if (exportSpan != null) {
+                    exportSpan.setAttribute("report_stored", false);
+                }
             }
 
             reportRepository.save(report);
             logger.info("Report saved to database for job: {}", jobId);
-
-            // Update job status
-            job.setStatus("SUCCESS");
-            job.setCompletedAt(Instant.now());
-            policyJobRepository.save(job);
-
-            logger.info("Document processing completed for job: {}, classification: {}",
-                    jobId, classification.getClassification());
-
-        } catch (Exception e) {
-            logger.error("Failed to process document for job: {}", jobId, e);
-            job.setStatus("FAILED");
-            job.setErrorMessage(e.getMessage());
-            job.setCompletedAt(Instant.now());
-            policyJobRepository.save(job);
+        } finally {
+            if (exportSpan != null) {
+                exportSpan.end();
+            }
         }
+
+        // Update job status
+        job.setStatus("SUCCESS");
+        job.setCompletedAt(Instant.now());
+        policyJobRepository.save(job);
+
+        logger.info("Document processing completed for job: {}, classification: {}",
+                jobId, classification.getClassification());
     }
 }
 

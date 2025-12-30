@@ -5,8 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
 import com.google.genai.types.HttpOptions;
 import com.google.genai.types.GenerateContentResponse;
+import com.policyinsight.observability.DatadogMetricsServiceInterface;
+import com.policyinsight.observability.TracingServiceInterface;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -31,17 +36,28 @@ public class GeminiService implements GeminiServiceInterface {
     private final String model;
     private final ObjectMapper objectMapper;
     private Client client;
+    private final DatadogMetricsServiceInterface metricsService;
+    private final TracingServiceInterface tracingService;
+
+    // Gemini pricing (approximate, as of 2024)
+    // Input: $0.0005 per 1K tokens, Output: $0.0015 per 1K tokens (for gemini-2.0-flash-exp)
+    private static final double INPUT_COST_PER_1K_TOKENS = 0.0005;
+    private static final double OUTPUT_COST_PER_1K_TOKENS = 0.0015;
 
     public GeminiService(
             @Value("${vertexai.enabled:false}") boolean enabled,
             @Value("${vertexai.project-id:${GOOGLE_CLOUD_PROJECT:local-project}}") String projectId,
             @Value("${vertexai.location:us-central1}") String location,
-            @Value("${vertexai.model:gemini-2.0-flash-exp}") String model) {
+            @Value("${vertexai.model:gemini-2.0-flash-exp}") String model,
+            @Autowired(required = false) DatadogMetricsServiceInterface metricsService,
+            @Autowired(required = false) TracingServiceInterface tracingService) {
         this.enabled = enabled;
         this.projectId = projectId;
         this.location = location;
         this.model = model != null && !model.isEmpty() ? model : DEFAULT_MODEL;
         this.objectMapper = new ObjectMapper();
+        this.metricsService = metricsService; // May be null if Datadog is disabled
+        this.tracingService = tracingService; // May be null if Datadog is disabled
 
         logger.info("GeminiService initialized: enabled={}, projectId={}, location={}, model={}",
                 this.enabled, this.projectId, this.location, this.model);
@@ -88,6 +104,7 @@ public class GeminiService implements GeminiServiceInterface {
     /**
      * Calls Gemini API with the given prompt and timeout.
      * Uses stub mode when vertexai.enabled=false, real Vertex AI when enabled=true.
+     * Tracks latency and cost metrics when Datadog is enabled.
      *
      * @param prompt The prompt to send to Gemini
      * @param timeoutSeconds Timeout in seconds
@@ -96,40 +113,143 @@ public class GeminiService implements GeminiServiceInterface {
      * @throws TimeoutException if request times out
      */
     public String generateContent(String prompt, int timeoutSeconds) throws IOException, TimeoutException {
-        logger.debug("Calling Gemini API: enabled={}, model={}, promptLength={}", enabled, model, prompt.length());
+        return generateContent(prompt, timeoutSeconds, "unknown");
+    }
 
-        // Use stub mode ONLY when disabled
-        if (!enabled) {
-            logger.debug("Using stub mode (vertexai.enabled=false)");
-            return generateStubResponse(prompt);
+    /**
+     * Calls Gemini API with the given prompt, timeout, and task type for metrics tracking.
+     *
+     * @param prompt The prompt to send to Gemini
+     * @param timeoutSeconds Timeout in seconds
+     * @param taskType Task type for metrics (e.g., "classification", "risk_analysis", "summary", "qa")
+     * @return Generated text response
+     * @throws IOException if API call fails
+     * @throws TimeoutException if request times out
+     */
+    public String generateContent(String prompt, int timeoutSeconds, String taskType) throws IOException, TimeoutException {
+        logger.debug("Calling Gemini API: enabled={}, model={}, promptLength={}, taskType={}",
+                enabled, model, prompt.length(), taskType);
+
+        long startTime = System.currentTimeMillis();
+
+        // Create span for LLM call
+        Span llmSpan = null;
+        if (tracingService != null) {
+            llmSpan = tracingService.spanBuilder("llm.call")
+                    .setAttribute("stage", "llm")
+                    .setAttribute("provider", "gemini")
+                    .setAttribute("model", model)
+                    .setAttribute("task_type", taskType)
+                    .setAttribute("prompt_length", prompt.length())
+                    .startSpan();
         }
 
-        // When enabled=true, client must be initialized
-        if (client == null) {
-            throw new IOException("Vertex AI is enabled but client initialization failed");
-        }
-
-        // Real Vertex AI implementation using Google Gen AI SDK
-        try {
-            // Pattern: client.models.generateContent(modelId, promptOrContent, null)
-            GenerateContentResponse response = client.models.generateContent(model, prompt, null);
-
-            // Use SDK accessor response.text()
-            String responseText = response.text();
-
-            if (responseText == null || responseText.isBlank()) {
-                throw new IOException("Gemini API returned empty or null response");
+        try (io.opentelemetry.context.Scope scope = llmSpan != null ? llmSpan.makeCurrent() : null) {
+            // Use stub mode ONLY when disabled
+            if (!enabled) {
+                logger.debug("Using stub mode (vertexai.enabled=false)");
+                if (llmSpan != null) {
+                    llmSpan.setAttribute("stub_mode", true);
+                }
+                String stubResponse = generateStubResponse(prompt);
+                // Record stub latency (for testing/metrics consistency)
+                if (metricsService != null) {
+                    long durationMs = System.currentTimeMillis() - startTime;
+                    metricsService.recordLlmLatency(durationMs, model, taskType);
+                    // Stub has no cost
+                }
+                if (llmSpan != null) {
+                    llmSpan.setStatus(StatusCode.OK);
+                    llmSpan.setAttribute("response_length", stubResponse.length());
+                }
+                return stubResponse;
             }
 
-            logger.debug("Gemini API call successful, responseLength={}", responseText.length());
-            return responseText;
+            // When enabled=true, client must be initialized
+            if (client == null) {
+                throw new IOException("Vertex AI is enabled but client initialization failed");
+            }
 
-        } catch (IOException e) {
-            logger.error("Gemini API call failed: {}", e.getMessage(), e);
-            throw e;
-        } catch (Exception e) {
-            logger.error("Gemini API call failed: {}", e.getMessage(), e);
-            throw new IOException("Gemini API call failed: " + e.getMessage(), e);
+            // Real Vertex AI implementation using Google Gen AI SDK
+            try {
+                // Pattern: client.models.generateContent(modelId, promptOrContent, null)
+                GenerateContentResponse response = client.models.generateContent(model, prompt, null);
+
+                // Use SDK accessor response.text()
+                String responseText = response.text();
+
+                if (responseText == null || responseText.isBlank()) {
+                    throw new IOException("Gemini API returned empty or null response");
+                }
+
+                long durationMs = System.currentTimeMillis() - startTime;
+
+                // Estimate token usage and cost
+                // Note: Google Gen AI SDK may not expose usage metadata directly
+                // We estimate based on prompt and response length (rough approximation: 1 token ≈ 4 chars)
+                int estimatedInputTokens = prompt.length() / 4;
+                int estimatedOutputTokens = responseText.length() / 4;
+                double estimatedCost = (estimatedInputTokens * INPUT_COST_PER_1K_TOKENS / 1000.0) +
+                                      (estimatedOutputTokens * OUTPUT_COST_PER_1K_TOKENS / 1000.0);
+
+                // Track metrics if Datadog is enabled
+                if (metricsService != null) {
+                    metricsService.recordLlmLatency(durationMs, model, taskType);
+                    metricsService.recordLlmCost(estimatedCost, model, taskType);
+                    metricsService.recordLlmTokens(estimatedInputTokens, estimatedOutputTokens, model, taskType);
+                    metricsService.recordLlmCostEstimate(estimatedCost, model, taskType);
+
+                    logger.debug("Gemini API call metrics: duration={}ms, estimatedCost=${}, inputTokens≈{}, outputTokens≈{}",
+                            durationMs, estimatedCost, estimatedInputTokens, estimatedOutputTokens);
+                }
+
+                // Set span attributes
+                if (llmSpan != null) {
+                    llmSpan.setStatus(StatusCode.OK);
+                    llmSpan.setAttribute("duration_ms", durationMs);
+                    llmSpan.setAttribute("tokens.input", estimatedInputTokens);
+                    llmSpan.setAttribute("tokens.output", estimatedOutputTokens);
+                    llmSpan.setAttribute("tokens.total", estimatedInputTokens + estimatedOutputTokens);
+                    llmSpan.setAttribute("cost_estimate_usd", estimatedCost);
+                    llmSpan.setAttribute("response_length", responseText.length());
+                }
+
+                logger.debug("Gemini API call successful, responseLength={}", responseText.length());
+                return responseText;
+
+            } catch (IOException e) {
+                logger.error("Gemini API call failed: {}", e.getMessage(), e);
+                // Record error latency
+                if (metricsService != null) {
+                    long durationMs = System.currentTimeMillis() - startTime;
+                    metricsService.recordLlmLatency(durationMs, model, taskType);
+                }
+                if (llmSpan != null) {
+                    llmSpan.setStatus(StatusCode.ERROR);
+                    llmSpan.setAttribute("error", true);
+                    llmSpan.setAttribute("error.message", e.getMessage());
+                    llmSpan.recordException(e);
+                }
+                throw e;
+            } catch (Exception e) {
+                logger.error("Gemini API call failed: {}", e.getMessage(), e);
+                // Record error latency
+                if (metricsService != null) {
+                    long durationMs = System.currentTimeMillis() - startTime;
+                    metricsService.recordLlmLatency(durationMs, model, taskType);
+                }
+                if (llmSpan != null) {
+                    llmSpan.setStatus(StatusCode.ERROR);
+                    llmSpan.setAttribute("error", true);
+                    llmSpan.setAttribute("error.message", e.getMessage());
+                    llmSpan.recordException(e);
+                }
+                throw new IOException("Gemini API call failed: " + e.getMessage(), e);
+            }
+        } finally {
+            if (llmSpan != null) {
+                llmSpan.end();
+            }
         }
     }
 
