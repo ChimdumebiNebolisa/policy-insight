@@ -52,3 +52,9 @@ if ($LASTEXITCODE -ne 0) {
 Set-Location $ProjectRoot
 & $pythonCmd.Name $PythonScript $args
 
+# Check exit code and propagate failure
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ apply-assets.py exited with code $LASTEXITCODE" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+

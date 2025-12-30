@@ -631,6 +631,132 @@ echo "2. Check Datadog Logs: https://app.datadoghq.com/logs"
 echo "3. Check Datadog Metrics: https://app.datadoghq.com/metric/explorer"
 ```
 
+## Runbook: API Key Validation
+
+This section provides commands to validate Datadog API keys and troubleshoot permission issues.
+
+### Validate API Key
+
+The API key is used for authentication and must be valid.
+
+**PowerShell:**
+```powershell
+$headers = @{"DD-API-KEY" = $env:DD_API_KEY}
+$response = Invoke-RestMethod -Uri "https://api.datadoghq.com/api/v1/validate" -Headers $headers -Method Get
+$response.valid  # Should be $true
+```
+
+**Expected Output:**
+```powershell
+valid
+---
+True
+```
+
+If validation fails (403 or invalid response), check your API key at:
+https://app.datadoghq.com/organization-settings/api-keys
+
+### Validate Application Key Permissions
+
+The Application key must have read/write permissions for monitors, dashboards, and SLOs.
+
+**PowerShell:**
+```powershell
+$headers = @{
+    "DD-API-KEY" = $env:DD_API_KEY
+    "DD-APPLICATION-KEY" = $env:DD_APP_KEY
+}
+$response = Invoke-RestMethod -Uri "https://api.datadoghq.com/api/v1/monitor" -Headers $headers -Method Get
+# Should return successfully (200 OK), not 403 Forbidden
+```
+
+**Expected Output:**
+- Success: Returns a list/array of monitors (may be empty `[]`)
+- Failure: HTTP 403 Forbidden error
+
+### Troubleshooting 403 Forbidden
+
+If you see `403 Client Error: Forbidden` when running apply-assets.py or export-assets.py:
+
+1. **Check Application Key Scopes**: Navigate to https://app.datadoghq.com/organization-settings/application-keys
+
+2. **Required Scopes**:
+   - For **applying assets** (create/update):
+     - `monitors_read`, `monitors_write`
+     - `dashboards_read`, `dashboards_write`
+     - `slo_read`, `slo_write`
+   - For **exporting assets** (read only):
+     - `monitors_read`
+     - `dashboards_read`
+     - `slo_read`
+
+3. **Update Key**: Edit your Application key and ensure all required scopes are checked. If creating a new key, select the appropriate scopes during creation.
+
+4. **Verify**: Re-run the validation commands above. The monitor list endpoint should return 200 OK, not 403.
+
+**Common Issues:**
+- Application key created without scopes (default is no permissions)
+- Key belongs to different Datadog organization than API key
+- Key has been revoked or expired
+- Key has read scopes but not write scopes (for apply operations)
+
+### Verification Checklist
+
+Run these commands to verify your setup before running apply/export scripts:
+
+```powershell
+# 1. Validate API key
+$env:DD_API_KEY = "your-api-key"
+$headers = @{"DD-API-KEY" = $env:DD_API_KEY}
+$result = Invoke-RestMethod -Uri "https://api.datadoghq.com/api/v1/validate" -Headers $headers -Method Get
+if ($result.valid) {
+    Write-Host "✅ API key is valid" -ForegroundColor Green
+} else {
+    Write-Host "❌ API key validation failed" -ForegroundColor Red
+    exit 1
+}
+
+# 2. Validate Application key (test monitor read)
+$env:DD_APP_KEY = "your-app-key"
+$headers = @{
+    "DD-API-KEY" = $env:DD_API_KEY
+    "DD-APPLICATION-KEY" = $env:DD_APP_KEY
+}
+try {
+    $monitors = Invoke-RestMethod -Uri "https://api.datadoghq.com/api/v1/monitor" -Headers $headers -Method Get
+    Write-Host "✅ Application key has monitor_read permission" -ForegroundColor Green
+} catch {
+    if ($_.Exception.Response.StatusCode.value__ -eq 403) {
+        Write-Host "❌ Application key lacks required permissions (403 Forbidden)" -ForegroundColor Red
+        Write-Host "   Update scopes at: https://app.datadoghq.com/organization-settings/application-keys" -ForegroundColor Yellow
+        exit 1
+    } else {
+        Write-Host "⚠️  Unexpected error: $_" -ForegroundColor Yellow
+        throw
+    }
+}
+
+# 3. Run apply-assets script (should validate keys automatically)
+.\scripts\datadog\apply-assets.ps1
+# Expected: "✅ API keys validated" and successful asset creation/updates
+
+# 4. Run export-assets script (should validate keys automatically)
+.\scripts\datadog\export-assets.ps1
+# Expected: "✅ API keys validated" and successful exports to ./datadog/
+```
+
+**Expected Success Output:**
+```
+✅ API key is valid
+✅ Application key has monitor_read permission
+Validating API keys...
+✅ API keys validated
+
+Applying Datadog assets from templates...
+...
+✅ All assets applied successfully!
+```
+
 ## Troubleshooting
 
 ### Traces Not Appearing
@@ -665,4 +791,19 @@ echo "3. Check Datadog Metrics: https://app.datadoghq.com/metric/explorer"
 - [Datadog Java Agent Documentation](https://docs.datadoghq.com/tracing/setup_overview/setup/java/)
 - [OpenTelemetry Java Documentation](https://opentelemetry.io/docs/instrumentation/java/)
 - [Micrometer StatsD Documentation](https://micrometer.io/docs/registry/statsd)
+
+---
+
+## Script Implementation Notes
+
+The Datadog apply/export scripts (`scripts/datadog/apply-assets.py` and `export-assets.py`) include:
+
+- **Robust error handling**: All HTTP requests use timeouts (20s), retries with exponential backoff (429/5xx), and validate JSON responses
+- **Preflight validation**: API and Application keys are validated before attempting operations
+- **Actionable error messages**: 403 errors include required scope information and links to fix permissions
+- **Failure tracking**: Apply script tracks created/updated/failed counts and exits non-zero on any failure
+- **Diagnostics**: Errors include HTTP method, URL, status code, content-type, and response body preview (first 300 chars)
+- **Metrics sanity check**: Optional post-apply check warns if referenced metrics might be missing (best-effort, non-blocking)
+
+PowerShell wrappers properly propagate exit codes to prevent pipelines from continuing after failures.
 
