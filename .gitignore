@@ -75,3 +75,6 @@ coverage/
 *.tmp
 *.temp
 
+# Local storage (test artifacts)
+.local-storage/
+
