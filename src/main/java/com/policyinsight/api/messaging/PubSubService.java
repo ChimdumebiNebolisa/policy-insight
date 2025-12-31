@@ -64,26 +64,33 @@ public class PubSubService implements JobPublisher {
      *
      * @param jobId Job UUID
      * @param gcsPath GCS path to the uploaded PDF
+     * @param requestId Optional request ID for correlation tracking (can be null)
      */
     @Override
-    public void publishJobQueued(UUID jobId, String gcsPath) {
+    public void publishJobQueued(UUID jobId, String gcsPath, String requestId) {
         // Create message payload as JSON string
         String payload = String.format("{\"job_id\":\"%s\",\"gcs_path\":\"%s\"}", jobId.toString(), gcsPath);
 
-        PubsubMessage message = PubsubMessage.newBuilder()
+        com.google.pubsub.v1.PubsubMessage.Builder messageBuilder = PubsubMessage.newBuilder()
                 .setData(ByteString.copyFromUtf8(payload))
                 .putAttributes("job_id", jobId.toString())
-                .putAttributes("action", "ANALYZE")
-                .build();
+                .putAttributes("action", "ANALYZE");
 
-        logger.debug("Publishing message to Pub/Sub topic: {} for job: {}", topicName, jobId);
+        // Add request_id attribute if provided
+        if (requestId != null && !requestId.isEmpty()) {
+            messageBuilder.putAttributes("request_id", requestId);
+        }
+
+        PubsubMessage message = messageBuilder.build();
+
+        logger.debug("Publishing message to Pub/Sub topic: {} for job: {}, requestId: {}", topicName, jobId, requestId);
 
         try {
             ApiFuture<String> future = publisher.publish(message);
             String messageId = future.get(10, TimeUnit.SECONDS);
-            logger.info("Successfully published message to Pub/Sub. Message ID: {}, Job ID: {}", messageId, jobId);
+            logger.info("Successfully published message to Pub/Sub. Message ID: {}, Job ID: {}, Request ID: {}", messageId, jobId, requestId);
         } catch (Exception e) {
-            logger.error("Failed to publish message to Pub/Sub for job: {}", jobId, e);
+            logger.error("Failed to publish message to Pub/Sub for job: {}, requestId: {}", jobId, requestId, e);
             throw new RuntimeException("Failed to publish message to Pub/Sub", e);
         }
     }

@@ -55,5 +55,21 @@ public interface PolicyJobRepository extends JpaRepository<PolicyJob, Long> {
      */
     @Query(value = "SELECT * FROM policy_jobs WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT :limit", nativeQuery = true)
     java.util.List<PolicyJob> findOldestPendingJobs(@Param("limit") int limit);
+
+    /**
+     * Atomically update job status from PENDING to PROCESSING.
+     * This method ensures idempotency by only updating jobs that are in PENDING status.
+     * Returns the number of rows updated (0 if job was not PENDING, 1 if successfully updated).
+     *
+     * @param jobUuid the job UUID to update
+     * @return the number of rows updated (0 or 1)
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query(
+            value = "UPDATE policy_jobs SET status = 'PROCESSING', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP " +
+                    "WHERE job_uuid = :jobUuid AND status = 'PENDING'",
+            nativeQuery = true
+    )
+    int updateStatusIfPending(@Param("jobUuid") UUID jobUuid);
 }
 

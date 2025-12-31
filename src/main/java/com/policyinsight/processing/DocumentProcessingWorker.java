@@ -36,11 +36,15 @@ import java.util.UUID;
 
 /**
  * Worker service that consumes Pub/Sub messages and processes documents.
- * Only loads when app.messaging.mode=gcp.
+ *
+ * In pull mode: Starts a Pub/Sub subscriber to pull messages (when app.messaging.mode=gcp and PUBSUB_PUSH_MODE is not true).
+ * In push mode: Available as a DocumentJobProcessor bean for PubSubController to use (when app.messaging.mode=gcp).
+ *
+ * This bean is required in cloudrun profile for PubSubController to process push messages.
  */
 @Service
 @ConditionalOnProperty(name = "app.messaging.mode", havingValue = "gcp")
-public class DocumentProcessingWorker {
+public class DocumentProcessingWorker implements DocumentJobProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(DocumentProcessingWorker.class);
 
@@ -92,6 +96,14 @@ public class DocumentProcessingWorker {
     public void initialize() {
         if (documentAiService == null) {
             logger.info("Document AI service not available, will use fallback OCR");
+        }
+
+        // Check if we should start the subscriber (only for pull mode, not push mode)
+        // In push mode, Pub/Sub sends messages to /internal/pubsub endpoint, so we don't need a subscriber
+        String pushMode = System.getenv("PUBSUB_PUSH_MODE");
+        if ("true".equalsIgnoreCase(pushMode)) {
+            logger.info("Pub/Sub push mode enabled - skipping subscriber initialization. Messages will be received via /internal/pubsub endpoint.");
+            return;
         }
 
         try {

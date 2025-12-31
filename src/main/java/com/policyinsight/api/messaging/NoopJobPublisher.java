@@ -18,8 +18,8 @@ public class NoopJobPublisher implements JobPublisher {
     private static final Logger logger = LoggerFactory.getLogger(NoopJobPublisher.class);
 
     @Override
-    public void publishJobQueued(UUID jobId, String gcsPath) {
-        logger.debug("No-op: Job queued event suppressed (Pub/Sub disabled). Job ID: {}, GCS Path: {}", jobId, gcsPath);
+    public void publishJobQueued(UUID jobId, String gcsPath, String requestId) {
+        logger.debug("No-op: Job queued event suppressed (Pub/Sub disabled). Job ID: {}, GCS Path: {}, Request ID: {}", jobId, gcsPath, requestId);
     }
 }
 

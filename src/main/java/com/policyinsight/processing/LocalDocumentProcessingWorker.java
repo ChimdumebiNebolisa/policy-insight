@@ -43,7 +43,7 @@ import java.util.UUID;
  */
 @Service
 @ConditionalOnProperty(prefix = "policyinsight.worker", name = "enabled", havingValue = "true")
-public class LocalDocumentProcessingWorker {
+public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(LocalDocumentProcessingWorker.class);
 

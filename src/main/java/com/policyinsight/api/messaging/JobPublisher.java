@@ -12,7 +12,8 @@ public interface JobPublisher {
      *
      * @param jobId Job UUID
      * @param gcsPath GCS path to the uploaded PDF
+     * @param requestId Optional request ID for correlation tracking (can be null)
      */
-    void publishJobQueued(UUID jobId, String gcsPath);
+    void publishJobQueued(UUID jobId, String gcsPath, String requestId);
 }
 

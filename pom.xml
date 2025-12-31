@@ -141,6 +141,17 @@
             <artifactId>google-cloud-pubsub</artifactId>
         </dependency>
 
+        <!-- JWT/OIDC Token Verification for Pub/Sub Push -->
+        <dependency>
+            <groupId>com.google.api-client</groupId>
+            <artifactId>google-api-client</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+        </dependency>
+
         <!-- Google Cloud Vertex AI (Gemini) -->
         <dependency>
             <groupId>com.google.cloud</groupId>

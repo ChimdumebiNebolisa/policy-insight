@@ -44,7 +44,7 @@
                                                                                                                                          "properties":  {
                                                                                                                                                             "file":  {
                                                                                                                                                                          "type":  "string",
-                                                                                                                                                                         "description":  "PDF file to upload (max 20 MB)",
+                                                                                                                                                                         "description":  "PDF file to upload (max 50 MB)",
                                                                                                                                                                          "format":  "binary"
                                                                                                                                                                      }
                                                                                                                                                         }

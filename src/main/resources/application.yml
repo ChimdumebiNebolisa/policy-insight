@@ -115,6 +115,11 @@ pubsub:
   topic-name: ${PUBSUB_TOPIC_NAME:document-analysis-topic}
   subscription-name: ${PUBSUB_SUBSCRIPTION_NAME:document-analysis-sub}
   # For local emulator: set PUBSUB_EMULATOR_HOST=http://localhost:8085
+  push:
+    verification:
+      enabled: ${PUBSUB_PUSH_VERIFICATION_ENABLED:true}
+    expected-email: ${PUBSUB_PUSH_EXPECTED_EMAIL:}
+    expected-audience: ${PUBSUB_PUSH_EXPECTED_AUDIENCE:}
 
 # Google Cloud Document AI configuration
 documentai:
