@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: policyinsight-worker
   annotations:
-    run.googleapis.com/ingress: internal
+    run.googleapis.com/ingress: all
 spec:
   template:
     metadata:
