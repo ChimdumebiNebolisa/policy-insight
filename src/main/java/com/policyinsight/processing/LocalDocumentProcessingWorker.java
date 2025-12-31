@@ -12,6 +12,8 @@ import com.policyinsight.shared.repository.PolicyJobRepository;
 import com.policyinsight.shared.repository.ReportRepository;
 import com.policyinsight.observability.TracingServiceInterface;
 import com.policyinsight.observability.DatadogMetricsServiceInterface;
+import com.policyinsight.util.NonNulls;
+import com.policyinsight.util.Strings;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import org.slf4j.Logger;
@@ -193,7 +195,8 @@ public class LocalDocumentProcessingWorker {
         }
 
         // Add job_id to MDC for logging
-        String jobIdStr = jobId.toString();
+        // UUID.toString() never returns null, but wrap through NonNulls for JDT null analysis
+        String jobIdStr = NonNulls.nn(jobId.toString(), "jobId.toString() returned null");
         MDC.put("job_id", jobIdStr);
 
         long startTime = System.currentTimeMillis();
@@ -241,7 +244,7 @@ public class LocalDocumentProcessingWorker {
                 parentSpan.setStatus(StatusCode.ERROR);
                 parentSpan.setAttribute("status", "FAILED");
                 parentSpan.setAttribute("error", true);
-                parentSpan.setAttribute("error.message", e.getMessage());
+                parentSpan.setAttribute("error.message", Strings.safe(e.getMessage()));
                 parentSpan.recordException(e);
             }
         } finally {
@@ -265,11 +268,12 @@ public class LocalDocumentProcessingWorker {
 
         // Extract text (try Document AI first, fallback to PDFBox) - with span
         ExtractedText extractedText;
+        String jobIdStr = Strings.safe(jobId.toString());
         Span extractSpan = null;
         if (tracingService != null && parentSpan != null) {
             extractSpan = tracingService.spanBuilder("extraction")
-                    .setAttribute("job_id", jobId.toString())
-                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("job_id", jobIdStr)
+                    .setAttribute("document_id", jobIdStr)
                     .setAttribute("stage", "extraction")
                     .startSpan();
         }
@@ -333,8 +337,8 @@ public class LocalDocumentProcessingWorker {
         Span classifySpan = null;
         if (tracingService != null && parentSpan != null) {
             classifySpan = tracingService.spanBuilder("classification")
-                    .setAttribute("job_id", jobId.toString())
-                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("job_id", jobIdStr)
+                    .setAttribute("document_id", jobIdStr)
                     .setAttribute("stage", "classification")
                     .startSpan();
         }
@@ -347,7 +351,7 @@ public class LocalDocumentProcessingWorker {
             job.setClassificationConfidence(classification.getConfidence());
 
             if (classifySpan != null) {
-                classifySpan.setAttribute("classification", classification.getClassification());
+                classifySpan.setAttribute("classification", Strings.safe(classification.getClassification()));
                 if (classification.getConfidence() != null) {
                     classifySpan.setAttribute("confidence", classification.getConfidence().doubleValue());
                 }
@@ -363,8 +367,8 @@ public class LocalDocumentProcessingWorker {
         Span riskScanSpan = null;
         if (tracingService != null && parentSpan != null) {
             riskScanSpan = tracingService.spanBuilder("risk_scan")
-                    .setAttribute("job_id", jobId.toString())
-                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("job_id", jobIdStr)
+                    .setAttribute("document_id", jobIdStr)
                     .setAttribute("stage", "risk_scan")
                     .startSpan();
         }
@@ -403,8 +407,8 @@ public class LocalDocumentProcessingWorker {
         Span llmSpan = null;
         if (tracingService != null && parentSpan != null) {
             llmSpan = tracingService.spanBuilder("llm")
-                    .setAttribute("job_id", jobId.toString())
-                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("job_id", jobIdStr)
+                    .setAttribute("document_id", jobIdStr)
                     .setAttribute("stage", "llm")
                     .setAttribute("provider", "gemini")
                     .startSpan();
@@ -460,8 +464,8 @@ public class LocalDocumentProcessingWorker {
         Span exportSpan = null;
         if (tracingService != null && parentSpan != null) {
             exportSpan = tracingService.spanBuilder("export")
-                    .setAttribute("job_id", jobId.toString())
-                    .setAttribute("document_id", jobId.toString())
+                    .setAttribute("job_id", jobIdStr)
+                    .setAttribute("document_id", jobIdStr)
                     .setAttribute("stage", "export")
                     .startSpan();
         }
@@ -511,7 +515,7 @@ public class LocalDocumentProcessingWorker {
                 logger.info("Report JSON uploaded to storage: {}", reportStoragePath);
                 if (exportSpan != null) {
                     exportSpan.setAttribute("report_stored", true);
-                    exportSpan.setAttribute("report_path", reportStoragePath);
+                    exportSpan.setAttribute("report_path", Strings.safe(reportStoragePath));
                 }
             } catch (Exception e) {
                 logger.warn("Failed to upload report JSON to storage, continuing without storage path: {}", e.getMessage());

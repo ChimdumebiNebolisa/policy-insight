@@ -7,6 +7,7 @@ import com.google.genai.types.HttpOptions;
 import com.google.genai.types.GenerateContentResponse;
 import com.policyinsight.observability.DatadogMetricsServiceInterface;
 import com.policyinsight.observability.TracingServiceInterface;
+import com.policyinsight.util.Strings;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import org.slf4j.Logger;
@@ -138,8 +139,8 @@ public class GeminiService implements GeminiServiceInterface {
             llmSpan = tracingService.spanBuilder("llm.call")
                     .setAttribute("stage", "llm")
                     .setAttribute("provider", "gemini")
-                    .setAttribute("model", model)
-                    .setAttribute("task_type", taskType)
+                    .setAttribute("model", Strings.safe(model, DEFAULT_MODEL))
+                    .setAttribute("task_type", Strings.safe(taskType))
                     .setAttribute("prompt_length", prompt.length())
                     .startSpan();
         }
@@ -227,7 +228,7 @@ public class GeminiService implements GeminiServiceInterface {
                 if (llmSpan != null) {
                     llmSpan.setStatus(StatusCode.ERROR);
                     llmSpan.setAttribute("error", true);
-                    llmSpan.setAttribute("error.message", e.getMessage());
+                    llmSpan.setAttribute("error.message", Strings.safe(e.getMessage()));
                     llmSpan.recordException(e);
                 }
                 throw e;
@@ -241,7 +242,7 @@ public class GeminiService implements GeminiServiceInterface {
                 if (llmSpan != null) {
                     llmSpan.setStatus(StatusCode.ERROR);
                     llmSpan.setAttribute("error", true);
-                    llmSpan.setAttribute("error.message", e.getMessage());
+                    llmSpan.setAttribute("error.message", Strings.safe(e.getMessage()));
                     llmSpan.recordException(e);
                 }
                 throw new IOException("Gemini API call failed: " + e.getMessage(), e);
