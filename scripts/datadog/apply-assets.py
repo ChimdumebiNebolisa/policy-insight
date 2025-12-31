@@ -15,7 +15,7 @@ import json
 import argparse
 import re
 from pathlib import Path
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Any
 from collections import defaultdict
 
 # Import shared modules (assume they're in the same directory)
@@ -26,6 +26,27 @@ from validate_keys import validate_api_key, validate_app_key
 # Get Datadog site from environment (default: datadoghq.com)
 DD_SITE = os.getenv("DD_SITE", "datadoghq.com")
 DD_API_BASE = f"https://api.{DD_SITE}/api/v1"
+
+
+def load_json_template(template_path: Path) -> Dict[str, Any]:
+    """
+    Load JSON template file, handling UTF-8 BOM if present.
+
+    Uses utf-8-sig encoding to automatically strip BOM if present,
+    while remaining compatible with files without BOM.
+
+    Args:
+        template_path: Path to JSON template file
+
+    Returns:
+        Parsed JSON as dictionary
+
+    Raises:
+        json.JSONDecodeError: If file is not valid JSON
+        FileNotFoundError: If file doesn't exist
+    """
+    with open(template_path, 'r', encoding='utf-8-sig') as f:
+        return json.load(f)
 
 
 def get_headers() -> Dict[str, str]:
@@ -53,8 +74,7 @@ def apply_dashboard(template_path: Path, headers: Dict[str, str]) -> Tuple[bool,
         (success: bool, operation: str) where operation is "created", "updated", or "failed"
     """
     try:
-        with open(template_path, 'r', encoding='utf-8') as f:
-            dashboard_def = json.load(f)
+        dashboard_def = load_json_template(template_path)
     except json.JSONDecodeError as e:
         print(f"    ❌ Invalid JSON in template: {e}")
         return False, "failed"
@@ -112,47 +132,57 @@ def apply_dashboard(template_path: Path, headers: Dict[str, str]) -> Tuple[bool,
 def apply_monitor(template_path: Path, headers: Dict[str, str]) -> Tuple[bool, str]:
     """
     Create or update a monitor from template.
+    Idempotent: checks for existing monitor by name before creating.
 
     Returns:
         (success: bool, operation: str) where operation is "created", "updated", or "failed"
     """
     try:
-        with open(template_path, 'r', encoding='utf-8') as f:
-            monitor_def = json.load(f)
+        monitor_def = load_json_template(template_path)
     except json.JSONDecodeError as e:
         print(f"    ❌ Invalid JSON in template: {e}")
         return False, "failed"
 
-    # Remove any ID if present
+    # Remove any ID if present (we'll find by name instead)
     monitor_id = monitor_def.pop("id", None)
     monitor_name = monitor_def.get("name", "Unknown")
     print(f"  Applying monitor: {monitor_name}")
 
     try:
-        if monitor_id:
-            # Try to update existing monitor
-            try:
-                result = request_json(
-                    "PUT", f"{DD_API_BASE}/monitor/{monitor_id}",
-                    headers, payload=monitor_def, timeout=20, retries=3
-                )
-                print(f"    ✅ Updated monitor: {monitor_name} (ID: {monitor_id})")
-                return True, "updated"
-            except DatadogAPIError as e:
-                if e.status_code == 404:
-                    print(f"    Monitor ID {monitor_id} not found, creating new monitor")
-                else:
-                    raise
-
-        # Create new monitor
-        print(f"    Creating new monitor")
-        result = request_json(
-            "POST", f"{DD_API_BASE}/monitor",
-            headers, payload=monitor_def, timeout=20, retries=3
+        # First, try to find existing monitor by name (exact match) for idempotent upsert
+        existing_monitors = request_json(
+            "GET", f"{DD_API_BASE}/monitor", headers, timeout=20, retries=3
         )
-        new_id = result.get("id")
-        print(f"    ✅ Created monitor: {monitor_name} (ID: {new_id})")
-        return True, "created"
+
+        # Monitors endpoint returns a list directly
+        if not isinstance(existing_monitors, list):
+            raise ValueError(f"Unexpected response format from monitors endpoint: {type(existing_monitors)}")
+
+        existing_id = None
+        for monitor in existing_monitors:
+            if isinstance(monitor, dict) and monitor.get("name") == monitor_name:
+                existing_id = monitor.get("id")
+                break
+
+        if existing_id:
+            # Update existing monitor found by name
+            print(f"    Updating existing monitor (ID: {existing_id})")
+            result = request_json(
+                "PUT", f"{DD_API_BASE}/monitor/{existing_id}",
+                headers, payload=monitor_def, timeout=20, retries=3
+            )
+            print(f"    ✅ Updated monitor: {monitor_name} (ID: {existing_id})")
+            return True, "updated"
+        else:
+            # Create new monitor (not found by name)
+            print(f"    Creating new monitor")
+            result = request_json(
+                "POST", f"{DD_API_BASE}/monitor",
+                headers, payload=monitor_def, timeout=20, retries=3
+            )
+            new_id = result.get("id") if isinstance(result, dict) else None
+            print(f"    ✅ Created monitor: {monitor_name} (ID: {new_id})")
+            return True, "created"
     except DatadogAPIError as e:
         print(f"    ❌ Error: {e}")
         return False, "failed"
@@ -166,13 +196,13 @@ def apply_monitor(template_path: Path, headers: Dict[str, str]) -> Tuple[bool, s
 def apply_slo(template_path: Path, headers: Dict[str, str]) -> Tuple[bool, str]:
     """
     Create or update an SLO from template.
+    Handles various response shapes (dict with data.id, dict with id, or list).
 
     Returns:
         (success: bool, operation: str) where operation is "created", "updated", or "failed"
     """
     try:
-        with open(template_path, 'r', encoding='utf-8') as f:
-            slo_def = json.load(f)
+        slo_def = load_json_template(template_path)
     except json.JSONDecodeError as e:
         print(f"    ❌ Invalid JSON in template: {e}")
         return False, "failed"
@@ -181,6 +211,25 @@ def apply_slo(template_path: Path, headers: Dict[str, str]) -> Tuple[bool, str]:
     slo_id = slo_def.pop("id", None)
     slo_name = slo_def.get("name", "Unknown")
     print(f"  Applying SLO: {slo_name}")
+
+    def extract_slo_id(response: Any) -> Optional[str]:
+        """Extract SLO ID from various response shapes."""
+        if isinstance(response, dict):
+            # Try data.id first (common format)
+            if "data" in response and isinstance(response["data"], dict):
+                id_from_data = response["data"].get("id")
+                if id_from_data:
+                    return str(id_from_data)
+            # Try direct id
+            if "id" in response:
+                return str(response["id"])
+        elif isinstance(response, list):
+            # If response is a list, try to extract ID from first element
+            if len(response) > 0 and isinstance(response[0], dict):
+                id_from_item = response[0].get("id")
+                if id_from_item:
+                    return str(id_from_item)
+        return None
 
     try:
         if slo_id:
@@ -204,12 +253,51 @@ def apply_slo(template_path: Path, headers: Dict[str, str]) -> Tuple[bool, str]:
             "POST", f"{DD_API_BASE}/slo",
             headers, payload=slo_def, timeout=20, retries=3
         )
-        # SLO response structure may vary
-        new_id = result.get("data", {}).get("id") or result.get("id")
-        print(f"    ✅ Created SLO: {slo_name} (ID: {new_id})")
+
+        # Handle various response shapes
+        new_id = extract_slo_id(result)
+
+        if not new_id:
+            # If we couldn't extract ID from response, try to find it by name
+            print(f"    Warning: Could not extract ID from response, searching by name...")
+            try:
+                slos_result = request_json(
+                    "GET", f"{DD_API_BASE}/slo", headers, timeout=20, retries=3
+                )
+                slos_list = slos_result.get("data", []) if isinstance(slos_result, dict) else slos_result
+                if isinstance(slos_list, list):
+                    for slo in slos_list:
+                        if isinstance(slo, dict) and slo.get("name") == slo_name:
+                            new_id = slo.get("id")
+                            if new_id:
+                                break
+            except Exception:
+                pass  # Best effort, don't fail if we can't find it
+
+        if new_id:
+            print(f"    ✅ Created SLO: {slo_name} (ID: {new_id})")
+        else:
+            # Diagnostic output for unexpected response shape
+            result_type = type(result).__name__
+            result_preview = str(result)[:200] if result else "None"
+            print(f"    ⚠️  Created SLO: {slo_name} (could not extract ID from response)")
+            print(f"       Response type: {result_type}, preview: {result_preview}...")
         return True, "created"
     except DatadogAPIError as e:
-        print(f"    ❌ Error: {e}")
+        # Add diagnostic info for unexpected response shapes
+        if hasattr(e, 'response') and e.response:
+            print(f"    ❌ Error: {e}")
+            print(f"       Status: {e.status_code}, Content-Type: {e.content_type}")
+            print(f"       Body preview: {e.body_preview}")
+        else:
+            print(f"    ❌ Error: {e}")
+        return False, "failed"
+    except AttributeError as e:
+        # Handle cases where response doesn't have expected attributes
+        print(f"    ❌ Unexpected response shape: {e}")
+        if 'result' in locals():
+            print(f"       Response type: {type(result).__name__}")
+            print(f"       Response preview: {str(result)[:200]}...")
         return False, "failed"
     except Exception as e:
         print(f"    ❌ Unexpected error: {e}")
@@ -218,29 +306,132 @@ def apply_slo(template_path: Path, headers: Dict[str, str]) -> Tuple[bool, str]:
         return False, "failed"
 
 
+def extract_metric_names(query: str) -> set[str]:
+    """
+    Extract metric names from a Datadog query string.
+
+    Examples:
+        - "p95:trace.http.request.duration{service:policy-insight}" -> {"trace.http.request.duration"}
+        - "sum:policyinsight.job.backlog{*}" -> {"policyinsight.job.backlog"}
+        - "avg(last_5m):avg:policyinsight.job.backlog{service:policy-insight} > 50" -> {"policyinsight.job.backlog"}
+        - "avg:trace.http.request.duration{service:policy-insight}.as_count()" -> {"trace.http.request.duration"}
+
+    Args:
+        query: Datadog query string (e.g., from monitor "query" field or dashboard widget "q" field)
+
+    Returns:
+        Set of metric names found in the query (empty set if none found)
+    """
+    if not query or not isinstance(query, str):
+        return set()
+
+    metrics = set()
+
+    # Remove time windows like "avg(last_5m):", "sum(last_1h):", etc.
+    query = re.sub(r'\w+\([^)]+\):', '', query)
+
+    # Remove aggregation functions: avg:, sum:, p95:, p99:, pct_95:, max:, min:, etc.
+    # These can appear at the start or after time windows
+    # Handle both lowercase and mixed case (e.g., p95, p99, pct_95)
+    query = re.sub(r'^(?:avg|sum|p\d+|pct_\d+|max|min|count|rate):', '', query, flags=re.IGNORECASE)
+
+    # Remove comparators and everything after them (>, <, >=, <=, ==, !=)
+    query = re.sub(r'\s*[><=!]+.*$', '', query)
+
+    # Extract metric name before tag set {...} or before method calls like .as_count(), .as_rate()
+    # Metric names are typically dot-separated (e.g., trace.http.request.duration, policyinsight.job.backlog)
+    # Pattern: capture alphanumeric/dot/underscore/hyphen sequence before { or .as_ or end of string
+    # Use non-greedy match to stop at first { or .as_
+    metric_pattern = r'([a-zA-Z0-9][a-zA-Z0-9._-]+?)(?:\{|\.as_|$)'
+
+    matches = re.findall(metric_pattern, query)
+    for match in matches:
+        # Filter out non-metric tokens:
+        # - Must contain at least one dot (metric names are dot-separated)
+        # - Not just numbers
+        # - Not aggregation functions
+        if (match and
+            '.' in match and
+            not match.isdigit() and
+            not re.match(r'^(avg|sum|p\d+|pct_\d+|max|min|count|rate)$', match, re.IGNORECASE)):
+            metrics.add(match)
+
+    return metrics
+
+
 def extract_metric_names_from_template(template_path: Path) -> List[str]:
     """
     Extract metric names referenced in a template file.
     This is a best-effort extraction for metrics sanity checking.
     """
     try:
-        with open(template_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        template_data = load_json_template(template_path)
+        all_metrics = set()
 
-        # Look for metric patterns like "avg:policyinsight.job.backlog" or "policyinsight.llm.cost"
-        # This regex looks for common metric patterns in Datadog queries
-        patterns = [
-            r'(?:avg|sum|p95|p99|max|min):([a-zA-Z0-9._-]+)',
-            r'"q"\s*:\s*"[^"]*:([a-zA-Z0-9._-]+)',
-            r'query["\']?\s*:\s*["\'][^"\']*:([a-zA-Z0-9._-]+)',
-        ]
+        # Extract from monitor "query" field
+        if isinstance(template_data, dict):
+            if "query" in template_data:
+                query = template_data["query"]
+                if isinstance(query, str):
+                    all_metrics.update(extract_metric_names(query))
 
-        metrics = set()
-        for pattern in patterns:
-            matches = re.findall(pattern, content)
-            metrics.update(matches)
+            # Extract from composite monitor queries
+            if "composite_conditions" in template_data:
+                def extract_from_composite(conditions):
+                    if isinstance(conditions, list):
+                        for condition in conditions:
+                            if isinstance(condition, dict):
+                                if "query" in condition:
+                                    query = condition["query"]
+                                    if isinstance(query, str):
+                                        all_metrics.update(extract_metric_names(query))
+                                if "operands" in condition:
+                                    extract_from_composite(condition["operands"])
 
-        return sorted(list(metrics))
+                extract_from_composite(template_data["composite_conditions"])
+
+            # Extract from dashboard widget "q" fields
+            if "widgets" in template_data:
+                widgets = template_data["widgets"]
+                if isinstance(widgets, list):
+                    for widget in widgets:
+                        if isinstance(widget, dict):
+                            definition = widget.get("definition", {})
+                            if isinstance(definition, dict):
+                                # Check "requests" array for "q" fields
+                                requests = definition.get("requests", [])
+                                if isinstance(requests, list):
+                                    for request in requests:
+                                        if isinstance(request, dict) and "q" in request:
+                                            query = request["q"]
+                                            if isinstance(query, str):
+                                                all_metrics.update(extract_metric_names(query))
+
+                                # Also check direct "q" field in definition
+                                if "q" in definition:
+                                    query = definition["q"]
+                                    if isinstance(query, str):
+                                        all_metrics.update(extract_metric_names(query))
+
+            # Extract from SLO queries
+            if "query" in template_data:
+                query = template_data["query"]
+                if isinstance(query, dict):
+                    # SLO queries can be nested
+                    def extract_from_dict(obj):
+                        if isinstance(obj, dict):
+                            for key, value in obj.items():
+                                if key == "query" and isinstance(value, str):
+                                    all_metrics.update(extract_metric_names(value))
+                                elif isinstance(value, (dict, list)):
+                                    extract_from_dict(value)
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                extract_from_dict(item)
+
+                    extract_from_dict(query)
+
+        return sorted(list(all_metrics))
     except Exception:
         return []
 
