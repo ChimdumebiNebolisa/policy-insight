@@ -346,17 +346,49 @@ def extract_metric_names(query: str) -> set[str]:
 
     matches = re.findall(metric_pattern, query)
     for match in matches:
-        # Filter out non-metric tokens:
-        # - Must contain at least one dot (metric names are dot-separated)
-        # - Not just numbers
-        # - Not aggregation functions
-        if (match and
-            '.' in match and
-            not match.isdigit() and
-            not re.match(r'^(avg|sum|p\d+|pct_\d+|max|min|count|rate)$', match, re.IGNORECASE)):
-            metrics.add(match)
+        # Normalize the metric token
+        normalized = normalize_metric_token(match)
+        if normalized:
+            # Filter out non-metric tokens:
+            # - Must contain at least one dot (metric names are dot-separated)
+            # - Not just numbers
+            # - Not aggregation functions
+            if (normalized and
+                '.' in normalized and
+                not normalized.isdigit() and
+                not re.match(r'^(avg|sum|p\d+|pct_\d+|max|min|count|rate)$', normalized, re.IGNORECASE)):
+                metrics.add(normalized)
 
     return metrics
+
+
+def normalize_metric_token(token: str) -> Optional[str]:
+    """
+    Normalize a metric token by:
+    - Collapsing multiple dots to a single dot (.. → .)
+    - Stripping leading/trailing dots
+    - Rejecting tokens that contain invalid characters (anything other than [a-zA-Z0-9_.])
+
+    Args:
+        token: Raw metric token extracted from query
+
+    Returns:
+        Normalized token, or None if token is invalid
+    """
+    if not token:
+        return None
+
+    # Collapse multiple consecutive dots to a single dot
+    normalized = re.sub(r'\.+', '.', token)
+
+    # Strip leading and trailing dots
+    normalized = normalized.strip('.')
+
+    # Reject tokens that contain invalid characters (only allow [a-zA-Z0-9_.])
+    if not re.match(r'^[a-zA-Z0-9_.]+$', normalized):
+        return None
+
+    return normalized if normalized else None
 
 
 def extract_metric_names_from_template(template_path: Path) -> List[str]:
@@ -657,5 +689,37 @@ def main():
         sys.exit(1)
 
 
+def test_extract_metric_names():
+    """
+    Self-test for extract_metric_names normalization.
+    Verifies that double dots are collapsed and normal queries still work.
+    """
+    # Test 1: Double dot should be normalized to single dot
+    result1 = extract_metric_names("avg:policyinsight..job.backlog{*}")
+    assert result1 == {"policyinsight.job.backlog"}, f"Expected {{'policyinsight.job.backlog'}}, got {result1}"
+    print("PASS Test 1: avg:policyinsight..job.backlog{*} -> policyinsight.job.backlog")
+
+    # Test 2: Normal query should still work
+    result2 = extract_metric_names("p95:trace.http.request.duration{service:policy-insight}")
+    assert result2 == {"trace.http.request.duration"}, f"Expected {{'trace.http.request.duration'}}, got {result2}"
+    print("PASS Test 2: p95:trace.http.request.duration{service:policy-insight} -> trace.http.request.duration")
+
+    # Test 3: Multiple double dots should be normalized
+    result3 = extract_metric_names("sum:metric..name..with..dots{*}")
+    assert result3 == {"metric.name.with.dots"}, f"Expected {{'metric.name.with.dots'}}, got {result3}"
+    print("PASS Test 3: sum:metric..name..with..dots{*} -> metric.name.with.dots")
+
+    # Test 4: Leading/trailing dots should be stripped
+    result4 = extract_metric_names("avg:.policyinsight.job.backlog.{*}")
+    assert result4 == {"policyinsight.job.backlog"}, f"Expected {{'policyinsight.job.backlog'}}, got {result4}"
+    print("PASS Test 4: avg:.policyinsight.job.backlog.{*} -> policyinsight.job.backlog")
+
+    print("\nAll tests passed!")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--test":
+        test_extract_metric_names()
+    else:
+        main()
