@@ -1,0 +1,45 @@
+{
+  "data": {
+    "id": "37a24148495c5933a0d7f51c9b401492",
+    "name": "PolicyInsight API Availability SLO",
+    "tags": [
+      "slo_type:availability",
+      "service:policy-insight"
+    ],
+    "monitor_tags": [],
+    "thresholds": [
+      {
+        "timeframe": "7d",
+        "target": 99.9,
+        "target_display": "99.9",
+        "warning": 99.95,
+        "warning_display": "99.95"
+      },
+      {
+        "timeframe": "30d",
+        "target": 99.9,
+        "target_display": "99.9",
+        "warning": 99.95,
+        "warning_display": "99.95"
+      }
+    ],
+    "type": "metric",
+    "type_id": 1,
+    "description": "99.9% of API requests return successful responses (2xx, 3xx)",
+    "timeframe": "7d",
+    "warning_threshold": 99.95,
+    "target_threshold": 99.9,
+    "query": {
+      "denominator": "sum:trace.http.request.hits{service:policy-insight}.as_count()",
+      "numerator": "sum:trace.http.request.hits{service:policy-insight,http.status_code:2xx,http.status_code:3xx}.as_count()"
+    },
+    "creator": {
+      "name": "Chimdumebi Nebolisa",
+      "handle": "chimdumebinebolisa@gmail.com",
+      "email": "chimdumebinebolisa@gmail.com"
+    },
+    "created_at": 1767140232,
+    "modified_at": 1767140232
+  },
+  "error": null
+}

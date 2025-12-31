@@ -1,0 +1,44 @@
+{
+  "id": 17344847,
+  "org_id": 1300825116,
+  "type": "metric alert",
+  "name": "[PolicyInsight] Queue Backlog > 50 Jobs",
+  "message": "Queue backlog has exceeded 50 pending jobs for the last 5 minutes.\n\nThis may indicate:\n- Worker instances are slow or crashed\n- Document AI quota/throttling\n- Gemini API quota/throttling\n- Database connection issues\n\nCheck:\n- Worker pod logs (Cloud Run)\n- Document AI quota status\n- Gemini API quota status\n- Worker crash logs\n\n@on-call-engineering",
+  "tags": [
+    "service:policy-insight",
+    "alert_type:backlog",
+    "severity:medium"
+  ],
+  "query": "avg(last_5m):avg:policyinsight.job.backlog{service:policy-insight} > 50",
+  "options": {
+    "thresholds": {
+      "critical": 50.0,
+      "warning": 30.0
+    },
+    "notify_audit": false,
+    "require_full_window": false,
+    "notify_no_data": false,
+    "renotify_interval": 60,
+    "escalation_message": "Queue backlog still elevated after 1 hour. Consider scaling workers or investigating bottleneck.",
+    "new_host_delay": 300,
+    "include_tags": true,
+    "silenced": {}
+  },
+  "multi": false,
+  "created_at": 1767068454000,
+  "created": "2025-12-30T04:20:54.460864+00:00",
+  "modified": "2025-12-31T00:17:11.912310+00:00",
+  "deleted": null,
+  "priority": 2,
+  "restricted_roles": null,
+  "draft_status": "published",
+  "assets": [],
+  "overall_state_modified": "2025-12-30T04:21:01+00:00",
+  "overall_state": "No Data",
+  "creator": {
+    "name": "Chimdumebi Nebolisa",
+    "email": "chimdumebinebolisa@gmail.com",
+    "handle": "chimdumebinebolisa@gmail.com",
+    "id": 9109112
+  }
+}

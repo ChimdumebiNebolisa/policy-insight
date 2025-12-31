@@ -1,0 +1,43 @@
+{
+  "id": 17344354,
+  "org_id": 1300825116,
+  "type": "event-v2 alert",
+  "name": "Watchdog Anomaly: {{event.title}} for {{service}}",
+  "message": "{{event.title}} detected on {{event.tags.service}}\n {{event.text}}",
+  "tags": [
+    "$service",
+    "$env",
+    "product:apm",
+    "monitor_pack:apm"
+  ],
+  "query": "events(\"source:watchdog (story_category:apm)\").rollup(\"count\").by(\"story_key\").last(\"30m\") > 0",
+  "options": {
+    "thresholds": {
+      "critical": 0.0
+    },
+    "enable_logs_sample": false,
+    "notify_audit": false,
+    "on_missing_data": "default",
+    "include_tags": true,
+    "new_host_delay": 300,
+    "groupby_simple_monitor": false,
+    "silenced": {}
+  },
+  "multi": true,
+  "created_at": 1767062843000,
+  "created": "2025-12-30T02:47:23.252763+00:00",
+  "modified": "2025-12-30T02:47:23.252763+00:00",
+  "deleted": null,
+  "priority": null,
+  "restricted_roles": null,
+  "draft_status": "published",
+  "assets": [],
+  "overall_state_modified": "2025-12-30T02:47:33+00:00",
+  "overall_state": "OK",
+  "creator": {
+    "name": "Datadog Support",
+    "email": "support-user-prod@datadoghq.com",
+    "handle": "support-na-4xvziqpjcmtl",
+    "id": 9109113
+  }
+}

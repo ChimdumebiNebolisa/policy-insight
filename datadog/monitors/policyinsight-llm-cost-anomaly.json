@@ -1,0 +1,43 @@
+{
+  "id": 17344846,
+  "org_id": 1300825116,
+  "type": "metric alert",
+  "name": "[PolicyInsight] LLM Cost Anomaly",
+  "message": "LLM cost has exceeded normal baseline by 2 standard deviations in the last hour.\n\nThis may indicate:\n- Unusual spike in document processing volume\n- Inefficient prompts causing high token usage\n- Potential abuse or misconfiguration\n\nCheck:\n- Recent document uploads\n- LLM token usage per request\n- Prompt optimization opportunities\n\n@on-call-engineering",
+  "tags": [
+    "service:policy-insight",
+    "alert_type:cost",
+    "severity:medium"
+  ],
+  "query": "avg(last_1h):anomalies(sum:policyinsight.llm.cost_estimate_usd{service:policy-insight}.as_count(), 'basic', 2) >= 1",
+  "options": {
+    "thresholds": {
+      "critical": 1.0
+    },
+    "notify_audit": false,
+    "require_full_window": true,
+    "notify_no_data": false,
+    "renotify_interval": 120,
+    "escalation_message": "LLM cost anomaly persists. Review usage patterns and consider rate limiting.",
+    "new_host_delay": 300,
+    "include_tags": true,
+    "silenced": {}
+  },
+  "multi": false,
+  "created_at": 1767068454000,
+  "created": "2025-12-30T04:20:54.244045+00:00",
+  "modified": "2025-12-31T00:17:09.939802+00:00",
+  "deleted": null,
+  "priority": 2,
+  "restricted_roles": null,
+  "draft_status": "published",
+  "assets": [],
+  "overall_state_modified": "2025-12-30T04:21:05+00:00",
+  "overall_state": "No Data",
+  "creator": {
+    "name": "Chimdumebi Nebolisa",
+    "email": "chimdumebinebolisa@gmail.com",
+    "handle": "chimdumebinebolisa@gmail.com",
+    "id": 9109112
+  }
+}
