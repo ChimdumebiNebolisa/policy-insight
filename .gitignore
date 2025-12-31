@@ -80,9 +80,17 @@ coverage/
 # Local storage (test artifacts)
 .local-storage/
 
+# Local dev/test artifacts
+*_headers.txt
+*_body.txt
+*.pdf
+
 
 # local Datadog scratch
 dd-*.json
+
+# Ignore generated credentials from google-github-actions/auth
+gha-creds-*.json
 
 # Secret files and credentials
 **/*service-account*.json
@@ -99,6 +107,6 @@ dd-*.json
 **/*secret*.properties
 
 # python cache
-__pycache__/
-*.pyc
+**/__pycache__
+**/*.pyc
 

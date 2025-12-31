@@ -1,1 +1,0 @@
-{"traceId":"17c101a9-5f17-4d03-bc72-e3a476054cf6","error":"IllegalArgument","message":"Invalid file type: text/plain. Only PDF files (application/pdf) are allowed.","timestamp":"2025-12-29T09:10:05.155260100Z"}
