@@ -116,3 +116,99 @@ This guide walks through the local happy path for PolicyInsight MUP (Minimum Usa
 - Processing time depends on document size and complexity
 - For faster testing, use small PDF files (< 10 pages)
 
+## MUP Smoke Test (Automated)
+
+For automated verification of the MUP flow, use the smoke test script:
+
+### Windows (PowerShell)
+
+1. **Start the application** (in a separate terminal):
+   ```powershell
+   $env:SPRING_PROFILES_ACTIVE="local"; .\mvnw.cmd spring-boot:run
+   ```
+
+2. **Wait for the app to start** (health endpoint returns 200):
+   ```powershell
+   curl -f http://localhost:8080/health
+   ```
+
+3. **Run the smoke test**:
+   ```powershell
+   pwsh scripts\mup-smoke.ps1 tiny.pdf
+   ```
+
+   Or with a custom base URL:
+   ```powershell
+   $env:BASE_URL="http://localhost:8080"; pwsh scripts\mup-smoke.ps1 tiny.pdf
+   ```
+
+### Linux/Mac (Bash)
+
+1. **Start the application** (in a separate terminal):
+   ```bash
+   SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
+   ```
+
+2. **Wait for the app to start**:
+   ```bash
+   curl -f http://localhost:8080/health
+   ```
+
+3. **Run the smoke test**:
+   ```bash
+   bash scripts/mup-smoke.sh tiny.pdf
+   ```
+
+   Or with a custom base URL:
+   ```bash
+   BASE_URL=http://localhost:8080 bash scripts/mup-smoke.sh tiny.pdf
+   ```
+
+### Smoke Test Flow
+
+The smoke test validates:
+
+1. **Upload**: Uploads a PDF file and extracts jobId
+2. **Polling**: Polls status endpoint with `HX-Request: true` header
+3. **HX-Redirect**: Confirms `HX-Redirect` header is present when status is SUCCESS
+4. **Report**: Fetches report page and validates all 5 required sections:
+   - `id="overview"` - Document Overview
+   - `id="summary"` - Plain-English Summary
+   - `id="obligations"` - Obligations & Restrictions
+   - `id="risks"` - Risk Taxonomy
+   - `id="qa"` - Q&A Section
+5. **Q&A**: Submits a test question and verifies response contains citations or "Insufficient evidence"
+
+### Expected Output
+
+```
+=== MUP Smoke Test ===
+PDF: tiny.pdf
+Base URL: http://localhost:8080
+
+Step 1: Uploading document...
+✓ Upload response received
+
+Step 2: Polling status (with HX-Request header)...
+✓ Polling successful. HX-Redirect header present: True
+
+Step 3: Fetching report page...
+✓ Report page fetched (status: 200)
+
+Step 4: Validating report sections...
+✓ All 5 required sections found
+
+Step 5: Testing Q&A endpoint...
+✓ Q&A response contains citations or abstention message
+
+=== Smoke Test Results ===
+✓ Upload: OK
+✓ Polling: OK
+✓ HX-Redirect: True
+✓ Report fetched: OK
+✓ Report sections: All 5 found
+✓ Q&A: OK
+
+MUP smoke test passed!
+```
+
