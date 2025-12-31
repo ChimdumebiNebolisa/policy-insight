@@ -268,6 +268,15 @@ export DD_APP_KEY=your-app-key
 
 After applying templates, run `export-assets.py` to export the created assets with real IDs.
 
+### Template Format Notes
+
+- **UTF-8 BOM**: Template files can include a UTF-8 BOM (Byte Order Mark). The script automatically handles this using `utf-8-sig` encoding.
+- **Idempotent Operations**: The script performs upsert operations:
+  - **Dashboards**: Matched by `title` (exact match). Updates existing or creates new.
+  - **Monitors**: Matched by `name` (exact match). Updates existing or creates new.
+  - **SLOs**: Uses ID from template if present, otherwise creates new.
+- **Response Handling**: The script robustly handles various API response shapes, including cases where responses may be lists instead of dictionaries.
+
 ### Directory Structure
 
 ```
@@ -804,6 +813,9 @@ The Datadog apply/export scripts (`scripts/datadog/apply-assets.py` and `export-
 - **Failure tracking**: Apply script tracks created/updated/failed counts and exits non-zero on any failure
 - **Diagnostics**: Errors include HTTP method, URL, status code, content-type, and response body preview (first 300 chars)
 - **Metrics sanity check**: Optional post-apply check warns if referenced metrics might be missing (best-effort, non-blocking)
+- **UTF-8 BOM handling**: Template files are read with `utf-8-sig` encoding to handle BOM gracefully
+- **Idempotent operations**: Dashboards and monitors are upserted by name/title, preventing duplicate creation errors
+- **Flexible response handling**: Scripts handle various API response shapes (dicts, lists) robustly
 
 PowerShell wrappers properly propagate exit codes to prevent pipelines from continuing after failures.
 
