@@ -84,6 +84,7 @@ coverage/
 *_headers.txt
 *_body.txt
 *.pdf
+!src/test/resources/**/*.pdf
 
 
 # local Datadog scratch
@@ -107,6 +108,6 @@ gha-creds-*.json
 **/*secret*.properties
 
 # python cache
-**/__pycache__
+**/__pycache__/
 **/*.pyc
 
