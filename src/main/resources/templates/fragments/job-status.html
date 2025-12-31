@@ -1,0 +1,15 @@
+<div style="margin-top: 1rem;">
+    <p><strong>Status:</strong> <span th:text="${status}"></span></p>
+    <p th:if="${message}" th:text="${message}"></p>
+    <p th:if="${errorMessage}" style="color: red; font-weight: bold;" th:text="'Error: ' + ${errorMessage}"></p>
+    <div id="poll"
+         th:if="${status != 'SUCCESS' and status != 'FAILED'}"
+         th:attr="hx-get='/api/documents/' + ${jobId} + '/status'"
+         hx-trigger="load, every 2s"
+         hx-target="#status"
+         hx-swap="innerHTML"
+         style="margin-top: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px; border: 1px solid #dee2e6;">
+        <p>Processing... <span style="color: #6c757d;">Checking status…</span></p>
+    </div>
+</div>
+
