@@ -360,21 +360,21 @@ This section provides exact docker run commands to validate that web instances d
 docker build -t policyinsight:local .
 ```
 
-2. Ensure PostgreSQL and Datadog Agent are running (or use docker network):
+2. Ensure PostgreSQL and Datadog Agent (optional) are running on the same docker network:
 ```bash
-# Create a network for containers to communicate
-docker network create policyinsight-network
+# Create a network for containers to communicate (if using docker-compose, network may already exist)
+docker network create policy-insight_policyinsight-network 2>$null || docker network create policy-insight_policyinsight-network
 
 # Start PostgreSQL (if not already running)
-docker run -d --name postgres --network policyinsight-network \
+docker run -d --name policyinsight-postgres --network policy-insight_policyinsight-network \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=policyinsight \
   -p 5432:5432 \
   postgres:15
 
-# Start Datadog Agent (if not already running)
-docker run -d --name datadog-agent --network policyinsight-network \
+# Start Datadog Agent (optional, if not already running)
+docker run -d --name datadog-agent --network policy-insight_policyinsight-network \
   -e DD_API_KEY=${DD_API_KEY} \
   -e DD_SITE=datadoghq.com \
   -p 8126:8126 \
@@ -386,28 +386,33 @@ docker run -d --name datadog-agent --network policyinsight-network \
 
 Run the web container with `POLICYINSIGHT_WORKER_ENABLED=false` and verify NO polling queries appear:
 
-```bash
-docker run --rm --network policyinsight-network \
-  -e SPRING_PROFILES_ACTIVE=cloudrun \
-  -e POLICYINSIGHT_WORKER_ENABLED=false \
-  -e DB_HOST=postgres \
-  -e DB_PORT=5432 \
-  -e DB_NAME=policyinsight \
-  -e DB_USER=postgres \
-  -e DB_PASSWORD=postgres \
-  -e DD_AGENT_HOST=datadog-agent \
-  -e DATADOG_ENABLED=true \
-  -e DD_SERVICE=policyinsight-web \
-  -e DD_ENV=local \
-  -p 8080:8080 \
-  policyinsight:local
+**PowerShell:**
+```powershell
+docker run --rm --network policy-insight_policyinsight-network `
+  -e SPRING_PROFILES_ACTIVE=cloudrun `
+  -e PORT=8080 `
+  -e POLICYINSIGHT_WORKER_ENABLED=false `
+  -e DB_HOST=policyinsight-postgres -e DB_PORT=5432 -e DB_NAME=policyinsight -e DB_USER=postgres -e DB_PASSWORD=postgres `
+  -p 8081:8080 policyinsight:local
 ```
+
+**Bash:**
+```bash
+docker run --rm --network policy-insight_policyinsight-network \
+  -e SPRING_PROFILES_ACTIVE=cloudrun \
+  -e PORT=8080 \
+  -e POLICYINSIGHT_WORKER_ENABLED=false \
+  -e DB_HOST=policyinsight-postgres -e DB_PORT=5432 -e DB_NAME=policyinsight -e DB_USER=postgres -e DB_PASSWORD=postgres \
+  -p 8081:8080 policyinsight:local
+```
+
+**Pass condition:** You should NOT see repeating SQL polling logs for `policy_jobs` (no `SELECT * FROM policy_jobs ... FOR UPDATE SKIP LOCKED` queries).
 
 **Verification:**
 1. Watch the logs for SQL queries
 2. You should **NOT** see repeating queries like: `SELECT * FROM policy_jobs WHERE status='PENDING' ORDER BY created_at ASC LIMIT ? FOR UPDATE SKIP LOCKED`
 3. The application should start and serve HTTP requests normally
-4. Health endpoint should work: `curl http://localhost:8080/actuator/health`
+4. Health endpoint should work: `curl http://localhost:8081/actuator/health`
 
 **Expected Log Output:**
 - Application starts successfully
@@ -419,22 +424,27 @@ docker run --rm --network policyinsight-network \
 
 Run the worker container with `POLICYINSIGHT_WORKER_ENABLED=true` and verify polling queries appear:
 
-```bash
-docker run --rm --network policyinsight-network \
-  -e SPRING_PROFILES_ACTIVE=cloudrun \
-  -e POLICYINSIGHT_WORKER_ENABLED=true \
-  -e DB_HOST=postgres \
-  -e DB_PORT=5432 \
-  -e DB_NAME=policyinsight \
-  -e DB_USER=postgres \
-  -e DB_PASSWORD=postgres \
-  -e DD_AGENT_HOST=datadog-agent \
-  -e DATADOG_ENABLED=true \
-  -e DD_SERVICE=policyinsight-worker \
-  -e DD_ENV=local \
-  -p 8081:8080 \
+**PowerShell:**
+```powershell
+docker run --rm --network policy-insight_policyinsight-network `
+  -e SPRING_PROFILES_ACTIVE=cloudrun `
+  -e PORT=8080 `
+  -e POLICYINSIGHT_WORKER_ENABLED=true `
+  -e DB_HOST=policyinsight-postgres -e DB_PORT=5432 -e DB_NAME=policyinsight -e DB_USER=postgres -e DB_PASSWORD=postgres `
   policyinsight:local
 ```
+
+**Bash:**
+```bash
+docker run --rm --network policy-insight_policyinsight-network \
+  -e SPRING_PROFILES_ACTIVE=cloudrun \
+  -e PORT=8080 \
+  -e POLICYINSIGHT_WORKER_ENABLED=true \
+  -e DB_HOST=policyinsight-postgres -e DB_PORT=5432 -e DB_NAME=policyinsight -e DB_USER=postgres -e DB_PASSWORD=postgres \
+  policyinsight:local
+```
+
+**Pass condition:** Polling logs appear here (not in web). You **SHOULD** see repeating queries like: `SELECT * FROM policy_jobs WHERE status='PENDING' ORDER BY created_at ASC LIMIT ? FOR UPDATE SKIP LOCKED`
 
 **Verification:**
 1. Watch the logs for SQL queries
