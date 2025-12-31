@@ -55,6 +55,7 @@ logs/
 application-local.properties
 application-*.yml
 !application-local.yml
+!application-cloudrun.yml
 
 # Database
 *.db
