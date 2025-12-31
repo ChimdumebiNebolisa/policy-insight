@@ -71,6 +71,8 @@ spec:
           value: "${DD_AGENT_HOST}"
         - name: POLICYINSIGHT_WORKER_ENABLED
           value: "false"
+        - name: SPRING_AUTOCONFIGURE_EXCLUDE
+          value: "org.springframework.boot.autoconfigure.task.TaskSchedulingAutoConfiguration"
         resources:
           limits:
             cpu: "2"

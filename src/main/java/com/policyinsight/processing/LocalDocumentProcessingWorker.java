@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,12 +38,11 @@ import java.util.UUID;
 
 /**
  * Local worker service that polls the database for PENDING jobs and processes them.
- * Only loads when app.processing.mode=local (or when property is missing, as it's the default)
- * AND policyinsight.worker.enabled=true.
+ * Only loads when policyinsight.worker.enabled=true.
  * Uses @Scheduled to periodically poll for jobs in batches.
  */
 @Service
-@ConditionalOnExpression("'${app.processing.mode:local}' == 'local' && '${policyinsight.worker.enabled:false}' == 'true'")
+@ConditionalOnProperty(prefix = "policyinsight.worker", name = "enabled", havingValue = "true")
 public class LocalDocumentProcessingWorker {
 
     private static final Logger logger = LoggerFactory.getLogger(LocalDocumentProcessingWorker.class);
