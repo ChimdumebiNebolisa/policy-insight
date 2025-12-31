@@ -11,25 +11,31 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.ModelAndView;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-@RestController
+@Controller
 @RequestMapping("/api/documents")
 @Tag(name = "Documents", description = "Document upload and status endpoints")
 public class DocumentController {
+
+    private static final String HX_REQUEST_HEADER = "HX-Request";
 
     private static final Logger logger = LoggerFactory.getLogger(DocumentController.class);
     private static final long MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
@@ -55,9 +61,13 @@ public class DocumentController {
     @Operation(summary = "Upload a PDF document for analysis",
                description = "Accepts a PDF file and returns a job ID for tracking the analysis process")
     @Transactional
-    public ResponseEntity<Map<String, Object>> uploadDocument(
+    public Object uploadDocument(
             @Parameter(description = "PDF file to upload (max 50 MB)")
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request) {
+
+        // Check if this is an htmx request
+        boolean isHtmxRequest = "true".equals(request.getHeader(HX_REQUEST_HEADER));
 
         // Create span for upload operation
         Span uploadSpan = null;
@@ -94,16 +104,18 @@ public class DocumentController {
                     String.format("Invalid file type: %s. Only PDF files (application/pdf) are allowed.", contentType));
         }
 
-            // Generate job UUID
+            // Generate job UUID and request ID for correlation
             UUID jobId = UUID.randomUUID();
+            String requestId = UUID.randomUUID().toString();
             String filename = file.getOriginalFilename();
             if (filename == null || filename.isEmpty()) {
                 filename = "document.pdf";
             }
 
-            // Add job_id to MDC for logging
+            // Add correlation IDs to MDC for logging
             String jobIdStr = Strings.safe(jobId.toString());
             MDC.put("job_id", jobIdStr);
+            MDC.put("request_id", requestId);
 
             if (uploadSpan != null) {
                 uploadSpan.setAttribute("job_id", jobIdStr);
@@ -127,23 +139,29 @@ public class DocumentController {
                 job = policyJobRepository.save(job);
                 logger.info("Job record created in database: jobId={}", jobId);
 
-                // Publish Pub/Sub message
-                jobPublisher.publishJobQueued(jobId, storagePath);
-                logger.info("Job queued event published for job: {}", jobId);
-
-                // Build response
-                Map<String, Object> response = new HashMap<>();
-                response.put("jobId", jobIdStr);
-                response.put("status", "PENDING");
-                response.put("statusUrl", "/api/documents/" + jobId + "/status");
-                response.put("message", "Document uploaded successfully. Processing will begin shortly.");
+                // Publish Pub/Sub message with request_id for correlation
+                jobPublisher.publishJobQueued(jobId, storagePath, requestId);
+                logger.info("Job queued event published for job: {}, requestId: {}", jobId, requestId);
 
                 if (uploadSpan != null) {
                     uploadSpan.setStatus(StatusCode.OK);
                     uploadSpan.setAttribute("status", "PENDING");
                 }
 
-                return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+                // Return HTML fragment for htmx, JSON for API clients
+                if (isHtmxRequest) {
+                    ModelAndView mav = new ModelAndView("fragments/upload-started");
+                    mav.addObject("jobId", jobIdStr);
+                    return mav;
+                } else {
+                    // Build JSON response
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("jobId", jobIdStr);
+                    response.put("status", "PENDING");
+                    response.put("statusUrl", "/api/documents/" + jobId + "/status");
+                    response.put("message", "Document uploaded successfully. Processing will begin shortly.");
+                    return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+                }
 
             } catch (IOException e) {
                 logger.error("Failed to upload file to storage for job: {}", jobId, e);
@@ -168,6 +186,7 @@ public class DocumentController {
                     uploadSpan.end();
                 }
                 MDC.remove("job_id");
+                MDC.remove("request_id");
             }
         }
     }
@@ -175,9 +194,14 @@ public class DocumentController {
     @GetMapping("/{id}/status")
     @Operation(summary = "Get document processing status",
                description = "Returns the current status of a document analysis job")
-    public ResponseEntity<Map<String, Object>> getDocumentStatus(
+    public Object getDocumentStatus(
             @Parameter(description = "Job ID returned from upload endpoint")
-            @PathVariable("id") String id) {
+            @PathVariable("id") String id,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+        // Check if this is an htmx request
+        boolean isHtmxRequest = "true".equals(request.getHeader(HX_REQUEST_HEADER));
 
         UUID jobUuid;
         try {
@@ -189,24 +213,51 @@ public class DocumentController {
         PolicyJob job = policyJobRepository.findByJobUuid(jobUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found: " + id));
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("jobId", job.getJobUuid().toString());
-        response.put("status", job.getStatus());
+        String status = job.getStatus();
+        String jobIdStr = job.getJobUuid().toString();
 
-        // Add status-specific fields
-        if ("SUCCESS".equals(job.getStatus())) {
-            response.put("reportUrl", "/api/documents/" + id + "/report");
-            response.put("message", "Analysis completed successfully");
-        } else if ("FAILED".equals(job.getStatus())) {
-            response.put("errorMessage", job.getErrorMessage());
-            response.put("message", "Analysis failed: " + (job.getErrorMessage() != null ? job.getErrorMessage() : "Unknown error"));
-        } else if ("PROCESSING".equals(job.getStatus())) {
-            response.put("message", "Document is being processed");
+        // Return HTML fragment for htmx, JSON for API clients
+        if (isHtmxRequest) {
+            ModelAndView mav = new ModelAndView("fragments/job-status");
+            mav.addObject("jobId", jobIdStr);
+            mav.addObject("status", status);
+
+            // Add status-specific fields
+            if ("SUCCESS".equals(status)) {
+                mav.addObject("message", "Analysis completed successfully");
+                // Set HX-Redirect header for htmx to redirect to report page
+                response.setHeader("HX-Redirect", "/documents/" + id + "/report");
+            } else if ("FAILED".equals(status)) {
+                mav.addObject("errorMessage", job.getErrorMessage());
+                mav.addObject("message", "Analysis failed: " + (job.getErrorMessage() != null ? job.getErrorMessage() : "Unknown error"));
+            } else if ("PROCESSING".equals(status)) {
+                mav.addObject("message", "Document is being processed");
+            } else {
+                mav.addObject("message", "Job is queued for processing");
+            }
+
+            return mav;
         } else {
-            response.put("message", "Job is queued for processing");
-        }
+            // Build JSON response
+            Map<String, Object> jsonResponse = new HashMap<>();
+            jsonResponse.put("jobId", jobIdStr);
+            jsonResponse.put("status", status);
 
-        return ResponseEntity.ok(response);
+            // Add status-specific fields
+            if ("SUCCESS".equals(status)) {
+                jsonResponse.put("reportUrl", "/documents/" + id + "/report");
+                jsonResponse.put("message", "Analysis completed successfully");
+            } else if ("FAILED".equals(status)) {
+                jsonResponse.put("errorMessage", job.getErrorMessage());
+                jsonResponse.put("message", "Analysis failed: " + (job.getErrorMessage() != null ? job.getErrorMessage() : "Unknown error"));
+            } else if ("PROCESSING".equals(status)) {
+                jsonResponse.put("message", "Document is being processed");
+            } else {
+                jsonResponse.put("message", "Job is queued for processing");
+            }
+
+            return ResponseEntity.ok(jsonResponse);
+        }
     }
 }
 

@@ -35,14 +35,6 @@
                 <span id="upload-spinner" class="htmx-indicator" style="margin-left: 1rem;">Uploading...</span>
             </form>
             <div id="status"></div>
-
-            <!-- Status polling area (for processing status) -->
-            <div id="status-polling"
-                 hx-get="/api/documents/{jobId}/status"
-                 hx-trigger="load, every 2s"
-                 hx-swap="innerHTML"
-                 style="display: none; margin-top: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
-            </div>
         </section>
 
         <section id="disclaimer" class="warning-box">
