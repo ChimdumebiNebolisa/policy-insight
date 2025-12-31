@@ -18,3 +18,8 @@ logging:
     com.policyinsight: DEBUG
     org.springframework.web: DEBUG
 
+# Enable local worker for processing jobs
+policyinsight:
+  worker:
+    enabled: true
+
