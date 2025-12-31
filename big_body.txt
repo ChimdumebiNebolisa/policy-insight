@@ -1,1 +1,0 @@
-{"traceId":"5457a7c2-7111-4fe1-a9ea-c54d9182fbe4","error":"FileSizeExceeded","message":"File size exceeds maximum allowed size (50 MB)","timestamp":"2025-12-29T09:10:40.090033700Z"}
