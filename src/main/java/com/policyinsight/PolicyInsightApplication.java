@@ -13,11 +13,11 @@ public class PolicyInsightApplication {
     }
 
     /**
-     * Enable scheduling only when local processing mode is enabled.
-     * This prevents unnecessary scheduling overhead when using GCP Pub/Sub worker.
+     * Enable scheduling only when the worker is enabled.
+     * This prevents unnecessary scheduling overhead when running web-only instances.
      */
     @EnableScheduling
-    @ConditionalOnProperty(name = "app.processing.mode", havingValue = "local", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "policyinsight.worker", name = "enabled", havingValue = "true")
     static class SchedulingConfiguration {
     }
 }

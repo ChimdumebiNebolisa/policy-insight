@@ -349,6 +349,157 @@ python scripts/datadog/traffic-generator.py \
 - https://app.datadoghq.com/monitors/manage
 - Verify monitors trigger when thresholds are exceeded
 
+## Docker Validation: Web vs Worker Mode
+
+This section provides exact docker run commands to validate that web instances do NOT poll jobs, while worker instances do.
+
+### Prerequisites
+
+1. Build the Docker image:
+```bash
+docker build -t policyinsight:local .
+```
+
+2. Ensure PostgreSQL and Datadog Agent are running (or use docker network):
+```bash
+# Create a network for containers to communicate
+docker network create policyinsight-network
+
+# Start PostgreSQL (if not already running)
+docker run -d --name postgres --network policyinsight-network \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=policyinsight \
+  -p 5432:5432 \
+  postgres:15
+
+# Start Datadog Agent (if not already running)
+docker run -d --name datadog-agent --network policyinsight-network \
+  -e DD_API_KEY=${DD_API_KEY} \
+  -e DD_SITE=datadoghq.com \
+  -p 8126:8126 \
+  -p 8125:8125/udp \
+  gcr.io/datadoghq/agent:7
+```
+
+### Web Mode (No Polling)
+
+Run the web container with `POLICYINSIGHT_WORKER_ENABLED=false` and verify NO polling queries appear:
+
+```bash
+docker run --rm --network policyinsight-network \
+  -e SPRING_PROFILES_ACTIVE=cloudrun \
+  -e POLICYINSIGHT_WORKER_ENABLED=false \
+  -e DB_HOST=postgres \
+  -e DB_PORT=5432 \
+  -e DB_NAME=policyinsight \
+  -e DB_USER=postgres \
+  -e DB_PASSWORD=postgres \
+  -e DD_AGENT_HOST=datadog-agent \
+  -e DATADOG_ENABLED=true \
+  -e DD_SERVICE=policyinsight-web \
+  -e DD_ENV=local \
+  -p 8080:8080 \
+  policyinsight:local
+```
+
+**Verification:**
+1. Watch the logs for SQL queries
+2. You should **NOT** see repeating queries like: `SELECT * FROM policy_jobs WHERE status='PENDING' ORDER BY created_at ASC LIMIT ? FOR UPDATE SKIP LOCKED`
+3. The application should start and serve HTTP requests normally
+4. Health endpoint should work: `curl http://localhost:8080/actuator/health`
+
+**Expected Log Output:**
+- Application starts successfully
+- No scheduled polling messages
+- No `LocalDocumentProcessingWorker` bean creation messages
+- HTTP endpoints respond normally
+
+### Worker Mode (Polling Enabled)
+
+Run the worker container with `POLICYINSIGHT_WORKER_ENABLED=true` and verify polling queries appear:
+
+```bash
+docker run --rm --network policyinsight-network \
+  -e SPRING_PROFILES_ACTIVE=cloudrun \
+  -e POLICYINSIGHT_WORKER_ENABLED=true \
+  -e DB_HOST=postgres \
+  -e DB_PORT=5432 \
+  -e DB_NAME=policyinsight \
+  -e DB_USER=postgres \
+  -e DB_PASSWORD=postgres \
+  -e DD_AGENT_HOST=datadog-agent \
+  -e DATADOG_ENABLED=true \
+  -e DD_SERVICE=policyinsight-worker \
+  -e DD_ENV=local \
+  -p 8081:8080 \
+  policyinsight:local
+```
+
+**Verification:**
+1. Watch the logs for SQL queries
+2. You **SHOULD** see repeating queries like: `SELECT * FROM policy_jobs WHERE status='PENDING' ORDER BY created_at ASC LIMIT ? FOR UPDATE SKIP LOCKED`
+3. Polling should occur every 2 seconds (configurable via `APP_LOCAL_WORKER_POLL_MS`)
+4. The `LocalDocumentProcessingWorker` bean should be created
+
+**Expected Log Output:**
+- Application starts successfully
+- `LocalDocumentProcessingWorker` bean created
+- Periodic polling messages: `Found X pending job(s) to process` (or no jobs if queue is empty)
+- SQL queries for `policy_jobs` table with `FOR UPDATE SKIP LOCKED`
+
+### Quick Validation Script
+
+**PowerShell:**
+```powershell
+# Build image
+docker build -t policyinsight:local .
+
+# Test web mode (should NOT poll)
+Write-Host "Testing web mode (no polling)..." -ForegroundColor Cyan
+docker run --rm --network policyinsight-network `
+  -e SPRING_PROFILES_ACTIVE=cloudrun `
+  -e POLICYINSIGHT_WORKER_ENABLED=false `
+  -e DB_HOST=postgres `
+  -e DB_PORT=5432 `
+  -e DB_NAME=policyinsight `
+  -e DB_USER=postgres `
+  -e DB_PASSWORD=postgres `
+  -e DD_AGENT_HOST=datadog-agent `
+  -e DATADOG_ENABLED=true `
+  -e DD_SERVICE=policyinsight-web `
+  -e DD_ENV=local `
+  -p 8080:8080 `
+  policyinsight:local 2>&1 | Select-String -Pattern "FOR UPDATE SKIP LOCKED|LocalDocumentProcessingWorker|pollAndProcessJobs"
+
+# Should show NO matches (or only startup messages, not polling)
+```
+
+**Bash:**
+```bash
+# Build image
+docker build -t policyinsight:local .
+
+# Test web mode (should NOT poll)
+echo "Testing web mode (no polling)..."
+docker run --rm --network policyinsight-network \
+  -e SPRING_PROFILES_ACTIVE=cloudrun \
+  -e POLICYINSIGHT_WORKER_ENABLED=false \
+  -e DB_HOST=postgres \
+  -e DB_PORT=5432 \
+  -e DB_NAME=policyinsight \
+  -e DB_USER=postgres \
+  -e DB_PASSWORD=postgres \
+  -e DD_AGENT_HOST=datadog-agent \
+  -e DATADOG_ENABLED=true \
+  -e DD_SERVICE=policyinsight-web \
+  -e DD_ENV=local \
+  -p 8080:8080 \
+  policyinsight:local 2>&1 | grep -E "FOR UPDATE SKIP LOCKED|LocalDocumentProcessingWorker|pollAndProcessJobs"
+
+# Should show NO matches (or only startup messages, not polling)
+```
+
 ## Environment Variables
 
 See [.env.example](./.env.example) for all required Datadog environment variables.
