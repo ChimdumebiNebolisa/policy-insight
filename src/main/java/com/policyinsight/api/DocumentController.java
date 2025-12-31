@@ -5,6 +5,7 @@ import com.policyinsight.api.storage.StorageService;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.PolicyJobRepository;
 import com.policyinsight.observability.TracingServiceInterface;
+import com.policyinsight.util.Strings;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -63,9 +64,9 @@ public class DocumentController {
         if (tracingService != null) {
             uploadSpan = tracingService.spanBuilder("upload")
                     .setAttribute("stage", "upload")
-                    .setAttribute("filename", file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown")
+                    .setAttribute("filename", Strings.safe(file.getOriginalFilename()))
                     .setAttribute("file_size_bytes", file.getSize())
-                    .setAttribute("content_type", file.getContentType() != null ? file.getContentType() : "unknown")
+                    .setAttribute("content_type", Strings.safe(file.getContentType()))
                     .startSpan();
         }
 
@@ -101,7 +102,7 @@ public class DocumentController {
             }
 
             // Add job_id to MDC for logging
-            String jobIdStr = jobId.toString();
+            String jobIdStr = Strings.safe(jobId.toString());
             MDC.put("job_id", jobIdStr);
 
             if (uploadSpan != null) {
@@ -114,7 +115,7 @@ public class DocumentController {
                 String storagePath = storageService.uploadFile(jobId, filename, file.getInputStream(), contentType);
                 logger.info("File uploaded to storage: {}", storagePath);
                 if (uploadSpan != null) {
-                    uploadSpan.setAttribute("storage_path", storagePath);
+                    uploadSpan.setAttribute("storage_path", Strings.safe(storagePath));
                 }
 
                 // Create job record in database
@@ -149,7 +150,7 @@ public class DocumentController {
                 if (uploadSpan != null) {
                     uploadSpan.setStatus(StatusCode.ERROR);
                     uploadSpan.setAttribute("error", true);
-                    uploadSpan.setAttribute("error.message", e.getMessage());
+                    uploadSpan.setAttribute("error.message", Strings.safe(e.getMessage()));
                     uploadSpan.recordException(e);
                 }
                 throw new RuntimeException("Failed to upload file to storage", e);
@@ -158,7 +159,7 @@ public class DocumentController {
                 if (uploadSpan != null) {
                     uploadSpan.setStatus(StatusCode.ERROR);
                     uploadSpan.setAttribute("error", true);
-                    uploadSpan.setAttribute("error.message", e.getMessage());
+                    uploadSpan.setAttribute("error.message", Strings.safe(e.getMessage()));
                     uploadSpan.recordException(e);
                 }
                 throw new RuntimeException("Failed to queue job for processing", e);

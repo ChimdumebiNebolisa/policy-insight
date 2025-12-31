@@ -122,6 +122,13 @@
             <version>1.32.0</version>
         </dependency>
 
+        <!-- JSR-305 annotations for nullability -->
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+
         <!-- Google Cloud Storage -->
         <dependency>
             <groupId>com.google.cloud</groupId>
