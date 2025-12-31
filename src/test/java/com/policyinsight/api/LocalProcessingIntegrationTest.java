@@ -66,6 +66,7 @@ class LocalProcessingIntegrationTest {
         registry.add("app.storage.mode", () -> "local");
         registry.add("app.messaging.mode", () -> "local");
         registry.add("app.local-worker.poll-ms", () -> "200"); // Faster polling for tests
+        registry.add("policyinsight.worker.enabled", () -> "true"); // Enable worker for integration tests
     }
 
     @Autowired
