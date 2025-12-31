@@ -16,8 +16,8 @@ spring:
       max-lifetime: 1800000
 
 server:
-  # Cloud Run sets PORT env var; use it if available, fallback to SERVER_PORT, then 8080
-  port: ${PORT:${SERVER_PORT:8080}}
+  port: ${PORT:8080}
+  address: 0.0.0.0
 
 # GCS configuration via env vars
 gcs:
