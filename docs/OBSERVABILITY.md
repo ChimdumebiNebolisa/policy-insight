@@ -50,10 +50,13 @@ Or install Datadog Agent locally:
 
 ### Step 2: Configure Environment Variables
 
+**Important**: Never hardcode API keys or secrets. Always use environment variables.
+
 **PowerShell:**
 ```powershell
-$env:DD_API_KEY = "your-api-key"
-$env:DD_APP_KEY = "your-app-key"
+# Set from environment or .env file
+$env:DD_API_KEY = "your-api-key"  # Get from: https://app.datadoghq.com/organization-settings/api-keys
+$env:DD_APP_KEY = "your-app-key"  # Get from: https://app.datadoghq.com/organization-settings/application-keys
 $env:DD_AGENT_HOST = "localhost"
 $env:DD_SERVICE = "policy-insight"
 $env:DD_ENV = "local"
@@ -64,8 +67,9 @@ $env:DATADOG_ENABLED = "true"
 
 **Bash:**
 ```bash
-export DD_API_KEY=your-api-key
-export DD_APP_KEY=your-app-key
+# Set from environment or .env file
+export DD_API_KEY=your-api-key  # Get from: https://app.datadoghq.com/organization-settings/api-keys
+export DD_APP_KEY=your-app-key  # Get from: https://app.datadoghq.com/organization-settings/application-keys
 export DD_AGENT_HOST=localhost
 export DD_SERVICE=policy-insight
 export DD_ENV=local
@@ -73,6 +77,8 @@ export DD_VERSION=1.0.0
 export DD_LOGS_INJECTION=true
 export DATADOG_ENABLED=true
 ```
+
+**Recommended**: Use `.env` file for local development (see `.env.example` and `docs/SECURITY.md` for details).
 
 ### Step 3: Download dd-java-agent
 
