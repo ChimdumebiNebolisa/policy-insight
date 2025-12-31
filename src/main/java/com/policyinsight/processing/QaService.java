@@ -77,7 +77,7 @@ public class QaService {
         try {
             // Call Gemini with timeout
             long startTime = System.currentTimeMillis();
-            String response = geminiService.generateContent(prompt, QA_TIMEOUT_SECONDS);
+            String response = geminiService.generateContent(prompt, QA_TIMEOUT_SECONDS, "qa");
             long latencyMs = System.currentTimeMillis() - startTime;
 
             logger.debug("Gemini Q&A response received: latencyMs={}, responseLength={}", latencyMs, response.length());

@@ -88,7 +88,7 @@ public class RiskAnalysisService {
         String prompt = buildRiskAnalysisPrompt(chunks, category);
 
         try {
-            String response = geminiService.generateContent(prompt, 10);
+            String response = geminiService.generateContent(prompt, 10, "risk_analysis");
             JsonNode jsonResponse = geminiService.parseJsonResponse(response);
 
             // Validate and extract results

@@ -40,10 +40,12 @@ out/
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# Environment variables and secrets
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # Logs
 *.log
@@ -77,4 +79,26 @@ coverage/
 
 # Local storage (test artifacts)
 .local-storage/
+
+
+# local Datadog scratch
+dd-*.json
+
+# Secret files and credentials
+**/*service-account*.json
+**/*credentials*.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/*secret*.json
+**/*secret*.yml
+**/*secret*.yaml
+**/*secret*.properties
+
+# python cache
+__pycache__/
+*.pyc
 

@@ -29,14 +29,14 @@ if (-not $jarFile) {
     exit 1
 }
 
-# Set environment variables
-$env:SPRING_PROFILES_ACTIVE = "local"
-$env:DB_HOST = "localhost"
-$env:DB_PORT = "5432"
-$env:DB_NAME = "policyinsight"
-$env:DB_USER = "postgres"
-$env:DB_PASSWORD = "postgres"
-$env:SERVER_PORT = "8080"
+# Set environment variables (use existing env vars or defaults for local dev)
+$env:SPRING_PROFILES_ACTIVE = if ($env:SPRING_PROFILES_ACTIVE) { $env:SPRING_PROFILES_ACTIVE } else { "local" }
+$env:DB_HOST = if ($env:DB_HOST) { $env:DB_HOST } else { "localhost" }
+$env:DB_PORT = if ($env:DB_PORT) { $env:DB_PORT } else { "5432" }
+$env:DB_NAME = if ($env:DB_NAME) { $env:DB_NAME } else { "policyinsight" }
+$env:DB_USER = if ($env:DB_USER) { $env:DB_USER } else { "postgres" }
+$env:DB_PASSWORD = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "postgres" }
+$env:SERVER_PORT = if ($env:SERVER_PORT) { $env:SERVER_PORT } else { "8080" }
 
 Write-Host "Starting application with JAR: $($jarFile.Name)" -ForegroundColor Cyan
 Write-Host "Application will be available at: http://localhost:8080" -ForegroundColor Cyan

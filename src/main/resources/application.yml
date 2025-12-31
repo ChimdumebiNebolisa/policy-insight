@@ -69,13 +69,22 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,readiness,info
+        include: health,readiness,info,metrics,prometheus
   endpoint:
     health:
       show-details: when-authorized
+    metrics:
+      enabled: true
   health:
     db:
       enabled: true
+  metrics:
+    export:
+      statsd:
+        enabled: ${datadog.enabled:false}
+        flavor: datadog
+        host: ${DD_AGENT_HOST:localhost}
+        port: ${DD_DOGSTATSD_PORT:8125}
 
 springdoc:
   api-docs:
@@ -126,4 +135,14 @@ vertexai:
   project-id: ${GOOGLE_CLOUD_PROJECT:local-project}
   location: ${VERTEX_AI_LOCATION:us-central1}
   model: ${VERTEX_AI_MODEL:gemini-2.0-flash-exp}
+
+# Datadog observability configuration
+datadog:
+  enabled: ${DATADOG_ENABLED:false}
+  # When enabled=true, requires:
+  # - DD_AGENT_HOST (default: localhost, or datadog-agent in docker-compose)
+  # - DD_SERVICE (default: policy-insight)
+  # - DD_ENV (default: local)
+  # - DD_VERSION (optional, git commit SHA)
+  # - DD_LOGS_INJECTION=true (for trace correlation in logs)
 

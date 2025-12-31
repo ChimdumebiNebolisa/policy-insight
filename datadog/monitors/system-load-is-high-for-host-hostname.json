@@ -1,0 +1,39 @@
+{
+  "id": 17344051,
+  "org_id": 1300825116,
+  "type": "query alert",
+  "name": "System load is high for host {{host.name}}",
+  "message": "## \ud83d\udea8 What\u2019s happening\n\nHigh 1-minute load average detected on host {{host.name}}.\n\nThis alert means the system has more processes waiting to run than it can efficiently handle. A high load average often indicates that the host is under significant resource pressure \u2014 typically due to CPU saturation, blocked I/O, or memory contention. While some load is normal, consistently high load (especially relative to the number of CPU cores) can signal an unhealthy or overloaded system.\n\n---\n\n## \ud83d\udcc8 Impact\n\nIf load remains high, the host may experience:\n\n- Slower system and application performance\n- Backlogged scheduled jobs or delayed processing\n- Increased risk of timeouts, dropped requests, or service degradation\n\nIn environments with strict performance requirements, high load can quickly lead to cascading failures or degraded user experience.\n\n---\n\n## \ud83d\udee0 How to fix (Runbook)\n\n### \ud83d\udd0d Initial troubleshooting\n\n1. Identify the affected host from the alert.\n2. Open [**Infrastructure > Host Details**](/infrastructure) for {{host.name}}.\n3. In the **Metrics tab**, examine:\n   - `system.load.1`\n   - `system.cpu.user`, `system.cpu.system`, `system.io.await`, `system.mem.pct_usable`\n4. Use [**Live Processes**](/process) to find CPU- or I/O-heavy processes.\n5. SSH into the host and run:\n   ```bash\n   uptime\n   top -o %CPU\n   \n### Cause and Resolution\n\nCause | Resolution\n------|------\nCPU-bound processes: | Restart or optimize heavy applications\n------|------\nBlocked I/O or memory pressure | Investigate disk or memory bottlenecks\n------|------\nConcurrent workload spikes | Throttle or redistribute jobs across hosts\n------|------\nConfiguration changes | Roll back recent updates or autoscaling settings if related\n\n        \n###  Related links\n\n* [Host Map](/infrastructure/map)\n* [Live Processes](/process?query=host%3A{{host.name}})\n* [System Dashboards](/dashboard/lists)\n* [Monitor Documentation](https://docs.datadoghq.com/monitors/)\n\n### Who should be notified?\n\nAssign the appropriate notification handle for this alert (e.g., `@slack-infra`, `@pagerduty-core-systems`):  \n`@your-team-handle`",
+  "tags": [
+    "integration:host",
+    "monitor_pack:host"
+  ],
+  "query": "avg(last_5m):avg:system.load.norm.1{*} by {host} > 1",
+  "options": {
+    "thresholds": {
+      "critical": 1.0
+    },
+    "notify_audit": false,
+    "include_tags": false,
+    "notify_no_data": false,
+    "new_host_delay": 300,
+    "silenced": {}
+  },
+  "multi": true,
+  "created_at": 1767059422000,
+  "created": "2025-12-30T01:50:22.191534+00:00",
+  "modified": "2025-12-30T01:50:22.191534+00:00",
+  "deleted": null,
+  "priority": null,
+  "restricted_roles": null,
+  "draft_status": "published",
+  "assets": [],
+  "overall_state_modified": "2025-12-30T01:50:31+00:00",
+  "overall_state": "OK",
+  "creator": {
+    "name": "Datadog Support",
+    "email": "support-user-prod@datadoghq.com",
+    "handle": "support-na-4xvziqpjcmtl",
+    "id": 9109113
+  }
+}

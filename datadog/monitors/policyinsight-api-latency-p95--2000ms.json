@@ -1,0 +1,44 @@
+{
+  "id": 17344845,
+  "org_id": 1300825116,
+  "type": "metric alert",
+  "name": "[PolicyInsight] API Latency P95 > 2000ms",
+  "message": "API latency P95 has exceeded 2000ms for the last 5 minutes.\n\nThis may indicate:\n- Slow database queries\n- External API delays (Gemini, Document AI)\n- Resource constraints\n\n@on-call-engineering",
+  "tags": [
+    "service:policy-insight",
+    "alert_type:latency",
+    "severity:high"
+  ],
+  "query": "avg(last_5m):p95:trace.http.request.duration{service:policy-insight} > 2000",
+  "options": {
+    "thresholds": {
+      "critical": 2000.0,
+      "warning": 1500.0
+    },
+    "notify_audit": false,
+    "require_full_window": false,
+    "notify_no_data": false,
+    "renotify_interval": 60,
+    "escalation_message": "API latency still elevated after 1 hour. Consider scaling or investigating root cause.",
+    "new_host_delay": 300,
+    "include_tags": true,
+    "silenced": {}
+  },
+  "multi": false,
+  "created_at": 1767068454000,
+  "created": "2025-12-30T04:20:54.043684+00:00",
+  "modified": "2025-12-31T00:17:07.873827+00:00",
+  "deleted": null,
+  "priority": 3,
+  "restricted_roles": null,
+  "draft_status": "published",
+  "assets": [],
+  "overall_state_modified": "2025-12-30T04:21:01+00:00",
+  "overall_state": "No Data",
+  "creator": {
+    "name": "Chimdumebi Nebolisa",
+    "email": "chimdumebinebolisa@gmail.com",
+    "handle": "chimdumebinebolisa@gmail.com",
+    "id": 9109112
+  }
+}

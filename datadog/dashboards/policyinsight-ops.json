@@ -1,0 +1,184 @@
+{
+  "id": "84f-gxt-k44",
+  "title": "PolicyInsight-Ops",
+  "description": "Operational dashboard for PolicyInsight service showing latency, error rate, throughput, queue backlog, and LLM cost metrics",
+  "author_handle": "chimdumebinebolisa@gmail.com",
+  "author_name": "Chimdumebi Nebolisa",
+  "layout_type": "free",
+  "url": "/dashboard/84f-gxt-k44/policyinsight-ops",
+  "template_variables": [
+    {
+      "name": "service",
+      "default": "policy-insight",
+      "prefix": "service"
+    },
+    {
+      "name": "env",
+      "default": "*",
+      "prefix": "env"
+    }
+  ],
+  "widgets": [
+    {
+      "id": 1,
+      "definition": {
+        "type": "timeseries",
+        "title": "API Latency (p50, p95, p99)",
+        "requests": [
+          {
+            "q": "avg:trace.http.request.duration{service:policy-insight}.as_count()",
+            "display_type": "line"
+          },
+          {
+            "q": "p95:trace.http.request.duration{service:policy-insight}",
+            "display_type": "line"
+          },
+          {
+            "q": "p99:trace.http.request.duration{service:policy-insight}",
+            "display_type": "line"
+          }
+        ],
+        "yaxis": {
+          "label": "Latency (ms)",
+          "scale": "linear"
+        }
+      },
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 47,
+        "height": 15
+      }
+    },
+    {
+      "id": 2,
+      "definition": {
+        "type": "timeseries",
+        "title": "Error Rate",
+        "requests": [
+          {
+            "q": "sum:trace.http.request.errors{service:policy-insight}.as_count()",
+            "display_type": "bars"
+          }
+        ],
+        "yaxis": {
+          "label": "Errors",
+          "scale": "linear"
+        }
+      },
+      "layout": {
+        "x": 47,
+        "y": 0,
+        "width": 47,
+        "height": 15
+      }
+    },
+    {
+      "id": 3,
+      "definition": {
+        "type": "timeseries",
+        "title": "Throughput (Requests/sec)",
+        "requests": [
+          {
+            "q": "sum:trace.http.request.hits{service:policy-insight}.as_count().as_rate()",
+            "display_type": "line"
+          }
+        ],
+        "yaxis": {
+          "label": "Requests/sec",
+          "scale": "linear"
+        }
+      },
+      "layout": {
+        "x": 0,
+        "y": 15,
+        "width": 47,
+        "height": 15
+      }
+    },
+    {
+      "id": 4,
+      "definition": {
+        "type": "timeseries",
+        "title": "Queue Backlog (Pending Jobs)",
+        "requests": [
+          {
+            "q": "avg:policyinsight.job.backlog{service:policy-insight}",
+            "display_type": "line"
+          }
+        ],
+        "yaxis": {
+          "label": "Jobs",
+          "scale": "linear"
+        },
+        "markers": [
+          {
+            "value": "y = 50",
+            "display_type": "error dashed",
+            "label": "Alert Threshold"
+          }
+        ]
+      },
+      "layout": {
+        "x": 47,
+        "y": 15,
+        "width": 47,
+        "height": 15
+      }
+    },
+    {
+      "id": 5,
+      "definition": {
+        "type": "timeseries",
+        "title": "LLM Cost (USD)",
+        "requests": [
+          {
+            "q": "sum:policyinsight.llm.cost_estimate_usd{service:policy-insight}.as_count()",
+            "display_type": "area"
+          }
+        ],
+        "yaxis": {
+          "label": "USD",
+          "scale": "linear"
+        }
+      },
+      "layout": {
+        "x": 0,
+        "y": 30,
+        "width": 47,
+        "height": 15
+      }
+    },
+    {
+      "id": 6,
+      "definition": {
+        "type": "timeseries",
+        "title": "LLM Latency (ms)",
+        "requests": [
+          {
+            "q": "avg:policyinsight.llm.latency_ms{service:policy-insight}",
+            "display_type": "line"
+          },
+          {
+            "q": "p95:policyinsight.llm.latency_ms{service:policy-insight}",
+            "display_type": "line"
+          }
+        ],
+        "yaxis": {
+          "label": "Latency (ms)",
+          "scale": "linear"
+        }
+      },
+      "layout": {
+        "x": 47,
+        "y": 30,
+        "width": 47,
+        "height": 15
+      }
+    }
+  ],
+  "notify_list": [],
+  "created_at": "2025-12-30T04:23:58.432837+00:00",
+  "modified_at": "2025-12-31T00:17:05.751335+00:00",
+  "restricted_roles": []
+}

@@ -205,9 +205,9 @@ try {
     Write-Host "Verifying connection from HOST to port $dbPort..." -ForegroundColor Cyan
     $psqlPath = Get-Command psql -ErrorAction SilentlyContinue
     if ($psqlPath) {
-        $env:PGPASSWORD = "postgres"
-        $hostFingerprint = psql -h localhost -p $dbPort -U postgres -d postgres -tAc "$fingerprintQuery" 2>&1
-        $env:PGPASSWORD = $null
+    $env:PGPASSWORD = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "postgres" }
+    $hostFingerprint = psql -h localhost -p $dbPort -U postgres -d postgres -tAc "$fingerprintQuery" 2>&1
+    $env:PGPASSWORD = $null
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Host server fingerprint: $($hostFingerprint.Trim())" -ForegroundColor Gray
             Write-Host "   (Connection method: psql -h localhost -p $dbPort)" -ForegroundColor Gray
@@ -364,7 +364,7 @@ if ($finalCheck -ne "1") {
 Write-Host "Verifying database from HOST perspective (Flyway will use this)..." -ForegroundColor Cyan
 $psqlPath = Get-Command psql -ErrorAction SilentlyContinue
 if ($psqlPath) {
-    $env:PGPASSWORD = "postgres"
+    $env:PGPASSWORD = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "postgres" }
     $hostDbCheck = psql -h localhost -p $dbPort -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='policyinsight';" 2>&1
     $env:PGPASSWORD = $null
     $hostDbCheck = $hostDbCheck.Trim()
@@ -384,13 +384,15 @@ if ($psqlPath) {
 
 Write-Host "Running Flyway migrations on port $dbPort..." -ForegroundColor Cyan
 $flywayUrl = "jdbc:postgresql://localhost:$dbPort/policyinsight"
+$dbUser = if ($env:DB_USER) { $env:DB_USER } else { "postgres" }
+$dbPassword = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "postgres" }
 Write-Host "Flyway URL: $flywayUrl" -ForegroundColor Gray
-Write-Host "Flyway user: postgres" -ForegroundColor Gray
-Write-Host "Flyway password: postgres" -ForegroundColor Gray
+Write-Host "Flyway user: $dbUser" -ForegroundColor Gray
+Write-Host "Flyway password: [REDACTED]" -ForegroundColor Gray
 
 try {
     # Explicitly pass all Flyway properties to override pom.xml defaults
-    .\mvnw.cmd flyway:migrate "-Dflyway.url=$flywayUrl" "-Dflyway.user=postgres" "-Dflyway.password=postgres"
+    .\mvnw.cmd flyway:migrate "-Dflyway.url=$flywayUrl" "-Dflyway.user=$dbUser" "-Dflyway.password=$dbPassword"
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[OK] Migrations completed" -ForegroundColor Green
     } else {
@@ -459,7 +461,7 @@ $processEnv = @{
     "DB_PORT" = $dbPort
     "DB_NAME" = "policyinsight"
     "DB_USER" = "postgres"
-    "DB_PASSWORD" = "postgres"
+    "DB_PASSWORD" = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "postgres" }
     "SERVER_PORT" = "8080"
 }
 
@@ -469,7 +471,7 @@ $env:DB_HOST = "localhost"
 $env:DB_PORT = $dbPort
 $env:DB_NAME = "policyinsight"
 $env:DB_USER = "postgres"
-$env:DB_PASSWORD = "postgres"
+$env:DB_PASSWORD = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "postgres" }
 $env:SERVER_PORT = "8080"
 
 Write-Host "Starting Java process with environment variables..." -ForegroundColor Cyan
@@ -500,7 +502,7 @@ $javaArgs = @(
     "-Dspring.profiles.active=local",
     "-Dspring.datasource.url=$datasourceUrl",
     "-Dspring.datasource.username=postgres",
-    "-Dspring.datasource.password=postgres",
+    "-Dspring.datasource.password=$dbPassword",
     "-Dserver.port=8080",
     "-jar",
     "`"$($jarFile.FullName)`""

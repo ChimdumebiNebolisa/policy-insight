@@ -121,7 +121,8 @@ Write-Host ""
 Write-Host "Step 5: Testing connection from HOST machine..." -ForegroundColor Yellow
 $psqlPath = Get-Command psql -ErrorAction SilentlyContinue
 if ($psqlPath) {
-    $env:PGPASSWORD = "postgres"
+    $dbPassword = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "postgres" }
+    $env:PGPASSWORD = $dbPassword
     $escapedQuery = $fingerprintQuery -replace "'", "''"
     $hostCmd = "psql -h localhost -p $detectedPort -U postgres -d postgres -tAc `"$escapedQuery`""
     $hostFingerprint = Get-ServerFingerprint -ConnectionMethod "host psql" -Command $hostCmd

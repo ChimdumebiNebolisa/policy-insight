@@ -1,0 +1,45 @@
+{
+  "data": {
+    "id": "e3c1720a183e595883869506f814285f",
+    "name": "PolicyInsight API Latency SLO",
+    "tags": [
+      "service:policy-insight",
+      "slo_type:latency"
+    ],
+    "monitor_tags": [],
+    "thresholds": [
+      {
+        "timeframe": "7d",
+        "target": 99.0,
+        "target_display": "99.",
+        "warning": 99.5,
+        "warning_display": "99.5"
+      },
+      {
+        "timeframe": "30d",
+        "target": 99.0,
+        "target_display": "99.",
+        "warning": 99.5,
+        "warning_display": "99.5"
+      }
+    ],
+    "type": "metric",
+    "type_id": 1,
+    "description": "99% of API requests complete within 2000ms (P95)",
+    "timeframe": "7d",
+    "warning_threshold": 99.5,
+    "target_threshold": 99.0,
+    "query": {
+      "denominator": "sum:trace.http.request.hits{service:policy-insight}.as_count().as_rate()",
+      "numerator": "sum:trace.http.request.duration{service:policy-insight}.as_count().as_rate()"
+    },
+    "creator": {
+      "name": "Chimdumebi Nebolisa",
+      "handle": "chimdumebinebolisa@gmail.com",
+      "email": "chimdumebinebolisa@gmail.com"
+    },
+    "created_at": 1767140235,
+    "modified_at": 1767140235
+  },
+  "error": null
+}
