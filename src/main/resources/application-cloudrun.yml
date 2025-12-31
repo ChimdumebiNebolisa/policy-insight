@@ -43,6 +43,13 @@ management:
     db:
       enabled: true
 
+# PolicyInsight worker configuration
+policyinsight:
+  worker:
+    enabled: ${POLICYINSIGHT_WORKER_ENABLED:false}
+    # Controls whether background job processing (polling) is enabled
+    # Set to true only on worker instances, false on web instances
+
 # Datadog configuration (DD_SERVICE and DD_VERSION via env vars)
 datadog:
   enabled: ${DATADOG_ENABLED:false}

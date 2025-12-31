@@ -129,6 +129,13 @@ worker:
   enabled: ${WORKER_ENABLED:false}
   # Set to true to enable Pub/Sub message consumption and document processing
 
+# PolicyInsight worker configuration
+policyinsight:
+  worker:
+    enabled: ${POLICYINSIGHT_WORKER_ENABLED:false}
+    # Controls whether background job processing (polling) is enabled
+    # Set to true only on worker instances, false on web instances
+
 # Vertex AI Gemini configuration
 vertexai:
   enabled: ${VERTEX_AI_ENABLED:false}

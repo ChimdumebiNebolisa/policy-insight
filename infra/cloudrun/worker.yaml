@@ -71,6 +71,8 @@ spec:
           value: "${DD_AGENT_HOST}"
         - name: WORKER_ENABLED
           value: "true"
+        - name: POLICYINSIGHT_WORKER_ENABLED
+          value: "true"
         resources:
           limits:
             cpu: "2"
