@@ -48,6 +48,12 @@ public class ReportController {
     /**
      * Display the full risk report for a document.
      * Renders all 5 sections: Overview, Summary, Obligations, Risk Taxonomy, Q&A.
+     * 
+     * @param id The job UUID (jobUuid) as a string, returned from the upload endpoint as "jobId".
+     *           This is the same ID used in:
+     *           - POST /api/documents/upload response: "jobId" field
+     *           - GET /api/documents/{id}/status path parameter
+     *           - HX-Redirect header: "/documents/{id}/report"
      */
     @GetMapping("/documents/{id}/report")
     public String viewReport(@PathVariable("id") String id, Model model) {

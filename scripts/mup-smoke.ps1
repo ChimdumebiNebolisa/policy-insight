@@ -68,7 +68,7 @@ while ($ATTEMPT -lt $MAX_ATTEMPTS) {
         $STATUS_RESPONSE = Invoke-WebRequest -Uri "$BASE_URL/api/documents/$JOB_ID/status" `
             -Headers @{"HX-Request" = "true"} `
             -UseBasicParsing
-        
+
         # Check for HX-Redirect header
         if ($STATUS_RESPONSE.Headers["HX-Redirect"]) {
             $HX_REDIRECT_PRESENT = $true
@@ -76,7 +76,7 @@ while ($ATTEMPT -lt $MAX_ATTEMPTS) {
             Write-Host "[Attempt $($ATTEMPT + 1)/$MAX_ATTEMPTS] Status: SUCCESS (HX-Redirect: $REDIRECT_URL)" -ForegroundColor Green
             break
         }
-        
+
         # Parse HTML fragment to check status
         $HTML_CONTENT = $STATUS_RESPONSE.Content
         if ($HTML_CONTENT -match 'status["\s]*[:=]["\s]*([^"]+)') {
@@ -86,9 +86,9 @@ while ($ATTEMPT -lt $MAX_ATTEMPTS) {
         } else {
             $STATUS = "UNKNOWN"
         }
-        
+
         Write-Host "[Attempt $($ATTEMPT + 1)/$MAX_ATTEMPTS] Status: $STATUS"
-        
+
         if ($STATUS -eq "SUCCESS" -or $STATUS -eq "FAILED") {
             break
         }
@@ -96,7 +96,7 @@ while ($ATTEMPT -lt $MAX_ATTEMPTS) {
         Write-Host "ERROR: Failed to get status: $_" -ForegroundColor Red
         exit 1
     }
-    
+
     Start-Sleep -Seconds 1
     $ATTEMPT++
 }
@@ -122,7 +122,7 @@ try {
     $REPORT_RESPONSE = Invoke-WebRequest -Uri "$BASE_URL/documents/$JOB_ID/report" `
         -UseBasicParsing
     $REPORT_HTML = $REPORT_RESPONSE.Content
-    
+
     # Save report HTML for debugging
     $REPORT_HTML | Out-File -FilePath "report.html" -Encoding UTF8
     Write-Host "Report HTML saved to report.html"
@@ -179,13 +179,13 @@ try {
         -Headers @{"HX-Request" = "true"} `
         -Body $QA_BODY `
         -UseBasicParsing
-    
+
     $QA_HTML = $QA_RESPONSE.Content
-    
+
     # Save Q&A response for debugging
     $QA_HTML | Out-File -FilePath "qa.html" -Encoding UTF8
     Write-Host "Q&A response HTML saved to qa.html"
-    
+
     # Check if response contains citations or "Insufficient evidence"
     if ($QA_HTML -match "citation|citations|Insufficient evidence|insufficient evidence|ABSTAINED") {
         Write-Host "✓ Q&A response contains citations or abstention message" -ForegroundColor Green

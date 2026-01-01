@@ -226,6 +226,7 @@ public class DocumentController {
             if ("SUCCESS".equals(status)) {
                 mav.addObject("message", "Analysis completed successfully");
                 // Set HX-Redirect header for htmx to redirect to report page
+                // Uses the same 'id' (jobUuid) that was returned from upload endpoint as "jobId"
                 response.setHeader("HX-Redirect", "/documents/" + id + "/report");
             } else if ("FAILED".equals(status)) {
                 mav.addObject("errorMessage", job.getErrorMessage());
