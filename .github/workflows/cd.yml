@@ -1,0 +1,315 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  CLOUDSQL_INSTANCE: policyinsight-db
+  GCS_BUCKET_NAME: policyinsight-prod-documents
+  PUBSUB_TOPIC_NAME: policyinsight-analysis-topic
+  PUBSUB_SUBSCRIPTION_NAME: policyinsight-analysis-sub
+  DD_AGENT_HOST: 127.0.0.1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for WIF
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preflight: Validate Required Secrets
+        run: |
+          if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
+            echo "ERROR: GCP_PROJECT_ID secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.WIF_PROVIDER }}" ]; then
+            echo "ERROR: WIF_PROVIDER secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.WIF_SERVICE_ACCOUNT }}" ]; then
+            echo "ERROR: WIF_SERVICE_ACCOUNT secret is not set"
+            exit 1
+          fi
+          echo "✓ All required secrets are configured"
+          echo "✓ GCP_PROJECT_ID is set (length: ${#GCP_PROJECT_ID})"
+          echo "✓ WIF_PROVIDER is set (length: ${#WIF_PROVIDER})"
+          echo "✓ WIF_SERVICE_ACCOUNT is set (length: ${#WIF_SERVICE_ACCOUNT})"
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
+          WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+
+      - name: Extract Version
+        id: version
+        run: |
+          VERSION=$(git rev-parse --short HEAD)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "image=${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/policyinsight:$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ steps.version.outputs.image }} .
+
+      - name: Push to Artifact Registry
+        run: docker push ${{ steps.version.outputs.image }}
+
+      - name: Deploy Web Service (No Traffic)
+        id: deploy-web
+        run: |
+          gcloud run deploy policyinsight-web \
+            --image ${{ steps.version.outputs.image }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --service-account policyinsight-web@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars DD_SERVICE=policyinsight-web,DD_ENV=prod,DD_VERSION=${{ steps.version.outputs.version }},SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GCS_BUCKET_NAME=${{ env.GCS_BUCKET_NAME }},PUBSUB_TOPIC_NAME=${{ env.PUBSUB_TOPIC_NAME }},PUBSUB_SUBSCRIPTION_NAME=${{ env.PUBSUB_SUBSCRIPTION_NAME }},DD_AGENT_HOST=${{ env.DD_AGENT_HOST }},DATADOG_ENABLED=true \
+            --update-secrets DB_HOST=cloudsql-host:latest,DB_PORT=cloudsql-port:latest,DB_NAME=cloudsql-database:latest,DB_USER=cloudsql-username:latest,DB_PASSWORD=cloudsql-password:latest \
+            --add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.CLOUDSQL_INSTANCE }} \
+            --tag web-${{ steps.version.outputs.version }} \
+            --no-traffic
+          echo "revision=$(gcloud run services describe policyinsight-web --region=${{ env.REGION }} --format='value(status.latestReadyRevisionName)')" >> $GITHUB_OUTPUT
+
+      - name: Deploy Worker Service (No Traffic)
+        id: deploy-worker
+        run: |
+          WORKER_SA=policyinsight-worker@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+          gcloud run deploy policyinsight-worker \
+            --image ${{ steps.version.outputs.image }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --ingress all \
+            --timeout=600 \
+            --service-account $WORKER_SA \
+            --set-env-vars DD_SERVICE=policyinsight-worker,DD_ENV=prod,DD_VERSION=${{ steps.version.outputs.version }},POLICYINSIGHT_WORKER_ENABLED=true,SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GCS_BUCKET_NAME=${{ env.GCS_BUCKET_NAME }},PUBSUB_TOPIC_NAME=${{ env.PUBSUB_TOPIC_NAME }},PUBSUB_SUBSCRIPTION_NAME=${{ env.PUBSUB_SUBSCRIPTION_NAME }},DD_AGENT_HOST=${{ env.DD_AGENT_HOST }},DATADOG_ENABLED=true,PUBSUB_PUSH_VERIFICATION_ENABLED=true,PUBSUB_PUSH_EXPECTED_EMAIL=$WORKER_SA,APP_MESSAGING_MODE=gcp,PUBSUB_PUSH_MODE=true \
+            --update-secrets DB_HOST=cloudsql-host:latest,DB_PORT=cloudsql-port:latest,DB_NAME=cloudsql-database:latest,DB_USER=cloudsql-username:latest,DB_PASSWORD=cloudsql-password:latest \
+            --add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.CLOUDSQL_INSTANCE }} \
+            --tag worker-${{ steps.version.outputs.version }} \
+            --no-traffic
+          WORKER_URL=$(gcloud run services describe policyinsight-worker --region=${{ env.REGION }} --format='value(status.url)')
+          echo "revision=$(gcloud run services describe policyinsight-worker --region=${{ env.REGION }} --format='value(status.latestReadyRevisionName)')" >> $GITHUB_OUTPUT
+          echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
+          # Update worker service with audience env var (requires worker URL from previous step)
+          gcloud run services update policyinsight-worker \
+            --region=${{ env.REGION }} \
+            --update-env-vars PUBSUB_PUSH_EXPECTED_AUDIENCE=$WORKER_URL
+
+      - name: Smoke Test Web Service
+        run: |
+          # Get actual service URL and derive host
+          WEB_URL=$(gcloud run services describe policyinsight-web --region=${{ env.REGION }} --format='value(status.url)')
+          HOST=$(echo "$WEB_URL" | sed 's#https://##')
+
+          # Build tag URL from actual host (format: https://TAG---HOST)
+          TAG_URL="https://web-${{ steps.version.outputs.version }}---${HOST}"
+
+          # Test health endpoint on tagged revision
+          curl -f "$TAG_URL/health" || exit 1
+
+          # Test readiness endpoint
+          curl -f "$TAG_URL/readiness" || exit 1
+
+      - name: Smoke Test Worker Service
+        run: |
+          # Verify unauthenticated access is blocked (should return 401/403)
+          WORKER_URL=$(gcloud run services describe policyinsight-worker --region=${{ env.REGION }} --format='value(status.url)')
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$WORKER_URL/health" || echo "000")
+          if [ "$HTTP_CODE" != "401" ] && [ "$HTTP_CODE" != "403" ]; then
+            echo "ERROR: Unauthenticated request should return 401/403, got $HTTP_CODE"
+            exit 1
+          fi
+          echo "✓ Unauthenticated access correctly blocked (HTTP $HTTP_CODE)"
+
+          # Test health endpoint via authenticated proxy
+          gcloud run services proxy policyinsight-worker --region=${{ env.REGION }} --port=8080 &
+          PROXY_PID=$!
+
+          # Wait for proxy to be ready
+          sleep 5
+
+          # Test health endpoint (authenticated via proxy)
+          curl -f http://localhost:8080/health || (kill $PROXY_PID 2>/dev/null; exit 1)
+
+          # Cleanup: kill proxy process
+          kill $PROXY_PID 2>/dev/null || true
+          wait $PROXY_PID 2>/dev/null || true
+
+      - name: Verify Migrations Applied
+        run: |
+          # Flyway runs automatically at Spring Boot startup
+          # Verify by checking if service started successfully (health check passed)
+          # If migrations fail, service won't start and health check will fail
+          echo "Migrations verified via successful service startup (Flyway runs at startup)"
+
+      - name: Promote Web Service Traffic
+        if: success()
+        run: |
+          NEW_REV=${{ steps.deploy-web.outputs.revision }}
+
+          # Get current traffic allocation (may have multiple revisions)
+          TRAFFIC_JSON=$(gcloud run services describe policyinsight-web --region=${{ env.REGION }} --format='json(status.traffic)' 2>/dev/null || echo "[]")
+
+          # Extract previous revision (first non-latest revision, or latest if only one exists)
+          OLD_REV=$(echo "$TRAFFIC_JSON" | grep -o '"revisionName":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
+
+          # If OLD_REV is same as NEW_REV or empty, this is first deployment
+          if [ -z "$OLD_REV" ] || [ "$OLD_REV" = "$NEW_REV" ]; then
+            # First deployment: 100% new
+            gcloud run services update-traffic policyinsight-web \
+              --region=${{ env.REGION }} \
+              --to-revisions=$NEW_REV=100
+          else
+            # Canary: 90% new, 10% old
+            gcloud run services update-traffic policyinsight-web \
+              --region=${{ env.REGION }} \
+              --to-revisions=$NEW_REV=90,$OLD_REV=10
+          fi
+
+      - name: Promote Worker Service Traffic
+        if: success()
+        run: |
+          NEW_REV=${{ steps.deploy-worker.outputs.revision }}
+          # Worker always promotes 100% (no canary)
+          gcloud run services update-traffic policyinsight-worker \
+            --region=${{ env.REGION }} \
+            --to-revisions=$NEW_REV=100
+
+      - name: Configure Pub/Sub Push Subscription
+        if: success()
+        run: |
+          WORKER_URL=${{ steps.deploy-worker.outputs.worker_url }}/internal/pubsub
+          WORKER_SA=policyinsight-worker@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+          # Set explicit audience for token verification (stable, matches worker URL)
+          PUSH_AUDIENCE=${{ steps.deploy-worker.outputs.worker_url }}
+
+          # Check if subscription exists
+          if gcloud pubsub subscriptions describe ${{ env.PUBSUB_SUBSCRIPTION_NAME }} &>/dev/null; then
+            # Update existing subscription (push config and ack deadline)
+            gcloud pubsub subscriptions modify-push-config ${{ env.PUBSUB_SUBSCRIPTION_NAME }} \
+              --push-endpoint="$WORKER_URL" \
+              --push-auth-service-account="$WORKER_SA" \
+              --push-auth-token-audience="$PUSH_AUDIENCE"
+            # Ensure ack-deadline is set to 600 (max) for demo readiness
+            gcloud pubsub subscriptions update ${{ env.PUBSUB_SUBSCRIPTION_NAME }} \
+              --ack-deadline=600
+          else
+            # Create new subscription
+            gcloud pubsub subscriptions create ${{ env.PUBSUB_SUBSCRIPTION_NAME }} \
+              --topic=${{ env.PUBSUB_TOPIC_NAME }} \
+              --push-endpoint="$WORKER_URL" \
+              --push-auth-service-account="$WORKER_SA" \
+              --push-auth-token-audience="$PUSH_AUDIENCE" \
+              --ack-deadline=600 \
+              --message-retention-duration=604800s
+          fi
+
+      - name: Configure Pub/Sub Push Auth IAM Bindings
+        if: success()
+        run: |
+          WORKER_SA=policyinsight-worker@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+
+          # Get project number for Pub/Sub service agent
+          PROJECT_NUMBER=$(gcloud projects describe ${{ env.PROJECT_ID }} --format='value(projectNumber)')
+          PUBSUB_SA=service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com
+
+          # Grant Pub/Sub service agent the Token Creator role on the worker service account
+          # Check if binding already exists to avoid duplicate binding errors, but fail on other errors
+          set +e
+          POLICY_OUTPUT=$(gcloud iam service-accounts get-iam-policy "$WORKER_SA" --format='value(bindings.role,bindings.members)' 2>&1)
+          POLICY_EXIT_CODE=$?
+          set -e
+          if [ $POLICY_EXIT_CODE -ne 0 ]; then
+            echo "ERROR: Failed to get IAM policy for $WORKER_SA: $POLICY_OUTPUT"
+            exit 1
+          fi
+          if ! echo "$POLICY_OUTPUT" | grep -q "roles/iam.serviceAccountTokenCreator.*$PUBSUB_SA"; then
+            gcloud iam service-accounts add-iam-policy-binding "$WORKER_SA" \
+              --member="serviceAccount:$PUBSUB_SA" \
+              --role="roles/iam.serviceAccountTokenCreator"
+          else
+            echo "✓ Token Creator binding already exists for Pub/Sub service agent"
+          fi
+
+          # Grant worker service account the Cloud Run Invoker role on the worker service
+          # Check if binding already exists to avoid duplicate binding errors, but fail on other errors
+          set +e
+          RUN_POLICY_OUTPUT=$(gcloud run services get-iam-policy policyinsight-worker --region=${{ env.REGION }} --format='value(bindings.role,bindings.members)' 2>&1)
+          RUN_POLICY_EXIT_CODE=$?
+          set -e
+          if [ $RUN_POLICY_EXIT_CODE -ne 0 ]; then
+            echo "ERROR: Failed to get IAM policy for policyinsight-worker: $RUN_POLICY_OUTPUT"
+            exit 1
+          fi
+          if ! echo "$RUN_POLICY_OUTPUT" | grep -q "roles/run.invoker.*$WORKER_SA"; then
+            gcloud run services add-iam-policy-binding policyinsight-worker \
+              --region=${{ env.REGION }} \
+              --member="serviceAccount:$WORKER_SA" \
+              --role="roles/run.invoker"
+          else
+            echo "✓ Run Invoker binding already exists for worker service account"
+          fi
+
+      - name: Verify Pub/Sub Push Subscription Configuration
+        if: success()
+        run: |
+          WORKER_URL=${{ steps.deploy-worker.outputs.worker_url }}/internal/pubsub
+          WORKER_SA=policyinsight-worker@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+          PUSH_AUDIENCE=${{ steps.deploy-worker.outputs.worker_url }}
+
+          # Describe subscription and extract push config
+          SUB_DESC=$(gcloud pubsub subscriptions describe ${{ env.PUBSUB_SUBSCRIPTION_NAME }} --format=json)
+
+          # Verify push endpoint
+          PUSH_ENDPOINT=$(echo "$SUB_DESC" | jq -r '.pushConfig.pushEndpoint // empty')
+          if [ "$PUSH_ENDPOINT" != "$WORKER_URL" ]; then
+            echo "ERROR: Push endpoint mismatch. Expected: $WORKER_URL, Got: $PUSH_ENDPOINT"
+            exit 1
+          fi
+          echo "✓ Push endpoint matches: $PUSH_ENDPOINT"
+
+          # Verify push auth service account
+          PUSH_AUTH_SA=$(echo "$SUB_DESC" | jq -r '.pushConfig.oidcToken.serviceAccountEmail // empty')
+          if [ "$PUSH_AUTH_SA" != "$WORKER_SA" ]; then
+            echo "ERROR: Push auth service account mismatch. Expected: $WORKER_SA, Got: $PUSH_AUTH_SA"
+            exit 1
+          fi
+          echo "✓ Push auth service account matches: $PUSH_AUTH_SA"
+
+          # Verify push auth audience (if set)
+          PUSH_AUTH_AUD=$(echo "$SUB_DESC" | jq -r '.pushConfig.oidcToken.audience // empty')
+          if [ -n "$PUSH_AUDIENCE" ] && [ "$PUSH_AUTH_AUD" != "$PUSH_AUDIENCE" ]; then
+            echo "ERROR: Push auth audience mismatch. Expected: $PUSH_AUDIENCE, Got: $PUSH_AUTH_AUD"
+            exit 1
+          fi
+          if [ -n "$PUSH_AUTH_AUD" ]; then
+            echo "✓ Push auth audience matches: $PUSH_AUTH_AUD"
+          fi
+
+          echo "✓ Pub/Sub push subscription configuration verified"
+
+      - name: Final Health Check
+        run: |
+          WEB_URL=$(gcloud run services describe policyinsight-web --region=${{ env.REGION }} --format='value(status.url)')
+          curl -f "$WEB_URL/health" || exit 1
+          curl -f "$WEB_URL/readiness" || exit 1
+

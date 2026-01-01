@@ -1,0 +1,57 @@
+# Cloud Run profile configuration
+# Activates when SPRING_PROFILES_ACTIVE=cloudrun
+
+spring:
+  datasource:
+    # Support both JDBC URL and individual components
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD}}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+
+# GCS configuration via env vars
+gcs:
+  bucket-name: ${GCS_BUCKET_NAME}
+
+# Pub/Sub configuration via env vars
+pubsub:
+  enabled: ${PUBSUB_ENABLED:true}
+  project-id: ${GOOGLE_CLOUD_PROJECT}
+  topic-name: ${PUBSUB_TOPIC_NAME}
+  subscription-name: ${PUBSUB_SUBSCRIPTION_NAME}
+
+# Ensure health and readiness endpoints work
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,readiness,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    db:
+      enabled: true
+
+# PolicyInsight worker configuration
+policyinsight:
+  worker:
+    enabled: ${POLICYINSIGHT_WORKER_ENABLED:false}
+    # Controls whether background job processing (polling) is enabled
+    # Set to true only on worker instances, false on web instances
+
+# Datadog configuration (DD_SERVICE and DD_VERSION via env vars)
+datadog:
+  enabled: ${DATADOG_ENABLED:false}
+  # DD_SERVICE and DD_VERSION should be set via environment variables
+

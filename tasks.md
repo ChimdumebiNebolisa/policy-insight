@@ -87,7 +87,7 @@ This file tracks the implementation milestones for PolicyInsight, derived from t
 - Document classification (rules-based + optional LLM)
 
 **Acceptance Criteria:**
-- ✅ Document AI extracts text and OCR from PDFs
+- ✅ Document AI extracts text and OCR from PDFs (stub implementation, fallback used by default)
 - ✅ Fallback mechanism works when Document AI unavailable
 - ✅ Text chunked into semantic segments with page/offset tracking
 - ✅ Chunks stored in document_chunks table
@@ -217,34 +217,89 @@ This file tracks the implementation milestones for PolicyInsight, derived from t
 - Rollback strategy and versioning
 - Health check validation after deployment
 
-**Acceptance Criteria:**
-- ✅ Cloud Run services deployed (web + worker)
-- ✅ Cloud SQL instance with database and migrations applied
-- ✅ GCS bucket accessible from services
-- ✅ Pub/Sub configured and working
-- ✅ GitHub Actions CD deploys on merge to main
-- ✅ Deployment includes version tags (DD_VERSION)
-- ✅ Rollback workflow tested
-- ✅ Health checks pass after deployment
+**Decisions:**
+- **Auth:** Workload Identity Federation (OIDC) via `google-github-actions/auth@v1` (no JSON keys). Workflow permissions: `contents: read`, `id-token: write`.
+- **Deploy Strategy:** Deploy new revision with `--no-traffic` and attach revision tag (e.g., `web-${VERSION}`). Smoke tests hit tag URL derived from service's actual `status.url` (format: `https://TAG---HOST` where HOST is extracted from service URL). Promote traffic after verification.
+- **Worker Model:** Cloud Run service (not worker pool) with ingress `all` (default, allows Pub/Sub push) and `--no-allow-unauthenticated` (IAM auth required). Pub/Sub push subscription with authenticated invocation to `/internal/pubsub` endpoint. Worker is secured via IAM (not ingress restriction) - unauthenticated requests return 401/403.
+- **Traffic Rules:** WEB may canary (90/10) when previous revision exists; WORKER always promotes 100% (no canary).
+- **Cloud SQL:** Cloud Run service attached via `--add-cloudsql-instances` annotation, which provides Unix socket at `/cloudsql/INSTANCE_CONNECTION_NAME`. Application uses standard PostgreSQL JDBC driver with TCP connection to `DB_HOST:DB_PORT` (Cloud SQL instance's private IP via VPC connector or public IP). Connection details stored in Secret Manager. Flyway runs automatically at Spring Boot startup; verify via `flyway_schema_history` table after deploy using Cloud SQL Auth Proxy or direct connection.
+- **Pub/Sub Push Auth:** Requires IAM bindings: (1) Grant `roles/iam.serviceAccountTokenCreator` to Pub/Sub service agent `service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com` on the push-auth service account (worker service account), (2) Grant `roles/run.invoker` on the worker service to the push-auth service account (worker service account).
+
+**Acceptance Criteria (with verification commands):**
+
+1. **Cloud Run services deployed (web + worker)**
+   - Verification: `gcloud run services list --region=us-central1 --format="table(metadata.name,status.url)"` shows both `policyinsight-web` and `policyinsight-worker`
+   - Verification: `curl -f $(gcloud run services describe policyinsight-web --region=us-central1 --format='value(status.url)')/health` returns 200
+   - Verification: Unauthenticated request to worker returns 401/403: `curl -v $(gcloud run services describe policyinsight-worker --region=us-central1 --format='value(status.url)')/health` shows 401 or 403 (proves IAM auth is required)
+   - Verification: Authenticated worker health check succeeds: `gcloud run services proxy policyinsight-worker --region=us-central1 --port=8080 & sleep 2 && curl -f http://localhost:8080/health && pkill -f "gcloud run services proxy"`
+
+2. **Cloud SQL instance with database and migrations applied**
+   - Verification: `gcloud sql instances describe policyinsight-db --format='value(name,connectionName)'` shows instance exists
+   - Verification: `gcloud sql databases list --instance=policyinsight-db --format='value(name)'` includes `policyinsight`
+   - Verification: After deployment, connect via Cloud SQL Auth Proxy and run `SELECT COUNT(*) FROM flyway_schema_history;` shows migration count > 0 (or verify service startup succeeded, which indicates Flyway ran)
+
+3. **GCS bucket accessible from services**
+   - Verification: `gsutil ls gs://policyinsight-prod-documents` succeeds
+   - Verification: Upload test file via API, then `gsutil ls gs://policyinsight-prod-documents/` shows the file
+
+4. **Pub/Sub configured and working**
+   - Verification: `gcloud pubsub topics list --format='value(name)'` includes `policyinsight-analysis-topic`
+   - Verification: `gcloud pubsub subscriptions list --format='value(name)'` includes `policyinsight-analysis-sub`
+   - Verification: `gcloud pubsub subscriptions describe policyinsight-analysis-sub --format='value(pushConfig.pushEndpoint)'` shows worker service URL with `/internal/pubsub` path
+   - Verification: `gcloud pubsub subscriptions describe policyinsight-analysis-sub --format='value(pushConfig.pushAuthServiceAccount)'` shows worker service account (authenticated push)
+   - Verification: Upload document via API, verify Pub/Sub message published and worker processes it: `gcloud pubsub subscriptions pull policyinsight-analysis-sub --limit=1 --format=json`
+
+5. **GitHub Actions CD deploys on merge to main**
+   - Verification: Push to main branch, workflow `.github/workflows/cd.yml` runs successfully
+   - Verification: New revision deployed with `--no-traffic` and tag (e.g., `web-abc1234`), smoke tests pass using tag URL, traffic promoted
+
+6. **Tagged revision smoke tests use correct tag URL format**
+   - Verification: CD workflow derives tag URL from service's actual `status.url`: `WEB_URL=$(gcloud run services describe policyinsight-web --region=$REGION --format='value(status.url)')`, `HOST=$(echo "$WEB_URL" | sed 's#https://##')`, `TAG_URL="https://web-${VERSION}---${HOST}"`
+   - Verification: Smoke test hits `$TAG_URL/health` and `$TAG_URL/readiness` successfully
+
+7. **Deployment includes version tags (DD_VERSION)**
+   - Verification: `gcloud run services describe policyinsight-web --region=us-central1 --format='value(spec.template.spec.containers[0].env)' | grep DD_VERSION` shows `DD_VERSION=abc1234` (git commit SHA)
+   - Verification: Datadog traces show `version` tag matching git commit SHA
+
+8. **Rollback workflow handles traffic shift correctly**
+   - Verification: Run `.github/workflows/rollback.yml` manually with `service=web`, verify traffic shifts to previous revision
+   - Verification: Rollback workflow lists revisions, selects previous revision deterministically, fails clearly if none exists
+   - Verification: `gcloud run services describe policyinsight-web --region=us-central1 --format='value(status.traffic)'` shows previous revision receiving traffic
+   - Verification: Health checks pass after rollback
+
+9. **Health checks pass after deployment**
+   - Verification: `curl -f $(gcloud run services describe policyinsight-web --region=us-central1 --format='value(status.url)')/health` returns 200 with `{"status":"UP"}`
+   - Verification: `curl -f $(gcloud run services describe policyinsight-web --region=us-central1 --format='value(status.url)')/readiness` returns 200 with `{"status":"UP"}`
+
+10. **Pub/Sub push authentication IAM bindings configured**
+    - Verification: `gcloud iam service-accounts get-iam-policy policyinsight-worker@${PROJECT_ID}.iam.gserviceaccount.com --format='value(bindings.role,bindings.members)' | grep serviceAccountTokenCreator` shows Pub/Sub service agent
+    - Verification: `gcloud run services get-iam-policy policyinsight-worker --region=us-central1 --format='value(bindings.role,bindings.members)' | grep run.invoker` shows worker service account
+
+**Implementation Files:**
+- `.github/workflows/cd.yml` - CD workflow with WIF auth, build, deploy with tags, smoke tests (tag URL derivation), traffic promotion
+- `.github/workflows/rollback.yml` - Manual rollback workflow with traffic shift (handles missing previous revision)
+- `infra/cloudrun/web.yaml` - Cloud Run web service config (DD_VERSION, Cloud SQL annotation)
+- `infra/cloudrun/worker.yaml` - Cloud Run worker service config (DD_VERSION, ingress all for Pub/Sub push, Cloud SQL annotation)
+- `DEPLOYMENT.md` - Complete GCP setup guide with WIF, Cloud SQL, GCS, Pub/Sub, IAM bindings (corrected push auth)
 
 **Demo Evidence:**
 - Screenshot: Cloud Run services running
 - Screenshot: Cloud SQL database with tables
 - Screenshot: GitHub Actions CD workflow success
-- Screenshot: Deployment version tags
+- Screenshot: Deployment version tags (DD_VERSION in service env vars)
 - Screenshot: Rollback execution (test scenario)
 
 ---
 
 ## Progress Tracking
 
-- [ ] Milestone 1: Repo scaffold + local run + CI
-- [ ] Milestone 2: Database schema + JPA layer
-- [ ] Milestone 3: Document upload + cloud storage
-- [ ] Milestone 4: Document processing pipeline
-- [ ] Milestone 5: Risk analysis + report generation
-- [ ] Milestone 6: Q&A system + UI foundation
-- [ ] Milestone 7: Export & sharing
-- [ ] Milestone 8: Datadog observability
-- [ ] Milestone 9: Cloud deployment + CI/CD
+- [x] Milestone 1: Repo scaffold + local run + CI
+- [x] Milestone 2: Database schema + JPA layer
+- [x] Milestone 3: Document upload + cloud storage
+- [x] Milestone 4: Document processing pipeline
+- [x] Milestone 5: Risk analysis + report generation
+- [x] Milestone 6: Q&A system + UI foundation
+- [x] Milestone 7: Export & sharing
+- [x] Milestone 8: Datadog observability
+- [x] Milestone 9: Cloud deployment + CI/CD
 

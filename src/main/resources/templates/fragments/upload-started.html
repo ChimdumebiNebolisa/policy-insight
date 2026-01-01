@@ -1,0 +1,13 @@
+<div style="margin-top: 1rem;">
+    <p><strong>Document uploaded successfully!</strong></p>
+    <p>Job ID: <code th:text="${jobId}"></code></p>
+    <div id="poll"
+         th:attr="hx-get='/api/documents/' + ${jobId} + '/status'"
+         hx-trigger="load, every 2s"
+         hx-target="#status"
+         hx-swap="innerHTML"
+         style="margin-top: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px; border: 1px solid #dee2e6;">
+        <p>Processing document... <span style="color: #6c757d;">Checking status…</span></p>
+    </div>
+</div>
+

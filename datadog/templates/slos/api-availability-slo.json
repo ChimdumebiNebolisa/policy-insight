@@ -1,0 +1,26 @@
+{
+  "name": "PolicyInsight API Availability SLO",
+  "description": "99.9% of API requests return successful responses (2xx, 3xx)",
+  "type": "metric",
+  "query": {
+    "numerator": "sum:trace.http.request.hits{service:policy-insight,http.status_code:2xx,http.status_code:3xx}.as_count()",
+    "denominator": "sum:trace.http.request.hits{service:policy-insight}.as_count()"
+  },
+  "thresholds": [
+    {
+      "timeframe": "7d",
+      "target": 99.9,
+      "warning": 99.95
+    },
+    {
+      "timeframe": "30d",
+      "target": 99.9,
+      "warning": 99.95
+    }
+  ],
+  "tags": [
+    "service:policy-insight",
+    "slo_type:availability"
+  ]
+}
+

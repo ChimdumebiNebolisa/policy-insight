@@ -1,0 +1,39 @@
+{
+  "id": 17344048,
+  "org_id": 1300825116,
+  "type": "query alert",
+  "name": "CPU usage is high for host {{host.name}}",
+  "message": "## \ud83d\udea8 What\u2019s happening\n\nHigh CPU usage detected on host {{host.name}}.\n\nThis means the host is spending most of its time actively processing, with very little idle CPU capacity available. It typically signals that the system is under heavy load \u2014 either from intense workloads, misbehaving processes, or increased traffic.\n\n---\n\n## \ud83d\udcc8 Impact\n\nIf CPU usage remains high over time, it can lead to:\n\n- Sluggish application and system performance\n- Delayed or stalled background jobs\n- Timeouts, degraded services, or crashes due to resource exhaustion\n\nThis may affect critical applications running on this host and lead to broader service degradation if not addressed promptly.\n\n---\n\n## Runbook\n\n### Initial Troubleshooting Steps\n\n1. **Identify the affected host** from the alert.\n2. Open [**Infrastructure > Host Details**](/infrastructure?tags=host%3A{{host.name}}) in Datadog.\n3. In the **Metrics** tab, examine:\n   - `system.cpu.user`, `system.cpu.system`, `system.cpu.idle`\n   - `process.cpu.total_pct`, `process.*` metrics\n4. Use [**Live Processes**](/process?query=host%3A{{host.name}}) to view real-time CPU usage.\n5. SSH into the host (if needed) and run:\n   ```bash\n   top -o %CPU\n   \n### Cause and Resolution\n\nCause | Resolution\n------|------\nRunaway processes | **Restart or stop** high-CPU processes if they\u2019re stuck or misbehaving.\n------|------\nTraffic/load spike | Scale out or up the infrastructure\n------|------\nCode/deployment issue | Roll back recent changes or investigate further.\n------|------\nContainer/JVM misconfiguration | Tune resource limits and runtime settings\n        \n###  Related links\n\n* [Host Map](/infrastructure/map)\n* [Live Processes](/process?query=host%3A{{host.name}})\n* [System Dashboards](/dashboard/lists)\n* [Monitor Documentation](https://docs.datadoghq.com/monitors/)\n\n### Who should be notified?\n\nAssign the appropriate notification handle for this alert (e.g., `@slack-infra`, `@pagerduty-core-systems`):  \n`@your-team-handle`",
+  "tags": [
+    "integration:host",
+    "monitor_pack:host"
+  ],
+  "query": "avg(last_5m):100 - avg:system.cpu.idle{*} by {host} > 90",
+  "options": {
+    "thresholds": {
+      "critical": 90.0
+    },
+    "notify_audit": false,
+    "include_tags": false,
+    "notify_no_data": false,
+    "new_host_delay": 300,
+    "silenced": {}
+  },
+  "multi": true,
+  "created_at": 1767059421000,
+  "created": "2025-12-30T01:50:21.888875+00:00",
+  "modified": "2025-12-30T01:50:21.888875+00:00",
+  "deleted": null,
+  "priority": null,
+  "restricted_roles": null,
+  "draft_status": "published",
+  "assets": [],
+  "overall_state_modified": "2025-12-30T01:50:29+00:00",
+  "overall_state": "OK",
+  "creator": {
+    "name": "Datadog Support",
+    "email": "support-user-prod@datadoghq.com",
+    "handle": "support-na-4xvziqpjcmtl",
+    "id": 9109113
+  }
+}

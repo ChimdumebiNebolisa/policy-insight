@@ -1,0 +1,39 @@
+{
+  "id": 17344053,
+  "org_id": 1300825116,
+  "type": "query alert",
+  "name": "Network traffic (sent) is high on host {{host.name}}",
+  "message": "## \ud83d\udea8 What's happening\n\nHigh outgoing network traffic detected on host {{host.name}}.\n\nThis means the host is sending a sustained high volume of data \u2014 with the 15-minute average of `system.net.bytes_sent` exceeding **80 MB/min**. This typically points to large data exports, logging spikes, backup activity, or misconfigured services.\n\n***\n\n## \ud83d\udcc8 Impact\n\nIf network traffic remains elevated, it can lead to:\n\n-   **Bandwidth saturation**, resulting in packet loss or throttling\n-   **Degraded performance** for outbound services like APIs, exporters, or clients\n-   **Delays in data processing**, backups, or inter-service communication\n-   **Resource contention** on shared hosts or virtualized environments\n\nThis may prevent the host from reliably transmitting time-sensitive or critical data, potentially impacting service-level objectives.\n\n***\n\n## Runbook\n\n### Initial Troubleshooting Steps\n\n1.  **Identify the affected host** from the alert.\n\n2.  Open [**Infrastructure > Host Details**](/infrastructure) in Datadog.\n\n3.  In the **Metrics** tab, examine:\n\n    -   `system.net.bytes_sent`, `system.net.bytes_rcvd`\n    -   Interface metrics (`system.net.iface.*`)\n\n4.  Check application logs or exporters for spikes in outbound traffic.\n\n5.  Use tools like `iftop`, `nload`, or `netstat` to inspect top outbound connections.\n\n6.  (If needed) SSH into the host and run:\n\n    ```\n    bash\n    CopyEdit\n    sudo iftop -i <interface>\n    ```\n\n### Cause and Resolution\n\n| Cause                                            | Resolution                                      |\n| ------------------------------------------------ | ----------------------------------------------- |\n| Large data exports (e.g., backups, log shipping) | Schedule exports off-peak or throttle bandwidth |\n| Misconfigured services flooding traffic          | Review configs and reduce payloads or frequency |\n| Traffic spike from application behavior          | Add caching or batching; review architecture    |\n| Third-party abuse or unintended syncs            | Audit external endpoints and restrict access    |\n\n***\n\n### Related links\n\n-   [Host Map](/infrastructure/map)\n-   [Live Processes](/process)\n-   [System Dashboards](/dashboard/lists)\n-   [Monitor Documentation](https://docs.datadoghq.com/monitors/)\n\n***\n\n### Who should be notified?\n\nPlease assign the appropriate notification handle for this alert (e.g., `@slack-networking`, `@pagerduty-platform-oncall`):\\\n`@your-team-handle`",
+  "tags": [
+    "integration:host",
+    "monitor_pack:host"
+  ],
+  "query": "avg(last_15m):avg:system.net.bytes_sent{*} by {host} / (1024 * 1024 * 1024) > 0.08",
+  "options": {
+    "thresholds": {
+      "critical": 0.08
+    },
+    "notify_audit": false,
+    "include_tags": false,
+    "notify_no_data": false,
+    "new_host_delay": 300,
+    "silenced": {}
+  },
+  "multi": true,
+  "created_at": 1767059422000,
+  "created": "2025-12-30T01:50:22.391032+00:00",
+  "modified": "2025-12-30T01:50:22.391032+00:00",
+  "deleted": null,
+  "priority": null,
+  "restricted_roles": null,
+  "draft_status": "published",
+  "assets": [],
+  "overall_state_modified": "2025-12-30T01:50:26+00:00",
+  "overall_state": "OK",
+  "creator": {
+    "name": "Datadog Support",
+    "email": "support-user-prod@datadoghq.com",
+    "handle": "support-na-4xvziqpjcmtl",
+    "id": 9109113
+  }
+}

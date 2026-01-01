@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PolicyInsight – Upload Document</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
     <header>
@@ -16,9 +17,11 @@
         <section id="upload-section">
             <h2>Upload Document</h2>
             <form id="upload-form"
-                  action="/api/documents/upload"
-                  method="post"
-                  enctype="multipart/form-data">
+                  hx-post="/api/documents/upload"
+                  hx-target="#status"
+                  hx-swap="innerHTML"
+                  hx-encoding="multipart/form-data"
+                  hx-indicator="#upload-spinner">
                 <div class="form-group">
                     <label for="file-input">Select PDF:</label>
                     <input type="file"
@@ -26,9 +29,10 @@
                            name="file"
                            accept=".pdf"
                            required>
-                    <small>Max 20 MB</small>
+                    <small>Max 50 MB</small>
                 </div>
                 <button type="submit" class="btn-primary">Analyze Document</button>
+                <span id="upload-spinner" class="htmx-indicator" style="margin-left: 1rem;">Uploading...</span>
             </form>
             <div id="status"></div>
         </section>

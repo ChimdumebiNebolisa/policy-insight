@@ -1,0 +1,30 @@
+{
+  "name": "[PolicyInsight] LLM Cost Anomaly",
+  "type": "metric alert",
+  "query": "avg(last_1h):anomalies(sum:policyinsight.llm.cost_estimate_usd{service:policy-insight}.as_count(), 'basic', 2) >= 1",
+  "message": "LLM cost has exceeded normal baseline by 2 standard deviations in the last hour.\n\nThis may indicate:\n- Unusual spike in document processing volume\n- Inefficient prompts causing high token usage\n- Potential abuse or misconfiguration\n\nCheck:\n- Recent document uploads\n- LLM token usage per request\n- Prompt optimization opportunities\n\n@on-call-engineering",
+  "tags": [
+    "service:policy-insight",
+    "alert_type:cost",
+    "severity:medium"
+  ],
+  "options": {
+    "thresholds": {
+      "critical": 1
+    },
+    "notify_audit": false,
+    "require_full_window": true,
+    "notify_no_data": false,
+    "renotify_interval": 120,
+    "escalation_message": "LLM cost anomaly persists. Review usage patterns and consider rate limiting.",
+    "no_data_timeframe": 30
+  },
+  "priority": 2,
+  "incident_setting": {
+    "create_incident": true,
+    "incident_title": "[PolicyInsight] LLM Cost Anomaly Detected",
+    "incident_severity": "medium",
+    "incident_notification_handles": ["@on-call-engineering"]
+  }
+}
+

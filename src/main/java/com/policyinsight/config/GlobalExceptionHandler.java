@@ -12,24 +12,42 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * Helper method to create a consistent error response body.
+     * @param status HTTP status code
+     * @param message Human-readable error message
+     * @return Map containing "error" and "message" keys
+     */
+    private Map<String, Object> errorBody(HttpStatus status, String message) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", status.name());
+        response.put("message", message);
+        response.put("timestamp", Instant.now().toString());
+        String traceId = MDC.get("correlationId");
+        if (traceId != null) {
+            response.put("traceId", traceId);
+        }
+        return response;
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> response = errorBody(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred"
+        );
         response.put("error", ex.getClass().getSimpleName());
-        response.put("message", ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred");
-        response.put("timestamp", Instant.now().toString());
-        response.put("traceId", MDC.get("correlationId"));
-
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(MethodArgumentNotValidException ex) {
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> response = errorBody(HttpStatus.BAD_REQUEST, "Validation failed");
         Map<String, String> errors = new HashMap<>();
 
         ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -38,35 +56,38 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
-        response.put("error", "ValidationError");
-        response.put("message", "Validation failed");
         response.put("errors", errors);
-        response.put("timestamp", Instant.now().toString());
-        response.put("traceId", MDC.get("correlationId"));
-
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, Object>> handleMaxUploadSizeException(MaxUploadSizeExceededException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "FileSizeExceeded");
-        response.put("message", "File size exceeds maximum allowed size (20 MB)");
-        response.put("timestamp", Instant.now().toString());
-        response.put("traceId", MDC.get("correlationId"));
-
+        Map<String, Object> response = errorBody(
+                HttpStatus.BAD_REQUEST,
+                "File size exceeds maximum allowed size (50 MB)"
+        );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(IllegalArgumentException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "IllegalArgument");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", Instant.now().toString());
-        response.put("traceId", MDC.get("correlationId"));
-
+        String message = ex.getMessage() != null ? ex.getMessage() : "Invalid argument";
+        Map<String, Object> response = errorBody(HttpStatus.BAD_REQUEST, message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<Map<String, Object>> handleNoSuchElementException(NoSuchElementException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "Resource not found";
+        Map<String, Object> response = errorBody(HttpStatus.NOT_FOUND, message);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalStateException(IllegalStateException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "Invalid state";
+        Map<String, Object> response = errorBody(HttpStatus.CONFLICT, message);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 }
 

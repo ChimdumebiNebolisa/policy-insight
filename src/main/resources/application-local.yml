@@ -1,9 +1,10 @@
 # Local development overrides
+# Note: For production, use environment variables instead of hardcoded values
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/policyinsight
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:policyinsight}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
 
   jpa:
     show-sql: true
@@ -16,4 +17,9 @@ logging:
     root: INFO
     com.policyinsight: DEBUG
     org.springframework.web: DEBUG
+
+# Enable local worker for processing jobs
+policyinsight:
+  worker:
+    enabled: true
 

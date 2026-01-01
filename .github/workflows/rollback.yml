@@ -1,0 +1,170 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to rollback (web, worker, or both)'
+        required: true
+        type: choice
+        options:
+          - web
+          - worker
+          - both
+      revision:
+        description: 'Revision name to rollback to (leave empty for previous revision)'
+        required: false
+        type: string
+      traffic_percent:
+        description: 'Traffic percentage for rollback (default: 100)'
+        required: false
+        type: string
+        default: '100'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for WIF
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Rollback Web Service
+        if: ${{ inputs.service == 'web' || inputs.service == 'both' }}
+        run: |
+          SERVICE_NAME="policyinsight-web"
+          TRAFFIC_PCT=${{ inputs.traffic_percent || '100' }}
+
+          # If revision specified, use it; otherwise find previous revision
+          if [ -n "${{ inputs.revision }}" ]; then
+            TARGET_REV="${{ inputs.revision }}"
+          else
+            # Get current traffic allocation
+            TRAFFIC_JSON=$(gcloud run services describe $SERVICE_NAME --region=${{ env.REGION }} --format='json(status.traffic)' 2>/dev/null || echo "[]")
+
+            # List all revisions sorted by creation time (newest first)
+            REVISIONS=$(gcloud run revisions list --service=$SERVICE_NAME --region=${{ env.REGION }} --format='value(name)' --sort-by=~metadata.creationTimestamp)
+
+            # Get current revision receiving traffic
+            CURRENT_REV=$(echo "$TRAFFIC_JSON" | grep -o '"revisionName":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
+
+            # Find previous revision (first revision in list that's not current)
+            TARGET_REV=""
+            for rev in $REVISIONS; do
+              if [ "$rev" != "$CURRENT_REV" ] && [ -n "$CURRENT_REV" ]; then
+                TARGET_REV="$rev"
+                break
+              fi
+            done
+
+            # If no previous revision found, try first revision in list (fallback)
+            if [ -z "$TARGET_REV" ]; then
+              TARGET_REV=$(echo "$REVISIONS" | head -2 | tail -1)
+            fi
+
+            if [ -z "$TARGET_REV" ]; then
+              echo "Error: No previous revision found for rollback"
+              exit 1
+            fi
+          fi
+
+          echo "Rolling back $SERVICE_NAME to revision: $TARGET_REV with $TRAFFIC_PCT% traffic"
+
+          # Update traffic to target revision
+          gcloud run services update-traffic $SERVICE_NAME \
+            --region=${{ env.REGION }} \
+            --to-revisions=$TARGET_REV=$TRAFFIC_PCT
+
+          # Verify health after rollback
+          echo "Waiting for service to be ready..."
+          sleep 10
+
+          WEB_URL=$(gcloud run services describe $SERVICE_NAME --region=${{ env.REGION }} --format='value(status.url)')
+          curl -f "$WEB_URL/health" || (echo "Health check failed after rollback" && exit 1)
+          curl -f "$WEB_URL/readiness" || (echo "Readiness check failed after rollback" && exit 1)
+
+          echo "Rollback successful: $SERVICE_NAME now serving $TRAFFIC_PCT% traffic on $TARGET_REV"
+
+      - name: Rollback Worker Service
+        if: ${{ inputs.service == 'worker' || inputs.service == 'both' }}
+        run: |
+          SERVICE_NAME="policyinsight-worker"
+          TRAFFIC_PCT=${{ inputs.traffic_percent || '100' }}
+
+          # If revision specified, use it; otherwise find previous revision
+          if [ -n "${{ inputs.revision }}" ]; then
+            TARGET_REV="${{ inputs.revision }}"
+          else
+            # Get current traffic allocation
+            TRAFFIC_JSON=$(gcloud run services describe $SERVICE_NAME --region=${{ env.REGION }} --format='json(status.traffic)' 2>/dev/null || echo "[]")
+
+            # List all revisions sorted by creation time (newest first)
+            REVISIONS=$(gcloud run revisions list --service=$SERVICE_NAME --region=${{ env.REGION }} --format='value(name)' --sort-by=~metadata.creationTimestamp)
+
+            # Get current revision receiving traffic
+            CURRENT_REV=$(echo "$TRAFFIC_JSON" | grep -o '"revisionName":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
+
+            # Find previous revision (first revision in list that's not current)
+            TARGET_REV=""
+            for rev in $REVISIONS; do
+              if [ "$rev" != "$CURRENT_REV" ] && [ -n "$CURRENT_REV" ]; then
+                TARGET_REV="$rev"
+                break
+              fi
+            done
+
+            # If no previous revision found, try first revision in list (fallback)
+            if [ -z "$TARGET_REV" ]; then
+              TARGET_REV=$(echo "$REVISIONS" | head -2 | tail -1)
+            fi
+
+            if [ -z "$TARGET_REV" ]; then
+              echo "Error: No previous revision found for rollback"
+              exit 1
+            fi
+          fi
+
+          echo "Rolling back $SERVICE_NAME to revision: $TARGET_REV with $TRAFFIC_PCT% traffic"
+
+          # Update traffic to target revision
+          gcloud run services update-traffic $SERVICE_NAME \
+            --region=${{ env.REGION }} \
+            --to-revisions=$TARGET_REV=$TRAFFIC_PCT
+
+          # Verify health after rollback (via authenticated proxy)
+          echo "Waiting for service to be ready..."
+          sleep 10
+
+          # Verify unauthenticated access is still blocked
+          WORKER_URL=$(gcloud run services describe $SERVICE_NAME --region=${{ env.REGION }} --format='value(status.url)')
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$WORKER_URL/health" || echo "000")
+          if [ "$HTTP_CODE" != "401" ] && [ "$HTTP_CODE" != "403" ]; then
+            echo "WARNING: Unauthenticated request should return 401/403, got $HTTP_CODE"
+          fi
+
+          # Test authenticated health check
+          gcloud run services proxy $SERVICE_NAME --region=${{ env.REGION }} --port=8080 &
+          PROXY_PID=$!
+          sleep 5
+
+          curl -f http://localhost:8080/health || (kill $PROXY_PID 2>/dev/null; echo "Health check failed after rollback" && exit 1)
+
+          kill $PROXY_PID 2>/dev/null || true
+          wait $PROXY_PID 2>/dev/null || true
+
+          echo "Rollback successful: $SERVICE_NAME now serving $TRAFFIC_PCT% traffic on $TARGET_REV"

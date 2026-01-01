@@ -1,0 +1,39 @@
+{
+  "id": 17344052,
+  "org_id": 1300825116,
+  "type": "query alert",
+  "name": "Network traffic (received) is high on host {{host.name}}",
+  "message": "## \ud83d\udea8 What's happening\n\nHigh **incoming network traffic** detected on host {{host.name}}.\n\nThis means the host is receiving a sustained high volume of data \u2014 with the 15-minute average of `system.net.bytes_rcvd` exceeding **80 MB/min**. This typically indicates heavy data ingestion, large transfers, or inefficient service communication patterns.\n\n***\n\n## \ud83d\udcc8 Impact\n\nIf network traffic remains elevated, it can lead to:\n\n-   **Bandwidth saturation**, packet loss, or throttling\n-   **Latency or degraded performance** in network-bound services\n-   **Slow log shipping**, delayed data pipelines, or failed syncs\n-   **Contended resources** in multi-tenant environments (e.g., containers)\n\nThis may impact the host's ability to serve real-time workloads or maintain timely communication with external systems, APIs, or databases.\n\n***\n\n## \ud83d\udee0\ufe0f Runbook\n\n### Initial Troubleshooting Steps\n\n1.  **Identify the affected host** from the alert.\n\n2.  Open [**Infrastructure > Host Details**](/infrastructure) in Datadog.\n\n3.  In the **Metrics** tab, examine:\n\n    -   `system.net.bytes_rcvd`, `system.net.bytes_sent`\n    -   Interface metrics (`system.net.iface.*`)\n\n4.  Check application logs for unexpected ingest behavior.\n\n5.  Use tools like `iftop`, `nload`, or `netstat` to inspect top inbound connections.\n\n6.  (If needed) SSH into the host and run:\n\n    ```\n    bash\n    CopyEdit\n    sudo iftop -i <interface>\n    ```\n\n***\n\n### Cause and Resolution\n\n| Cause                                           | Resolution                                                  |\n| ----------------------------------------------- | ----------------------------------------------------------- |\n| Large file transfers (e.g., backups, ingestion) | Schedule during off-peak hours or limit transfer rate       |\n| Misconfigured agents or services                | Review configs and reduce polling or payload size           |\n| Unexpected traffic spike or DDoS                | Block IPs, apply rate limits, or enable network protections |\n| Log/metric flooding from other systems          | Throttle integrations or export rates                       |\n\n***\n\n### \ud83d\udd17 Related links\n\n-   [Host Map](/infrastructure/map)\n-   [Live Processes](/process)\n-   [System Dashboards](/dashboard/lists)\n-   [Monitor Documentation](https://docs.datadoghq.com/monitors/)\n\n***\n\n### \ud83d\udce3 Who should be notified?\n\nPlease assign the appropriate notification handle for this alert (e.g., `@slack-networking`, `@pagerduty-platform-oncall`):\\\n`@your-team-handle`",
+  "tags": [
+    "integration:host",
+    "monitor_pack:host"
+  ],
+  "query": "avg(last_15m):avg:system.net.bytes_rcvd{*} by {host} / (1024 * 1024 * 1024) > 0.08",
+  "options": {
+    "thresholds": {
+      "critical": 0.08
+    },
+    "notify_audit": false,
+    "include_tags": false,
+    "notify_no_data": false,
+    "new_host_delay": 300,
+    "silenced": {}
+  },
+  "multi": true,
+  "created_at": 1767059422000,
+  "created": "2025-12-30T01:50:22.289602+00:00",
+  "modified": "2025-12-30T01:50:22.289602+00:00",
+  "deleted": null,
+  "priority": null,
+  "restricted_roles": null,
+  "draft_status": "published",
+  "assets": [],
+  "overall_state_modified": "2025-12-30T01:50:31+00:00",
+  "overall_state": "OK",
+  "creator": {
+    "name": "Datadog Support",
+    "email": "support-user-prod@datadoghq.com",
+    "handle": "support-na-4xvziqpjcmtl",
+    "id": 9109113
+  }
+}

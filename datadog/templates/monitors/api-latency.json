@@ -1,0 +1,31 @@
+{
+  "name": "[PolicyInsight] API Latency P95 > 2000ms",
+  "type": "metric alert",
+  "query": "avg(last_5m):p95:trace.http.request.duration{service:policy-insight} > 2000",
+  "message": "API latency P95 has exceeded 2000ms for the last 5 minutes.\n\nThis may indicate:\n- Slow database queries\n- External API delays (Gemini, Document AI)\n- Resource constraints\n\n@on-call-engineering",
+  "tags": [
+    "service:policy-insight",
+    "alert_type:latency",
+    "severity:high"
+  ],
+  "options": {
+    "thresholds": {
+      "critical": 2000,
+      "warning": 1500
+    },
+    "notify_audit": false,
+    "require_full_window": false,
+    "notify_no_data": false,
+    "renotify_interval": 60,
+    "escalation_message": "API latency still elevated after 1 hour. Consider scaling or investigating root cause.",
+    "no_data_timeframe": 10
+  },
+  "priority": 3,
+  "incident_setting": {
+    "create_incident": true,
+    "incident_title": "[PolicyInsight] API Latency P95 Spike",
+    "incident_severity": "high",
+    "incident_notification_handles": ["@on-call-engineering"]
+  }
+}
+

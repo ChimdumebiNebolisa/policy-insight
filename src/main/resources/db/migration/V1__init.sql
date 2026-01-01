@@ -46,7 +46,7 @@ CREATE TABLE document_chunks (
   FOREIGN KEY (job_uuid) REFERENCES policy_jobs(job_uuid)
 );
 
-CREATE INDEX idx_job_uuid ON document_chunks(job_uuid);
+CREATE INDEX idx_document_chunks_job_uuid ON document_chunks(job_uuid);
 
 -- Table: reports
 CREATE TABLE reports (
@@ -65,7 +65,7 @@ CREATE TABLE reports (
   UNIQUE (job_uuid)
 );
 
-CREATE INDEX idx_job_uuid ON reports(job_uuid);
+CREATE INDEX idx_reports_job_uuid ON reports(job_uuid);
 
 -- Table: qa_interactions
 CREATE TABLE qa_interactions (
@@ -80,7 +80,7 @@ CREATE TABLE qa_interactions (
   FOREIGN KEY (job_uuid) REFERENCES policy_jobs(job_uuid)
 );
 
-CREATE INDEX idx_job_uuid ON qa_interactions(job_uuid);
+CREATE INDEX idx_qa_interactions_job_uuid ON qa_interactions(job_uuid);
 
 -- Table: share_links
 CREATE TABLE share_links (

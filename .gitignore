@@ -40,10 +40,12 @@ out/
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# Environment variables and secrets
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # Logs
 *.log
@@ -53,6 +55,7 @@ logs/
 application-local.properties
 application-*.yml
 !application-local.yml
+!application-cloudrun.yml
 
 # Database
 *.db
@@ -74,4 +77,38 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Local storage (test artifacts)
+.local-storage/
+
+# Local dev/test artifacts
+*_headers.txt
+*_body.txt
+*.pdf
+!src/test/resources/**/*.pdf
+
+
+# local Datadog scratch
+dd-*.json
+
+# Ignore generated credentials from google-github-actions/auth
+gha-creds-*.json
+
+# Secret files and credentials
+**/*service-account*.json
+**/*credentials*.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/*secret*.json
+**/*secret*.yml
+**/*secret*.yaml
+**/*secret*.properties
+
+# python cache
+**/__pycache__/
+**/*.pyc
 
