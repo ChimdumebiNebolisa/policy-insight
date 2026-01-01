@@ -68,9 +68,6 @@ class PubSubControllerContractTest {
     @MockBean
     private DocumentJobProcessor documentJobProcessor;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     private UUID testJobId;
     private String testRequestId;
     private String testGcsPath;
