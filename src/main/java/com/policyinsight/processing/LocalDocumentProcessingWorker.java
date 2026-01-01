@@ -43,7 +43,11 @@ import java.util.UUID;
  */
 @Service
 @ConditionalOnProperty(prefix = "policyinsight.worker", name = "enabled", havingValue = "true")
+ backup/main-before-merge-20251231-2142
 public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
+
+public class LocalDocumentProcessingWorker {
+feat/scaffold
 
     private static final Logger logger = LoggerFactory.getLogger(LocalDocumentProcessingWorker.class);
 

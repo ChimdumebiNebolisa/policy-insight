@@ -112,7 +112,11 @@ public class DocumentController {
                 filename = "document.pdf";
             }
 
+
             // Add correlation IDs to MDC for logging
+=======
+            // Add job_id to MDC for logging
+feat/scaffold
             String jobIdStr = Strings.safe(jobId.toString());
             MDC.put("job_id", jobIdStr);
             MDC.put("request_id", requestId);
