@@ -25,27 +25,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Preflight: Validate Required Secrets
-        run: |
-          if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
-            echo "ERROR: GCP_PROJECT_ID secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.WIF_PROVIDER }}" ]; then
-            echo "ERROR: WIF_PROVIDER secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.WIF_SERVICE_ACCOUNT }}" ]; then
-            echo "ERROR: WIF_SERVICE_ACCOUNT secret is not set"
-            exit 1
-          fi
-          echo "✓ All required secrets are configured"
-          echo "✓ GCP_PROJECT_ID is set (length: ${#GCP_PROJECT_ID})"
-          echo "✓ WIF_PROVIDER is set (length: ${#WIF_PROVIDER})"
-          echo "✓ WIF_SERVICE_ACCOUNT is set (length: ${#WIF_SERVICE_ACCOUNT})"
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
           WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for k in GCP_PROJECT_ID WIF_PROVIDER WIF_SERVICE_ACCOUNT; do
+            if [ -z "${!k:-}" ]; then
+              echo "::error::$k is not set"
+              missing=1
+            else
+              echo "$k is set"
+            fi
+          done
+          exit $missing
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1

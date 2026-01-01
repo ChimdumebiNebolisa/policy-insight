@@ -1,6 +1,5 @@
 package com.policyinsight.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.policyinsight.processing.DocumentJobProcessor;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.PolicyJobRepository;
