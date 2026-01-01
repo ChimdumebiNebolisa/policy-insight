@@ -2,7 +2,8 @@ name: CD
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -24,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Preflight: Validate Required Secrets
+      - name: "Preflight: Validate Required Secrets"
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
