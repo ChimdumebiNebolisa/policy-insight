@@ -166,7 +166,7 @@ foreach ($SECTION in $REQUIRED_SECTIONS) {
 Write-Host ""
 
 # Step 5: Q&A
-Write-Host "Step 5: Testing Q&A endpoint..." -ForegroundColor Yellow
+Write-Host "Step 5: Testing Q and A endpoint..." -ForegroundColor Yellow
 $QUESTION = "What is the termination policy?"
 $QA_BODY = @{
     document_id = $JOB_ID
@@ -184,13 +184,13 @@ try {
 
     # Save Q&A response for debugging
     $QA_HTML | Out-File -FilePath "qa.html" -Encoding UTF8
-    Write-Host "Q&A response HTML saved to qa.html"
+    Write-Host "Q and A response HTML saved to qa.html"
 
     # Check if response contains citations or "Insufficient evidence"
     if ($QA_HTML -match "citation|citations|Insufficient evidence|insufficient evidence|ABSTAINED") {
-        Write-Host "✓ Q&A response contains citations or abstention message" -ForegroundColor Green
+        Write-Host "[OK] Q and A response contains citations or abstention message" -ForegroundColor Green
     } else {
-        Write-Host "WARNING: Q&A response may not contain expected citation/abstention markers" -ForegroundColor Yellow
+        Write-Host "WARNING: Q and A response may not contain expected citation/abstention markers" -ForegroundColor Yellow
         Write-Host "Response preview:" -ForegroundColor Yellow
         if ($QA_HTML.Length -gt 500) {
             Write-Host $QA_HTML.Substring(0, 500) -ForegroundColor Yellow
@@ -199,7 +199,7 @@ try {
         }
     }
 } catch {
-    Write-Host "ERROR: Q&A request failed: $_" -ForegroundColor Red
+    Write-Host "ERROR: Q and A request failed: $_" -ForegroundColor Red
     Write-Host "Response: $($_.Exception.Response)" -ForegroundColor Red
     exit 1
 }
@@ -213,9 +213,10 @@ Write-Host "✓ Polling: OK" -ForegroundColor Green
 Write-Host "✓ HX-Redirect: $HX_REDIRECT_PRESENT" -ForegroundColor $(if ($HX_REDIRECT_PRESENT) { "Green" } else { "Yellow" })
 Write-Host "✓ Report fetched: OK" -ForegroundColor Green
 Write-Host "✓ Report sections: All 5 found" -ForegroundColor Green
-Write-Host "✓ Q&A: OK" -ForegroundColor Green
+Write-Host "✓ Q and A: OK" -ForegroundColor Green
 Write-Host ""
 Write-Host "MUP smoke test passed!" -ForegroundColor Green
 Write-Host ""
-Write-Host "Report URL: $BASE_URL/documents/$JOB_ID/report" -ForegroundColor Cyan
+$REPORT_URL = $BASE_URL + '/documents/' + $JOB_ID + '/report'
+Write-Host ('Report URL: ' + $REPORT_URL) -ForegroundColor Cyan
 
