@@ -29,6 +29,7 @@ public class PubSubController {
 
     private static final Logger logger = LoggerFactory.getLogger(PubSubController.class);
 
+<<<<<<< HEAD
     private final PubSubTokenVerifier tokenVerifier;
     private final DocumentJobProcessor documentJobProcessor;
     private final PolicyJobRepository policyJobRepository;

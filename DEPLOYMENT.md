@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # PolicyInsight Deployment Guide
 
 This guide provides step-by-step instructions for deploying PolicyInsight to Google Cloud Platform (GCP) using Cloud Run, Cloud SQL, GCS, and Pub/Sub.
