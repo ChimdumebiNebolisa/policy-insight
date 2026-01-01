@@ -1,5 +1,6 @@
 package com.policyinsight.api;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.policyinsight.processing.DocumentJobProcessor;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.PolicyJobRepository;
@@ -66,6 +67,9 @@ class PubSubControllerContractTest {
 
     @MockBean
     private DocumentJobProcessor documentJobProcessor;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private UUID testJobId;
     private String testRequestId;

@@ -58,7 +58,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     STATUS_RESPONSE=$(curl -sS -D headers.txt \
         -H "HX-Request: true" \
         "$BASE_URL/api/documents/$JOB_ID/status")
-
+    
     # Check for HX-Redirect header
     if grep -qi "HX-Redirect:" headers.txt; then
         HX_REDIRECT_PRESENT=true
@@ -66,7 +66,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
         echo "[Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS] Status: SUCCESS (HX-Redirect: $REDIRECT_URL)"
         break
     fi
-
+    
     # Try to extract status from HTML fragment
     if echo "$STATUS_RESPONSE" | grep -qi "SUCCESS"; then
         STATUS="SUCCESS"
@@ -86,7 +86,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
         STATUS="UNKNOWN"
         echo "[Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS] Status: UNKNOWN"
     fi
-
+    
     sleep 1
     ATTEMPT=$((ATTEMPT + 1))
 done
