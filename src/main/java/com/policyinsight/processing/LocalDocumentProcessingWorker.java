@@ -313,6 +313,11 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
         // Chunk text
         List<TextChunk> chunks = textChunkerService.chunkText(extractedText);
 
+        // Delete existing chunks for this job to ensure idempotency (in case of retry)
+        // This prevents duplicate chunks if the job is retried after partial chunk insertion
+        documentChunkRepository.deleteByJobUuid(jobId);
+        logger.debug("Deleted existing chunks for job: {} (idempotency)", jobId);
+
         // Store chunks in database
         for (TextChunk chunk : chunks) {
             DocumentChunk docChunk = new DocumentChunk(jobId);

@@ -15,6 +15,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "document_chunks", indexes = {
     @Index(name = "idx_document_chunks_job_uuid", columnList = "job_uuid")
+}, uniqueConstraints = {
+    @UniqueConstraint(name = "uk_document_chunks_job_uuid_chunk_index", columnNames = {"job_uuid", "chunk_index"})
 })
 public class DocumentChunk {
 
