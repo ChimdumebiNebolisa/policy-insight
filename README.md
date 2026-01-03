@@ -257,7 +257,3 @@ See [tasks.md](./tasks.md) for the complete implementation roadmap.
 
 Apache 2.0
 
-## Contributing
-
-This is a hackathon submission. For questions or issues, please refer to the PRD documents.
-
