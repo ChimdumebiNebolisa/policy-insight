@@ -51,5 +51,10 @@ public class DatadogMetricsServiceStub implements DatadogMetricsServiceInterface
     public void recordLlmCostEstimate(double costUsd, String model, String taskType) {
         // No-op when Datadog is disabled
     }
+
+    @Override
+    public void recordLlmRetry(int retryCount, String model, String taskType, String errorCategory) {
+        // No-op when Datadog is disabled
+    }
 }
 

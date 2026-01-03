@@ -76,6 +76,10 @@ app:
   job:
     lease-duration-minutes: ${APP_JOB_LEASE_DURATION_MINUTES:30}  # Lease duration for job processing
     max-attempts: ${APP_JOB_MAX_ATTEMPTS:3}  # Maximum retry attempts before marking as FAILED
+  gemini:
+    retry:
+      max-attempts: ${APP_GEMINI_RETRY_MAX_ATTEMPTS:3}  # Maximum retry attempts for Gemini API calls
+      base-delay-ms: ${APP_GEMINI_RETRY_BASE_DELAY_MS:1000}  # Base delay for exponential backoff (in milliseconds)
 
 management:
   endpoints:

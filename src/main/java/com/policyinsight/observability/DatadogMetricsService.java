@@ -257,5 +257,26 @@ public class DatadogMetricsService implements DatadogMetricsServiceInterface {
                 .increment(costUsd);
         logger.debug("Recorded LLM cost estimate: ${} for model={}, task={}", costUsd, model, taskType);
     }
+
+    /**
+     * Record LLM retry attempt.
+     * @param retryCount Number of retries (1, 2, 3, etc.)
+     * @param model Model name
+     * @param taskType Task type
+     * @param errorCategory Error category (e.g., "timeout", "rate_limit", "server_error")
+     */
+    public void recordLlmRetry(int retryCount, String model, String taskType, String errorCategory) {
+        Counter counter = Counter.builder("policyinsight.llm.retry")
+                .description("Number of LLM API retry attempts")
+                .tag("service", "policy-insight")
+                .tag("model", model != null ? model : "unknown")
+                .tag("task_type", taskType != null ? taskType : "unknown")
+                .tag("error_category", errorCategory != null ? errorCategory : "unknown")
+                .tag("retry_count", String.valueOf(retryCount))
+                .register(meterRegistry);
+        counter.increment();
+        logger.debug("Recorded LLM retry: count={}, model={}, task={}, errorCategory={}",
+                retryCount, model, taskType, errorCategory);
+    }
 }
 

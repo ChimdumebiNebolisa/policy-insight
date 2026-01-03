@@ -14,5 +14,6 @@ public interface DatadogMetricsServiceInterface {
     void recordJobFailure(String jobId, String errorType);
     void recordLlmTokens(int inputTokens, int outputTokens, String model, String taskType);
     void recordLlmCostEstimate(double costUsd, String model, String taskType);
+    void recordLlmRetry(int retryCount, String model, String taskType, String errorCategory);
 }
 
