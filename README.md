@@ -82,7 +82,7 @@ Application configuration is in `src/main/resources/application.yml`. For local 
 Key configuration:
 - Database connection (defaults to localhost:5432)
 - Server port (defaults to 8080)
-- File upload limits (20 MB max)
+- File upload limits (50 MB max)
 
 ## API Endpoints
 
@@ -204,7 +204,7 @@ PolicyInsight uses **capability tokens** for access control:
 
 - **Token Generation**: Each uploaded document receives a unique capability token (32 random bytes, base64url encoded)
 - **Token Storage**: Only HMAC-SHA256 hash is stored in database (never raw tokens)
-- **Token Delivery**: 
+- **Token Delivery**:
   - JSON API clients: Token returned in response body (one-time)
   - HTMX/browser clients: Token set as HttpOnly cookie (`pi_job_token_{jobId}`)
 - **Token Validation**: Required for all protected endpoints (status, report, export, Q&A, share generation)
@@ -243,7 +243,7 @@ PolicyInsight uses **capability tokens** for access control:
 
 See [tasks.md](./tasks.md) for the complete implementation roadmap.
 
-**Current Status**: 
+**Current Status**:
 - ✅ M1: Capability-token security
 - ✅ M2: Rate limiting + quotas
 - ✅ M3: Lease + stuck PROCESSING recovery
