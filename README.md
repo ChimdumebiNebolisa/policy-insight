@@ -6,6 +6,8 @@ Production-grade legal document analysis service with Datadog observability. Bui
 
 PolicyInsight analyzes legal documents (PDFs) and outputs plain-English risk reports with mandatory source citations. Every claim references extracted text with page numbers, ensuring grounded AI safety.
 
+![PolicyInsight Upload Interface](Screenshot%202026-01-03%20083034.png)
+
 ## Tech Stack
 
 - **Backend**: Java 21 + Spring Boot 3.3
