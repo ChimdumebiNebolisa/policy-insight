@@ -41,6 +41,9 @@ public class ShareLink {
     @Column(name = "access_count", nullable = false)
     private Integer accessCount = 0;
 
+    @Column(name = "revoked_at")
+    private Instant revokedAt;
+
     // Constructors
     public ShareLink() {
         this.shareToken = UUID.randomUUID();
@@ -113,10 +116,33 @@ public class ShareLink {
     }
 
     /**
+     * Check if the share link is revoked.
+     * @return true if revoked, false otherwise
+     */
+    public boolean isRevoked() {
+        return revokedAt != null;
+    }
+
+    /**
+     * Revoke the share link.
+     */
+    public void revoke() {
+        this.revokedAt = Instant.now();
+    }
+
+    /**
      * Increment the access count.
      */
     public void incrementAccessCount() {
         this.accessCount++;
+    }
+
+    public Instant getRevokedAt() {
+        return revokedAt;
+    }
+
+    public void setRevokedAt(Instant revokedAt) {
+        this.revokedAt = revokedAt;
     }
 }
 

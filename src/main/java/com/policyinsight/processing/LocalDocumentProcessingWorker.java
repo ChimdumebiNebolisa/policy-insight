@@ -1,6 +1,7 @@
 package com.policyinsight.processing;
 
 import com.policyinsight.api.storage.StorageService;
+import com.policyinsight.api.validation.PdfValidator;
 import com.policyinsight.processing.model.ExtractedText;
 import com.policyinsight.processing.model.TextChunk;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,6 +80,9 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
 
     @Autowired
     private StorageService storageService;
+
+    @Autowired
+    private PdfValidator pdfValidator;
 
     @Autowired(required = false)
     private TracingServiceInterface tracingService;
@@ -277,7 +281,17 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
         }
 
         logger.info("Downloading PDF from storage: {}", storagePath);
+        long downloadStartTime = System.currentTimeMillis();
         byte[] pdfBytes = storageService.downloadFile(storagePath);
+
+        // Validate PDF page count (worker-side validation)
+        try (InputStream pdfStreamForValidation = new ByteArrayInputStream(pdfBytes)) {
+            pdfValidator.validateMaxPages(pdfStreamForValidation, null);
+        }
+
+        // Check stage timeout after download
+        checkStageTimeout("download", downloadStartTime, jobId);
+
         InputStream pdfStream = new ByteArrayInputStream(pdfBytes);
 
         // Extract text (try Document AI first, fallback to PDFBox) - with span
@@ -363,19 +377,12 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
         }
 
         String fullText = extractedText.getFullText();
-        
-        // Hard cap extracted text length to prevent excessive processing costs
-        if (fullText.length() > maxTextLength) {
-            logger.warn("Extracted text length ({}) exceeds maximum ({}), truncating for job: {}",
-                    fullText.length(), maxTextLength, jobId);
-            fullText = fullText.substring(0, maxTextLength);
-            if (extractSpan != null) {
-                extractSpan.setAttribute("text_truncated", true);
-                extractSpan.setAttribute("original_length", extractedText.getFullText().length());
-            }
-        }
-        
+
+        // Validate extracted text length (reject if exceeds limit - prevents excessive costs)
+        pdfValidator.validateMaxTextLength(fullText, null);
+
         DocumentClassifierService.ClassificationResult classification;
+        long classifyStartTime = System.currentTimeMillis();
         try (io.opentelemetry.context.Scope classifyScope = classifySpan != null ? classifySpan.makeCurrent() : null) {
             classification = documentClassifierService.classify(fullText);
             job.setClassification(classification.getClassification());
@@ -389,6 +396,7 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
                 classifySpan.setAttribute("provider", "llm");
             }
         } finally {
+            checkStageTimeout("classification", classifyStartTime, jobId);
             if (classifySpan != null) {
                 classifySpan.end();
             }
@@ -405,6 +413,7 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
         }
 
         Map<String, Object> riskTaxonomy;
+        long riskScanStartTime = System.currentTimeMillis();
         try (io.opentelemetry.context.Scope riskScope = riskScanSpan != null ? riskScanSpan.makeCurrent() : null) {
             logger.info("Starting risk analysis for job: {}", jobId);
             riskTaxonomy = riskAnalysisService.analyzeRisks(storedChunks);
@@ -429,6 +438,7 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
                 riskScanSpan.setAttribute("risk_count.total", totalRisks);
             }
         } finally {
+            checkStageTimeout("risk_scan", riskScanStartTime, jobId);
             if (riskScanSpan != null) {
                 riskScanSpan.end();
             }
@@ -448,6 +458,7 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
         Map<String, Object> documentOverview;
         Map<String, Object> summary;
         Map<String, Object> obligationsAndRestrictions;
+        long reportGenStartTime = System.currentTimeMillis();
         try (io.opentelemetry.context.Scope llmScope = llmSpan != null ? llmSpan.makeCurrent() : null) {
             logger.info("Generating report sections for job: {}", jobId);
             documentOverview = reportGenerationService.generateDocumentOverview(job, storedChunks);
@@ -462,6 +473,7 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
                 }
             }
         } finally {
+            checkStageTimeout("report_generation", reportGenStartTime, jobId);
             if (llmSpan != null) {
                 llmSpan.end();
             }
@@ -565,11 +577,27 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
 
         // Update job status
         job.setStatus("SUCCESS");
-        job.setCompletedAt(Instant.now());
-        policyJobRepository.save(job);
+    }
 
-        logger.info("Document processing completed for job: {}, classification: {}",
-                jobId, classification.getClassification());
+    /**
+     * Checks if a processing stage has exceeded its timeout limit.
+     * Throws IllegalStateException if timeout exceeded.
+     *
+     * @param stageName Name of the stage (for logging)
+     * @param stageStartTime Start time of the stage in milliseconds
+     * @param jobId Job UUID (for error message)
+     * @throws IllegalStateException if stage timeout exceeded
+     */
+    private void checkStageTimeout(String stageName, long stageStartTime, UUID jobId) {
+        long elapsedSeconds = (System.currentTimeMillis() - stageStartTime) / 1000;
+        if (elapsedSeconds > stageTimeoutSeconds) {
+            logger.error("Stage timeout exceeded: stage={}, elapsed={}s, limit={}s, jobId={}",
+                    stageName, elapsedSeconds, stageTimeoutSeconds, jobId);
+            throw new IllegalStateException(String.format(
+                    "Processing stage '%s' timeout exceeded: %d seconds (limit: %d seconds) for job: %s",
+                    stageName, elapsedSeconds, stageTimeoutSeconds, jobId));
+        }
+        logger.debug("Stage '{}' completed in {}s (limit: {}s)", stageName, elapsedSeconds, stageTimeoutSeconds);
     }
 }
 

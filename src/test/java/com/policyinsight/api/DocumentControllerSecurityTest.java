@@ -1,6 +1,5 @@
 package com.policyinsight.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.policyinsight.security.TokenService;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.PolicyJobRepository;
@@ -60,14 +59,12 @@ class DocumentControllerSecurityTest {
     @Autowired
     private TokenService tokenService;
 
-    private ObjectMapper objectMapper;
     private UUID testJobId;
     private String testToken;
     private String testTokenHmac;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
         testJobId = UUID.randomUUID();
         testToken = tokenService.generateToken();
         testTokenHmac = tokenService.computeHmac(testToken);
@@ -188,6 +185,51 @@ class DocumentControllerSecurityTest {
         // Then: Should be accessible (public endpoint)
         mockMvc.perform(get("/health"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void testUploadReturnsTokenInJson() throws Exception {
+        // Given: Valid PDF file
+        byte[] pdfBytes = "%PDF-1.4\n".getBytes();
+        org.springframework.mock.web.MockMultipartFile file =
+                new org.springframework.mock.web.MockMultipartFile(
+                        "file", "test.pdf", "application/pdf", pdfBytes);
+
+        // When: Upload document
+        var result = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/documents/upload")
+                        .file(file)
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isAccepted())
+                .andReturn();
+
+        // Then: Response should contain token
+        String responseBody = result.getResponse().getContentAsString();
+        assertThat(responseBody).contains("\"token\"");
+        assertThat(responseBody).contains("\"jobId\"");
+    }
+
+    @Test
+    void testUploadSetsCookie() throws Exception {
+        // Given: Valid PDF file
+        byte[] pdfBytes = "%PDF-1.4\n".getBytes();
+        org.springframework.mock.web.MockMultipartFile file =
+                new org.springframework.mock.web.MockMultipartFile(
+                        "file", "test.pdf", "application/pdf", pdfBytes);
+
+        // When: Upload document with HTMX header
+        var result = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/documents/upload")
+                        .file(file)
+                        .header("HX-Request", "true")
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk()) // HTMX returns 200, not 202
+                .andReturn();
+
+        // Then: Response should set cookie
+        String setCookieHeader = result.getResponse().getHeader("Set-Cookie");
+        assertThat(setCookieHeader).isNotNull();
+        assertThat(setCookieHeader).contains("pi_job_token_");
+        assertThat(setCookieHeader).contains("HttpOnly");
+        assertThat(setCookieHeader).contains("SameSite=Strict");
     }
 }
 

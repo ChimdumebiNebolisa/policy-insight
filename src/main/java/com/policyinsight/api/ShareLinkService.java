@@ -61,7 +61,7 @@ public class ShareLinkService {
      * Increments access count if valid.
      *
      * @param token the share token
-     * @return ShareLink if valid and not expired, null otherwise
+     * @return ShareLink if valid, not expired, and not revoked; null otherwise
      */
     @Transactional
     public ShareLink validateAndAccessShareLink(UUID token) {
@@ -81,6 +81,12 @@ public class ShareLinkService {
             return null;
         }
 
+        if (shareLink.isRevoked()) {
+            logger.warn("Share link revoked: token={}, revokedAt={}",
+                    token, shareLink.getRevokedAt());
+            return null;
+        }
+
         // Increment access count
         shareLink.incrementAccessCount();
         shareLinkRepository.save(shareLink);
@@ -88,6 +94,34 @@ public class ShareLinkService {
                 token, shareLink.getAccessCount());
 
         return shareLink;
+    }
+
+    /**
+     * Revoke a share link for a job.
+     * Requires that the caller has validated the job token (done by interceptor).
+     *
+     * @param jobUuid the job UUID
+     * @return true if link was revoked, false if no active link found
+     */
+    @Transactional
+    public boolean revokeShareLink(UUID jobUuid) {
+        logger.info("Revoking share link for job: {}", jobUuid);
+
+        ShareLink shareLink = shareLinkRepository.findByJobUuid(jobUuid)
+                .stream()
+                .filter(link -> !link.isExpired() && !link.isRevoked())
+                .findFirst()
+                .orElse(null);
+
+        if (shareLink == null) {
+            logger.warn("No active share link found for job: {}", jobUuid);
+            return false;
+        }
+
+        shareLink.revoke();
+        shareLinkRepository.save(shareLink);
+        logger.info("Share link revoked: token={}, jobUuid={}", shareLink.getShareToken(), jobUuid);
+        return true;
     }
 
     private ShareLinkResponse buildResponse(ShareLink shareLink, String baseUrl) {

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -82,6 +83,48 @@ public class ShareController {
         } catch (Exception e) {
             logger.error("Failed to generate share link for job: {}", jobUuid, e);
             throw new RuntimeException("Failed to generate share link: " + e.getMessage(), e);
+        }
+    }
+
+    @PostMapping("/{id}/share/revoke")
+    @Operation(summary = "Revoke shareable link",
+               description = "Revokes an active shareable link. Requires job token authentication.")
+    public ResponseEntity<?> revokeShareLink(
+            @Parameter(description = "Document/job ID")
+            @PathVariable("id") String id) {
+
+        logger.info("Share link revocation request for document: {}", id);
+
+        UUID jobUuid;
+        try {
+            jobUuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid document ID format: {}", id);
+            throw new IllegalArgumentException("Invalid document ID format: " + id);
+        }
+
+        // Verify job exists
+        PolicyJob job = policyJobRepository.findByJobUuid(jobUuid)
+                .orElseThrow(() -> {
+                    logger.warn("Job not found: {}", jobUuid);
+                    return new NoSuchElementException("Document not found: " + jobUuid);
+                });
+
+        try {
+            boolean revoked = shareLinkService.revokeShareLink(jobUuid);
+            if (revoked) {
+                logger.info("Share link revoked: jobUuid={}", jobUuid);
+                return ResponseEntity.ok(Map.of(
+                        "message", "Share link revoked successfully",
+                        "jobId", jobUuid.toString()
+                ));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "No active share link found for this document"));
+            }
+        } catch (Exception e) {
+            logger.error("Failed to revoke share link for job: {}", jobUuid, e);
+            throw new RuntimeException("Failed to revoke share link: " + e.getMessage(), e);
         }
     }
 }

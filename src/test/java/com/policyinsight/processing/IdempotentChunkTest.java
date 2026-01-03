@@ -83,12 +83,16 @@ class IdempotentChunkTest {
         chunk2.setPageNumber(1);
         documentChunkRepository.save(chunk2);
 
+        // Flush to ensure chunks are persisted
+        documentChunkRepository.flush();
+
         // Verify initial state
         long initialCount = documentChunkRepository.countByJobUuid(testJobId);
         assertThat(initialCount).isEqualTo(2);
 
         // When: Delete existing chunks and re-insert (simulating retry)
         documentChunkRepository.deleteByJobUuid(testJobId);
+        documentChunkRepository.flush(); // Ensure delete is committed
 
         // Re-insert chunks with same job_uuid and chunk_index
         DocumentChunk chunk1Retry = new DocumentChunk(testJobId);
@@ -115,9 +119,8 @@ class IdempotentChunkTest {
     }
 
     @Test
-    @Transactional
     void testUniqueConstraintPreventsDuplicateChunks() {
-        // Given: Insert a chunk
+        // Given: Insert a chunk (commit it first)
         DocumentChunk chunk1 = new DocumentChunk(testJobId);
         chunk1.setChunkIndex(0);
         chunk1.setText("First chunk");
@@ -125,7 +128,7 @@ class IdempotentChunkTest {
         documentChunkRepository.save(chunk1);
         documentChunkRepository.flush(); // Ensure it's persisted
 
-        // When: Try to insert another chunk with same job_uuid and chunk_index
+        // When: Try to insert another chunk with same job_uuid and chunk_index in a new transaction
         DocumentChunk chunk2 = new DocumentChunk(testJobId);
         chunk2.setChunkIndex(0); // Same chunk_index
         chunk2.setText("Duplicate chunk");
@@ -139,7 +142,7 @@ class IdempotentChunkTest {
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
                 .hasMessageContaining("uk_document_chunks_job_uuid_chunk_index");
 
-        // Verify only one chunk exists
+        // Verify only one chunk exists (in a new transaction after the exception)
         long count = documentChunkRepository.countByJobUuid(testJobId);
         assertThat(count).isEqualTo(1);
     }

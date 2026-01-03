@@ -43,7 +43,18 @@ public interface ShareLinkRepository extends JpaRepository<ShareLink, Long> {
      * Delete all expired share links.
      * @param now current timestamp
      */
-    @Query("DELETE FROM ShareLink s WHERE s.expiresAt < :now")
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM ShareLink s WHERE s.expiresAt < :now")
     void deleteExpiredLinks(@Param("now") Instant now);
+
+    /**
+     * Delete share links for multiple job UUIDs.
+     * Used for retention cleanup.
+     * @param jobUuids list of job UUIDs
+     * @return number of share links deleted
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM ShareLink s WHERE s.jobUuid IN :jobUuids")
+    int deleteByJobUuidIn(@Param("jobUuids") java.util.List<UUID> jobUuids);
 }
 

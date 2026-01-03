@@ -42,5 +42,15 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
      * @param jobUuid the job UUID
      */
     void deleteByJobUuid(UUID jobUuid);
+
+    /**
+     * Delete chunks for multiple job UUIDs.
+     * Used for retention cleanup.
+     * @param jobUuids list of job UUIDs
+     * @return number of chunks deleted
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM DocumentChunk d WHERE d.jobUuid IN :jobUuids")
+    int deleteByJobUuidIn(@Param("jobUuids") java.util.List<UUID> jobUuids);
 }
 

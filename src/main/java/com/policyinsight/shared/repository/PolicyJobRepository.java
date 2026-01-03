@@ -105,5 +105,26 @@ public interface PolicyJobRepository extends JpaRepository<PolicyJob, Long> {
      */
     @Query("SELECT p FROM PolicyJob p WHERE p.status = 'PROCESSING' AND p.leaseExpiresAt < :now")
     java.util.List<PolicyJob> findStaleProcessingJobs(@Param("now") java.time.Instant now);
+
+    /**
+     * Find job UUIDs older than the specified date.
+     * Used for retention cleanup.
+     *
+     * @param cutoffDate cutoff date
+     * @return list of job UUIDs
+     */
+    @Query("SELECT p.jobUuid FROM PolicyJob p WHERE p.createdAt < :cutoffDate")
+    java.util.List<UUID> findJobUuidsOlderThan(@Param("cutoffDate") java.time.Instant cutoffDate);
+
+    /**
+     * Delete jobs older than the specified date.
+     * Used for retention cleanup.
+     *
+     * @param cutoffDate cutoff date
+     * @return number of jobs deleted
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM PolicyJob p WHERE p.createdAt < :cutoffDate")
+    int deleteByCreatedAtBefore(@Param("cutoffDate") java.time.Instant cutoffDate);
 }
 

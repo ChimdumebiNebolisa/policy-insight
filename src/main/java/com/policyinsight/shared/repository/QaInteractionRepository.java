@@ -36,5 +36,15 @@ public interface QaInteractionRepository extends JpaRepository<QaInteraction, Lo
      * @return count of interactions
      */
     long countByJobUuid(UUID jobUuid);
+
+    /**
+     * Delete Q&A interactions for multiple job UUIDs.
+     * Used for retention cleanup.
+     * @param jobUuids list of job UUIDs
+     * @return number of interactions deleted
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM QaInteraction q WHERE q.jobUuid IN :jobUuids")
+    int deleteByJobUuidIn(@Param("jobUuids") java.util.List<UUID> jobUuids);
 }
 
