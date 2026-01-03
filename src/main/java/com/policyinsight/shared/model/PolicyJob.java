@@ -83,6 +83,10 @@ public class PolicyJob {
     @Size(max = 255)
     private String ddTraceId;
 
+    @Column(name = "access_token_hmac", length = 255)
+    @Size(max = 255)
+    private String accessTokenHmac;
+
     // Constructors
     public PolicyJob() {
         this.jobUuid = UUID.randomUUID();
@@ -228,6 +232,14 @@ public class PolicyJob {
 
     public void setDdTraceId(String ddTraceId) {
         this.ddTraceId = ddTraceId;
+    }
+
+    public String getAccessTokenHmac() {
+        return accessTokenHmac;
+    }
+
+    public void setAccessTokenHmac(String accessTokenHmac) {
+        this.accessTokenHmac = accessTokenHmac;
     }
 }
 

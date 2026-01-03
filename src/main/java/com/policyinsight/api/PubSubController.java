@@ -2,6 +2,7 @@ package com.policyinsight.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.policyinsight.api.PubSubTokenVerifier;
 import com.policyinsight.processing.DocumentJobProcessor;
 import com.policyinsight.shared.repository.PolicyJobRepository;
 import org.slf4j.Logger;
@@ -29,7 +30,6 @@ public class PubSubController {
 
     private static final Logger logger = LoggerFactory.getLogger(PubSubController.class);
 
-<<<<<<< HEAD
     private final PubSubTokenVerifier tokenVerifier;
     private final DocumentJobProcessor documentJobProcessor;
     private final PolicyJobRepository policyJobRepository;

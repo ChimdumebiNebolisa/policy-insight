@@ -1,8 +1,10 @@
 package com.policyinsight.api;
 
 import com.policyinsight.processing.QaService;
+import com.policyinsight.security.TokenService;
 import com.policyinsight.shared.dto.QuestionRequest;
 import com.policyinsight.shared.dto.QuestionResponse;
+import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.model.QaInteraction;
 import com.policyinsight.shared.repository.PolicyJobRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +13,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,13 +36,17 @@ import java.util.stream.Collectors;
 public class QaController {
 
     private static final Logger logger = LoggerFactory.getLogger(QaController.class);
+    private static final String TOKEN_HEADER = "X-Job-Token";
+    private static final String COOKIE_PREFIX = "pi_job_token_";
 
     private final QaService qaService;
     private final PolicyJobRepository policyJobRepository;
+    private final TokenService tokenService;
 
-    public QaController(QaService qaService, PolicyJobRepository policyJobRepository) {
+    public QaController(QaService qaService, PolicyJobRepository policyJobRepository, TokenService tokenService) {
         this.qaService = qaService;
         this.policyJobRepository = policyJobRepository;
+        this.tokenService = tokenService;
     }
 
     /**
@@ -58,7 +66,9 @@ public class QaController {
             @RequestParam(value = "document_id", required = false) String documentIdStr,
             @RequestParam(value = "question", required = false) String questionText,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest,
-            @Valid @RequestBody(required = false) QuestionRequest request) {
+            @RequestHeader(value = TOKEN_HEADER, required = false) String tokenHeader,
+            @Valid @RequestBody(required = false) QuestionRequest request,
+            HttpServletRequest httpRequest) {
 
         // Handle both form data (htmx) and JSON
         UUID jobUuid;
@@ -86,9 +96,37 @@ public class QaController {
                 jobUuid, question != null ? question.length() : 0);
 
         // Verify document exists and is completed
-        if (!policyJobRepository.existsByJobUuid(jobUuid)) {
+        PolicyJob job = policyJobRepository.findByJobUuid(jobUuid).orElse(null);
+        if (job == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(buildErrorResponse("Document not found: " + jobUuid));
+        }
+
+        // Validate token for JSON requests (form data requests are validated by filter)
+        if (request != null && request.getDocumentId() != null) {
+            // JSON request - validate token from header
+            String token = tokenHeader;
+            if (token == null || token.isBlank()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(buildErrorResponse("Missing job token"));
+            }
+            if (job.getAccessTokenHmac() == null ||
+                !tokenService.verifyToken(token, job.getAccessTokenHmac())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(buildErrorResponse("Invalid job token"));
+            }
+        } else {
+            // Form data request - validate token from cookie (filter already checked, but double-check)
+            String token = extractTokenFromCookie(httpRequest, jobUuid);
+            if (token == null || token.isBlank()) {
+                token = tokenHeader; // Fallback to header
+            }
+            if (token == null || token.isBlank() ||
+                job.getAccessTokenHmac() == null ||
+                !tokenService.verifyToken(token, job.getAccessTokenHmac())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(buildErrorResponse("Missing or invalid job token"));
+            }
         }
 
         // Check question count limit
@@ -150,7 +188,9 @@ public class QaController {
                description = "Returns list of all questions and answers for the document")
     public ResponseEntity<?> getQaInteractions(
             @Parameter(description = "Document ID")
-            @PathVariable("document_id") String documentIdStr) {
+            @PathVariable("document_id") String documentIdStr,
+            @RequestHeader(value = TOKEN_HEADER, required = false) String tokenHeader,
+            HttpServletRequest request) {
 
         UUID jobUuid;
         try {
@@ -158,6 +198,24 @@ public class QaController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(buildErrorResponse("Invalid document ID format: " + documentIdStr));
+        }
+
+        // Validate token (filter handles most cases, but double-check here)
+        PolicyJob job = policyJobRepository.findByJobUuid(jobUuid).orElse(null);
+        if (job == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(buildErrorResponse("Document not found: " + jobUuid));
+        }
+
+        String token = extractTokenFromCookie(request, jobUuid);
+        if (token == null) {
+            token = tokenHeader;
+        }
+        if (token == null || token.isBlank() ||
+            job.getAccessTokenHmac() == null ||
+            !tokenService.verifyToken(token, job.getAccessTokenHmac())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(buildErrorResponse("Missing or invalid job token"));
         }
 
         List<QaInteraction> interactions = qaService.getQaInteractions(jobUuid);
@@ -223,6 +281,18 @@ public class QaController {
                    .replace(">", "&gt;")
                    .replace("\"", "&quot;")
                    .replace("'", "&#39;");
+    }
+
+    private String extractTokenFromCookie(HttpServletRequest request, UUID jobUuid) {
+        String cookieName = COOKIE_PREFIX + jobUuid.toString();
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if (cookieName.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 }
 

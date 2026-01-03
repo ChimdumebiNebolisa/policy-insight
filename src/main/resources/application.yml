@@ -54,6 +54,9 @@ server:
 # Application configuration
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
+  security:
+    token-secret: ${APP_TOKEN_SECRET:change-me-in-production}
+    allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:8080}
   storage:
     mode: ${APP_STORAGE_MODE:local}  # local (default) | gcp
     local-dir: ${APP_STORAGE_LOCAL_DIR:.local-storage}

@@ -2,6 +2,7 @@ package com.policyinsight.api;
 
 import com.policyinsight.api.messaging.JobPublisher;
 import com.policyinsight.api.storage.StorageService;
+import com.policyinsight.security.TokenService;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.PolicyJobRepository;
 import com.policyinsight.observability.TracingServiceInterface;
@@ -45,15 +46,18 @@ public class DocumentController {
     private final JobPublisher jobPublisher;
     private final PolicyJobRepository policyJobRepository;
     private final TracingServiceInterface tracingService;
+    private final TokenService tokenService;
 
     public DocumentController(
             StorageService storageService,
             JobPublisher jobPublisher,
             PolicyJobRepository policyJobRepository,
+            TokenService tokenService,
             @Autowired(required = false) TracingServiceInterface tracingService) {
         this.storageService = storageService;
         this.jobPublisher = jobPublisher;
         this.policyJobRepository = policyJobRepository;
+        this.tokenService = tokenService;
         this.tracingService = tracingService;
     }
 
@@ -64,7 +68,8 @@ public class DocumentController {
     public Object uploadDocument(
             @Parameter(description = "PDF file to upload (max 50 MB)")
             @RequestParam("file") MultipartFile file,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
         // Check if this is an htmx request
         boolean isHtmxRequest = "true".equals(request.getHeader(HX_REQUEST_HEADER));
@@ -130,12 +135,17 @@ public class DocumentController {
                     uploadSpan.setAttribute("storage_path", Strings.safe(storagePath));
                 }
 
+                // Generate capability token
+                String token = tokenService.generateToken();
+                String tokenHmac = tokenService.computeHmac(token);
+
                 // Create job record in database
                 PolicyJob job = new PolicyJob(jobId);
                 job.setStatus("PENDING");
                 job.setPdfGcsPath(storagePath);
                 job.setPdfFilename(filename);
                 job.setFileSizeBytes(file.getSize());
+                job.setAccessTokenHmac(tokenHmac);
                 job = policyJobRepository.save(job);
                 logger.info("Job record created in database: jobId={}", jobId);
 
@@ -148,19 +158,26 @@ public class DocumentController {
                     uploadSpan.setAttribute("status", "PENDING");
                 }
 
+                // Set cookie for browser-based clients (HTMX)
+                if (isHtmxRequest) {
+                    setTokenCookie(response, jobId, token, request);
+                }
+
                 // Return HTML fragment for htmx, JSON for API clients
                 if (isHtmxRequest) {
                     ModelAndView mav = new ModelAndView("fragments/upload-started");
                     mav.addObject("jobId", jobIdStr);
+                    // DO NOT render token in HTML fragment (security requirement)
                     return mav;
                 } else {
-                    // Build JSON response
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("jobId", jobIdStr);
-                    response.put("status", "PENDING");
-                    response.put("statusUrl", "/api/documents/" + jobId + "/status");
-                    response.put("message", "Document uploaded successfully. Processing will begin shortly.");
-                    return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+                    // Build JSON response with token for API clients
+                    Map<String, Object> jsonResponse = new HashMap<>();
+                    jsonResponse.put("jobId", jobIdStr);
+                    jsonResponse.put("token", token); // Return token once in JSON
+                    jsonResponse.put("status", "PENDING");
+                    jsonResponse.put("statusUrl", "/api/documents/" + jobId + "/status");
+                    jsonResponse.put("message", "Document uploaded successfully. Processing will begin shortly.");
+                    return ResponseEntity.status(HttpStatus.ACCEPTED).body(jsonResponse);
                 }
 
             } catch (IOException e) {
@@ -259,6 +276,33 @@ public class DocumentController {
 
             return ResponseEntity.ok(jsonResponse);
         }
+    }
+
+    /**
+     * Sets the job token cookie with proper security attributes.
+     * Secure flag is set only when request is HTTPS or X-Forwarded-Proto=https (Cloud Run).
+     */
+    private void setTokenCookie(HttpServletResponse response, UUID jobId, String token, HttpServletRequest request) {
+        String cookieName = "pi_job_token_" + jobId.toString();
+
+        // Set Secure flag only for HTTPS requests
+        boolean isSecure = request.isSecure() ||
+                          "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+
+        // Build Set-Cookie header manually to include SameSite attribute
+        // Format: name=value; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000
+        StringBuilder cookieValue = new StringBuilder();
+        cookieValue.append(cookieName).append("=").append(token);
+        cookieValue.append("; HttpOnly");
+        if (isSecure) {
+            cookieValue.append("; Secure");
+        }
+        cookieValue.append("; SameSite=Strict");
+        cookieValue.append("; Path=/");
+        cookieValue.append("; Max-Age=").append(30 * 24 * 60 * 60); // 30 days
+
+        response.setHeader("Set-Cookie", cookieValue.toString());
+        logger.debug("Set token cookie for job: {}", jobId);
     }
 }
 
