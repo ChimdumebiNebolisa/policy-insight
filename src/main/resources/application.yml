@@ -73,6 +73,9 @@ app:
   local-worker:
     poll-ms: ${APP_LOCAL_WORKER_POLL_MS:2000}  # Poll every 2 seconds
     batch-size: ${APP_LOCAL_WORKER_BATCH_SIZE:5}  # Process up to 5 jobs per poll
+  job:
+    lease-duration-minutes: ${APP_JOB_LEASE_DURATION_MINUTES:30}  # Lease duration for job processing
+    max-attempts: ${APP_JOB_MAX_ATTEMPTS:3}  # Maximum retry attempts before marking as FAILED
 
 management:
   endpoints:

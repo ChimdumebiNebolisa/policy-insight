@@ -71,5 +71,39 @@ public interface PolicyJobRepository extends JpaRepository<PolicyJob, Long> {
             nativeQuery = true
     )
     int updateStatusIfPending(@Param("jobUuid") UUID jobUuid);
+
+    /**
+     * Atomically update job status from PENDING to PROCESSING with lease and attempt count.
+     * Sets lease_expires_at, increments attempt_count, and updates status atomically.
+     *
+     * @param jobUuid the job UUID to update
+     * @param leaseExpiresAt when the lease expires
+     * @return the number of rows updated (0 or 1)
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query(
+            value = "UPDATE policy_jobs SET " +
+                    "status = 'PROCESSING', " +
+                    "started_at = CURRENT_TIMESTAMP, " +
+                    "updated_at = CURRENT_TIMESTAMP, " +
+                    "lease_expires_at = :leaseExpiresAt, " +
+                    "attempt_count = attempt_count + 1 " +
+                    "WHERE job_uuid = :jobUuid AND status = 'PENDING'",
+            nativeQuery = true
+    )
+    int updateStatusIfPendingWithLease(
+            @Param("jobUuid") UUID jobUuid,
+            @Param("leaseExpiresAt") java.time.Instant leaseExpiresAt
+    );
+
+    /**
+     * Find PROCESSING jobs with expired leases (stale jobs).
+     * Used by the reaper to identify jobs that need recovery.
+     *
+     * @param now current timestamp
+     * @return list of stale PROCESSING jobs
+     */
+    @Query("SELECT p FROM PolicyJob p WHERE p.status = 'PROCESSING' AND p.leaseExpiresAt < :now")
+    java.util.List<PolicyJob> findStaleProcessingJobs(@Param("now") java.time.Instant now);
 }
 

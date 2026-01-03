@@ -17,7 +17,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "policy_jobs", indexes = {
     @Index(name = "idx_uuid", columnList = "job_uuid"),
-    @Index(name = "idx_status_created", columnList = "status, created_at")
+    @Index(name = "idx_status_created", columnList = "status, created_at"),
+    @Index(name = "idx_status_lease_expires", columnList = "status, lease_expires_at")
 })
 public class PolicyJob {
 
@@ -86,6 +87,16 @@ public class PolicyJob {
     @Column(name = "access_token_hmac", length = 255)
     @Size(max = 255)
     private String accessTokenHmac;
+
+    @Column(name = "lease_expires_at")
+    private Instant leaseExpiresAt;
+
+    @Column(name = "attempt_count")
+    private Integer attemptCount = 0;
+
+    @Column(name = "last_error_code", length = 50)
+    @Size(max = 50)
+    private String lastErrorCode;
 
     // Constructors
     public PolicyJob() {
@@ -240,6 +251,30 @@ public class PolicyJob {
 
     public void setAccessTokenHmac(String accessTokenHmac) {
         this.accessTokenHmac = accessTokenHmac;
+    }
+
+    public Instant getLeaseExpiresAt() {
+        return leaseExpiresAt;
+    }
+
+    public void setLeaseExpiresAt(Instant leaseExpiresAt) {
+        this.leaseExpiresAt = leaseExpiresAt;
+    }
+
+    public Integer getAttemptCount() {
+        return attemptCount;
+    }
+
+    public void setAttemptCount(Integer attemptCount) {
+        this.attemptCount = attemptCount;
+    }
+
+    public String getLastErrorCode() {
+        return lastErrorCode;
+    }
+
+    public void setLastErrorCode(String lastErrorCode) {
+        this.lastErrorCode = lastErrorCode;
     }
 }
 

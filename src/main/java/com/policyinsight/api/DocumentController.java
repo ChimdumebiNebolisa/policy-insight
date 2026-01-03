@@ -289,8 +289,19 @@ public class DocumentController {
             } else if ("FAILED".equals(status)) {
                 jsonResponse.put("errorMessage", job.getErrorMessage());
                 jsonResponse.put("message", "Analysis failed: " + (job.getErrorMessage() != null ? job.getErrorMessage() : "Unknown error"));
+                // Include error code if present
+                if (job.getLastErrorCode() != null) {
+                    jsonResponse.put("errorCode", job.getLastErrorCode());
+                }
             } else if ("PROCESSING".equals(status)) {
                 jsonResponse.put("message", "Document is being processed");
+                // Include attempt count and lease info for visibility
+                if (job.getAttemptCount() != null) {
+                    jsonResponse.put("attemptCount", job.getAttemptCount());
+                }
+                if (job.getLeaseExpiresAt() != null) {
+                    jsonResponse.put("leaseExpiresAt", job.getLeaseExpiresAt().toString());
+                }
             } else {
                 jsonResponse.put("message", "Job is queued for processing");
             }

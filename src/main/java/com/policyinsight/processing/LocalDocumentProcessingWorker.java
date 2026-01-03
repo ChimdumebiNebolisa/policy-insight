@@ -92,6 +92,12 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
     @Value("${app.local-worker.batch-size:5}")
     private int batchSize;
 
+    @Value("${app.job.lease-duration-minutes:30}")
+    private int leaseDurationMinutes;
+
+    @Value("${app.job.max-attempts:3}")
+    private int maxAttempts;
+
     /**
      * Periodically polls for PENDING jobs and processes them in batches.
      * Uses fixedDelayString to wait for the specified interval after each execution completes.
@@ -138,32 +144,25 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
 
     /**
      * Atomically claims a job by updating its status from PENDING to PROCESSING.
+     * Sets lease_expires_at and increments attempt_count atomically.
      * Returns true if the job was successfully claimed, false if it was already claimed by another worker.
      * This method uses a transaction to ensure atomicity.
      * Note: The job should already be locked via FOR UPDATE SKIP LOCKED from the query.
      */
     @Transactional
     public boolean claimJob(PolicyJob job) {
-        // Re-fetch the job to ensure we have the latest version (though it should be locked)
-        Optional<PolicyJob> jobOpt = policyJobRepository.findByJobUuid(job.getJobUuid());
-        if (jobOpt.isEmpty()) {
-            logger.warn("Job not found during claim: {}", job.getJobUuid());
+        // Calculate lease expiration time
+        Instant leaseExpiresAt = Instant.now().plus(leaseDurationMinutes, java.time.temporal.ChronoUnit.MINUTES);
+
+        // Atomically update: PENDING -> PROCESSING, set lease, increment attempts
+        int updatedRows = policyJobRepository.updateStatusIfPendingWithLease(job.getJobUuid(), leaseExpiresAt);
+        if (updatedRows == 0) {
+            logger.debug("Could not claim job {} (may have been claimed by another worker or not PENDING)",
+                    job.getJobUuid());
             return false;
         }
 
-        PolicyJob currentJob = jobOpt.get();
-        // Only claim if still PENDING (idempotency check)
-        if (!"PENDING".equals(currentJob.getStatus())) {
-            logger.debug("Job {} is not PENDING (status: {}), skipping claim",
-                    currentJob.getJobUuid(), currentJob.getStatus());
-            return false;
-        }
-
-        // Update to PROCESSING
-        currentJob.setStatus("PROCESSING");
-        currentJob.setStartedAt(Instant.now());
-        policyJobRepository.save(currentJob);
-        logger.debug("Successfully claimed job: {}", currentJob.getJobUuid());
+        logger.debug("Successfully claimed job: {} with lease expiring at {}", job.getJobUuid(), leaseExpiresAt);
         return true;
     }
 
@@ -230,6 +229,7 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
             logger.error("Failed to process document for job: {}", jobId, e);
             job.setStatus("FAILED");
             job.setErrorMessage(e.getMessage());
+            job.setLastErrorCode("PROCESSING_ERROR");
             job.setCompletedAt(Instant.now());
             policyJobRepository.save(job);
 

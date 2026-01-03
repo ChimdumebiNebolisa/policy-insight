@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,9 @@ public class PubSubController {
     private final DocumentJobProcessor documentJobProcessor;
     private final PolicyJobRepository policyJobRepository;
     private final ObjectMapper objectMapper;
+
+    @Value("${app.job.lease-duration-minutes:30}")
+    private int leaseDurationMinutes;
 
     @Autowired
     public PubSubController(PubSubTokenVerifier tokenVerifier,
@@ -180,8 +184,10 @@ public class PubSubController {
                 MDC.put("pubsub_message_id", pubsubMessageId);
             }
 
-            // Atomic idempotency check: try to transition PENDING -> PROCESSING
-            int updatedRows = policyJobRepository.updateStatusIfPending(jobId);
+            // Atomic idempotency check: try to transition PENDING -> PROCESSING with lease
+            // Set lease expiration time (configurable via app.job.lease-duration-minutes)
+            java.time.Instant leaseExpiresAt = java.time.Instant.now().plus(leaseDurationMinutes, java.time.temporal.ChronoUnit.MINUTES);
+            int updatedRows = policyJobRepository.updateStatusIfPendingWithLease(jobId, leaseExpiresAt);
             if (updatedRows == 0) {
                 // Job is not in PENDING status (already processing, completed, or failed)
                 logger.info("SKIP_DUPLICATE: Skipping duplicate processing for job: {} (status not PENDING). request_id: {}, pubsub_message_id: {}",
