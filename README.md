@@ -93,8 +93,37 @@ Key configuration:
 
 ### Documents
 
-- `POST /api/documents/upload` - Upload a PDF document (stubbed in Milestone 1)
-- `GET /api/documents/{id}/status` - Get document processing status (stubbed in Milestone 1)
+- `POST /api/documents/upload` - Upload a PDF document
+  - Requires: multipart/form-data with PDF file (max 50 MB)
+  - Validates: PDF magic bytes (%PDF-), MIME type, file size
+  - Returns: Job ID and capability token (JSON) or HTMX fragment
+  - Rate limit: 10 uploads/hour per IP
+- `GET /api/documents/{id}/status` - Get document processing status
+  - Requires: Job capability token (X-Job-Token header or pi_job_token_{id} cookie)
+  - Returns: Current status (PENDING, PROCESSING, SUCCESS, FAILED) with progress info
+- `GET /documents/{id}/report` - View analysis report (HTML)
+  - Requires: Job capability token
+  - Returns: Rendered report with citations
+- `GET /api/documents/{id}/export/pdf` - Export report as PDF
+  - Requires: Job capability token
+  - Returns: PDF file with inline citations
+
+### Q&A
+
+- `POST /api/questions` - Submit a grounded question
+  - Requires: Job capability token, document_id, question (max 500 chars)
+  - Rate limit: 20 Q&A requests/hour per IP, max 3 questions per job
+  - Returns: Citation-backed answer or abstention
+- `GET /api/questions/{document_id}` - Get Q&A history for a document
+  - Requires: Job capability token
+  - Returns: List of Q&A interactions
+
+### Sharing
+
+- `POST /api/documents/{id}/share` - Generate shareable link
+  - Requires: Job capability token
+  - Returns: Share token and expiration (7 days)
+- `GET /documents/{id}/share/{token}` - View shared report (public, no token required)
 
 ### API Documentation
 
@@ -169,11 +198,58 @@ The CI workflow:
 4. Runs tests
 5. Packages the JAR
 
+## Security Model
+
+PolicyInsight uses **capability tokens** for access control:
+
+- **Token Generation**: Each uploaded document receives a unique capability token (32 random bytes, base64url encoded)
+- **Token Storage**: Only HMAC-SHA256 hash is stored in database (never raw tokens)
+- **Token Delivery**: 
+  - JSON API clients: Token returned in response body (one-time)
+  - HTMX/browser clients: Token set as HttpOnly cookie (`pi_job_token_{jobId}`)
+- **Token Validation**: Required for all protected endpoints (status, report, export, Q&A, share generation)
+- **CSRF Protection**: State-changing endpoints (POST/PUT/PATCH/DELETE) validate Origin/Referer headers
+
+### Public Endpoints (No Token Required)
+
+- `GET /` - Landing page
+- `POST /api/documents/upload` - Upload endpoint
+- `GET /documents/{id}/share/{token}` - Share link viewing
+- `POST /internal/pubsub` - Internal Pub/Sub webhook
+- `GET /health` - Health check
+- Swagger/OpenAPI endpoints
+
+## Rate Limiting
+
+- **Upload**: 10 requests/hour per IP (configurable)
+- **Q&A**: 20 requests/hour per IP, max 3 questions per job (configurable)
+- **Implementation**: DB-backed counters with atomic upserts (Cloud Run compatible)
+
+## Job Processing
+
+- **Lease Model**: Jobs use database-backed leases to prevent concurrent processing
+- **Stuck Job Recovery**: Scheduled reaper resets expired PROCESSING jobs to PENDING (if attempts < max) or marks as FAILED
+- **Idempotent Chunks**: Chunk writes are idempotent (UNIQUE constraint + delete-before-insert)
+- **Gemini Retries**: Automatic retries for transient errors (timeouts, 429, 5xx) with exponential backoff + jitter
+
+## File Handling
+
+- **PDF Validation**: Magic bytes (%PDF-) validation in addition to MIME type check
+- **Storage Path**: Deterministic path `jobs/{jobId}/document.pdf` (ignores user filename)
+- **Text Limits**: Hard cap on extracted text length (default 1M characters, configurable)
+- **Processing Timeouts**: Stage-level timeouts enforced (default 300 seconds, configurable)
+
 ## Milestones
 
 See [tasks.md](./tasks.md) for the complete implementation roadmap.
 
-**Current Status**: Milestone 1 (Repo scaffold + local run + CI) ✅
+**Current Status**: 
+- ✅ M1: Capability-token security
+- ✅ M2: Rate limiting + quotas
+- ✅ M3: Lease + stuck PROCESSING recovery
+- ✅ M4: Idempotent chunk writes
+- ✅ M5: Gemini-call retries
+- ✅ M6: Safer file handling + limits + tests/docs
 
 ## License
 

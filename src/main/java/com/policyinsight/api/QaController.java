@@ -95,8 +95,23 @@ public class QaController {
                     .body(buildErrorResponse("document_id and question are required"));
         }
 
+        // Validate and sanitize question
+        if (question == null || question.isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(buildErrorResponse("Question cannot be blank"));
+        }
+
+        // Strip control characters (security: prevent injection)
+        question = question.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "").trim();
+
+        // Enforce max length (500 characters)
+        if (question.length() > 500) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(buildErrorResponse("Question must not exceed 500 characters"));
+        }
+
         logger.info("Received Q&A request: documentId={}, questionLength={}",
-                jobUuid, question != null ? question.length() : 0);
+                jobUuid, question.length());
 
         // Check per-IP rate limit
         if (rateLimitService.checkQaRateLimit(httpRequest)) {

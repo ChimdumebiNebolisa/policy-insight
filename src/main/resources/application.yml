@@ -80,6 +80,9 @@ app:
     retry:
       max-attempts: ${APP_GEMINI_RETRY_MAX_ATTEMPTS:3}  # Maximum retry attempts for Gemini API calls
       base-delay-ms: ${APP_GEMINI_RETRY_BASE_DELAY_MS:1000}  # Base delay for exponential backoff (in milliseconds)
+  processing:
+    max-text-length: ${APP_PROCESSING_MAX_TEXT_LENGTH:1000000}  # Maximum extracted text length (characters) - hard cap to prevent excessive costs
+    stage-timeout-seconds: ${APP_PROCESSING_STAGE_TIMEOUT_SECONDS:300}  # Timeout per processing stage (extraction, classification, etc.)
 
 management:
   endpoints:

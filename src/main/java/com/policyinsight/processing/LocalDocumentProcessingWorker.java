@@ -98,6 +98,12 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
     @Value("${app.job.max-attempts:3}")
     private int maxAttempts;
 
+    @Value("${app.processing.max-text-length:1000000}")
+    private int maxTextLength;
+
+    @Value("${app.processing.stage-timeout-seconds:300}")
+    private int stageTimeoutSeconds;
+
     /**
      * Periodically polls for PENDING jobs and processes them in batches.
      * Uses fixedDelayString to wait for the specified interval after each execution completes.
@@ -212,7 +218,8 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
         }
 
         try (io.opentelemetry.context.Scope scope = parentSpan != null ? parentSpan.makeCurrent() : null) {
-            processDocumentWithSpans(jobId, job, parentSpan);
+            // Enforce overall processing timeout
+            processDocumentWithSpans(jobId, job, parentSpan, startTime);
 
             // Record success metrics
             if (metricsService != null) {
@@ -255,7 +262,14 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
         }
     }
 
-    private void processDocumentWithSpans(UUID jobId, PolicyJob job, Span parentSpan) throws Exception {
+    private void processDocumentWithSpans(UUID jobId, PolicyJob job, Span parentSpan, long overallStartTime) throws Exception {
+        // Check overall timeout
+        long elapsedSeconds = (System.currentTimeMillis() - overallStartTime) / 1000;
+        if (elapsedSeconds > stageTimeoutSeconds) {
+            throw new IllegalStateException(String.format(
+                    "Processing timeout exceeded: %d seconds (limit: %d seconds) for job: %s",
+                    elapsedSeconds, stageTimeoutSeconds, jobId));
+        }
         // Download PDF from storage
         String storagePath = job.getPdfGcsPath();
         if (storagePath == null || storagePath.isEmpty()) {
@@ -349,6 +363,18 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
         }
 
         String fullText = extractedText.getFullText();
+        
+        // Hard cap extracted text length to prevent excessive processing costs
+        if (fullText.length() > maxTextLength) {
+            logger.warn("Extracted text length ({}) exceeds maximum ({}), truncating for job: {}",
+                    fullText.length(), maxTextLength, jobId);
+            fullText = fullText.substring(0, maxTextLength);
+            if (extractSpan != null) {
+                extractSpan.setAttribute("text_truncated", true);
+                extractSpan.setAttribute("original_length", extractedText.getFullText().length());
+            }
+        }
+        
         DocumentClassifierService.ClassificationResult classification;
         try (io.opentelemetry.context.Scope classifyScope = classifySpan != null ? classifySpan.makeCurrent() : null) {
             classification = documentClassifierService.classify(fullText);

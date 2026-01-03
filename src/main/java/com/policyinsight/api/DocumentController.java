@@ -2,6 +2,7 @@ package com.policyinsight.api;
 
 import com.policyinsight.api.messaging.JobPublisher;
 import com.policyinsight.api.storage.StorageService;
+import com.policyinsight.api.validation.PdfValidator;
 import com.policyinsight.security.RateLimitService;
 import com.policyinsight.security.TokenService;
 import com.policyinsight.shared.model.PolicyJob;
@@ -49,6 +50,7 @@ public class DocumentController {
     private final TracingServiceInterface tracingService;
     private final TokenService tokenService;
     private final RateLimitService rateLimitService;
+    private final PdfValidator pdfValidator;
 
     public DocumentController(
             StorageService storageService,
@@ -56,12 +58,14 @@ public class DocumentController {
             PolicyJobRepository policyJobRepository,
             TokenService tokenService,
             RateLimitService rateLimitService,
+            PdfValidator pdfValidator,
             @Autowired(required = false) TracingServiceInterface tracingService) {
         this.storageService = storageService;
         this.jobPublisher = jobPublisher;
         this.policyJobRepository = policyJobRepository;
         this.tokenService = tokenService;
         this.rateLimitService = rateLimitService;
+        this.pdfValidator = pdfValidator;
         this.tracingService = tracingService;
     }
 
@@ -130,13 +134,21 @@ public class DocumentController {
                     String.format("Invalid file type: %s. Only PDF files (application/pdf) are allowed.", contentType));
         }
 
+        // Validate PDF magic bytes (%PDF-) - security: prevent malicious files
+        try {
+            if (!pdfValidator.validateMagicBytes(file.getInputStream())) {
+                throw new IllegalArgumentException("File does not appear to be a valid PDF (magic bytes validation failed)");
+            }
+        } catch (IOException e) {
+            logger.error("Failed to validate PDF magic bytes", e);
+            throw new IllegalArgumentException("Failed to validate PDF file: " + e.getMessage());
+        }
+
             // Generate job UUID and request ID for correlation
             UUID jobId = UUID.randomUUID();
             String requestId = UUID.randomUUID().toString();
-            String filename = file.getOriginalFilename();
-            if (filename == null || filename.isEmpty()) {
-                filename = "document.pdf";
-            }
+            // Force filename to document.pdf (ignore user-provided filename for security)
+            String filename = "document.pdf";
 
             // Add correlation IDs to MDC for logging
             String jobIdStr = Strings.safe(jobId.toString());

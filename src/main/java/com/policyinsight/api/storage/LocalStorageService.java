@@ -55,32 +55,23 @@ public class LocalStorageService implements StorageService {
     }
 
     /**
-     * Uploads a file to local storage with the specified path structure: {jobId}/{filename}
+     * Uploads a file to local storage with the specified path structure: jobs/{jobId}/document.pdf
+     * Filename is forced to "document.pdf" for security (ignores user-provided filename).
      *
      * @param jobId      Job UUID
-     * @param filename   Original filename
+     * @param filename   Filename (ignored, always uses "document.pdf")
      * @param content    File content input stream
      * @param contentType MIME type (e.g., "application/pdf")
-     * @return Local storage path (file://{storageRoot}/pdf/{jobId}/{filename} or similar)
+     * @return Local storage path (local://jobs/{jobId}/document.pdf)
      * @throws IOException if upload fails
      */
     @Override
     public String uploadFile(UUID jobId, String filename, InputStream content, String contentType) throws IOException {
-        String sanitizedFilename = sanitizeFilename(filename);
+        // Force filename to document.pdf (ignore user-provided filename for security)
+        String sanitizedFilename = "document.pdf";
 
-        // Determine subdirectory based on content type
-        String subdir = "pdf";
-        if (contentType != null) {
-            if (contentType.contains("json")) {
-                subdir = "reports";
-            } else if (contentType.contains("pdf")) {
-                subdir = "pdf";
-            } else {
-                subdir = "files";
-            }
-        }
-
-        Path jobDir = storageRoot.resolve(subdir).resolve(jobId.toString());
+        // Use deterministic path: jobs/{jobId}/document.pdf
+        Path jobDir = storageRoot.resolve("jobs").resolve(jobId.toString());
         Files.createDirectories(jobDir);
 
         Path filePath = jobDir.resolve(sanitizedFilename);
@@ -89,9 +80,8 @@ public class LocalStorageService implements StorageService {
 
         try {
             Files.copy(content, filePath, StandardCopyOption.REPLACE_EXISTING);
-            // Return a path format that can be used for download
-            // Use a simple format: local://{subdir}/{jobId}/{filename}
-            String storagePath = "local://" + subdir + "/" + jobId + "/" + sanitizedFilename;
+            // Return deterministic path: local://jobs/{jobId}/document.pdf
+            String storagePath = "local://jobs/" + jobId + "/" + sanitizedFilename;
             logger.info("Successfully uploaded file to local storage: {}", storagePath);
             return storagePath;
         } catch (Exception e) {
@@ -113,18 +103,26 @@ public class LocalStorageService implements StorageService {
             throw new IllegalArgumentException("Invalid local storage path: " + storagePath);
         }
 
-        // Parse path: local://{subdir}/{jobId}/{filename}
+        // Parse path: local://jobs/{jobId}/document.pdf
         String pathWithoutPrefix = storagePath.replace("local://", "");
         String[] parts = pathWithoutPrefix.split("/", 3);
         if (parts.length != 3) {
             throw new IllegalArgumentException("Invalid local storage path format: " + storagePath);
         }
 
+        // Support both old format (pdf/{jobId}/...) and new format (jobs/{jobId}/document.pdf)
         String subdir = parts[0];
         String jobId = parts[1];
         String filename = parts[2];
 
-        Path filePath = storageRoot.resolve(subdir).resolve(jobId).resolve(filename).normalize();
+        Path filePath;
+        if ("jobs".equals(subdir)) {
+            // New format: jobs/{jobId}/document.pdf
+            filePath = storageRoot.resolve("jobs").resolve(jobId).resolve(filename).normalize();
+        } else {
+            // Legacy format: pdf/{jobId}/... (for backward compatibility)
+            filePath = storageRoot.resolve(subdir).resolve(jobId).resolve(filename).normalize();
+        }
 
         // Security check: ensure the resolved path is within storage root
         if (!filePath.startsWith(storageRoot)) {

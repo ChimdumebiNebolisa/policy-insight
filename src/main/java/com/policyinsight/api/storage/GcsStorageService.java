@@ -46,18 +46,20 @@ public class GcsStorageService implements StorageService {
     }
 
     /**
-     * Uploads a file to GCS with the specified path structure: {jobId}/{filename}
+     * Uploads a file to GCS with the specified path structure: jobs/{jobId}/document.pdf
+     * Filename is forced to "document.pdf" for security (ignores user-provided filename).
      *
      * @param jobId      Job UUID
-     * @param filename   Original filename
+     * @param filename   Filename (ignored, always uses "document.pdf")
      * @param content    File content input stream
      * @param contentType MIME type (e.g., "application/pdf")
-     * @return GCS path (gs://bucket-name/jobId/filename)
+     * @return GCS path (gs://bucket-name/jobs/{jobId}/document.pdf)
      * @throws IOException if upload fails
      */
     @Override
     public String uploadFile(java.util.UUID jobId, String filename, InputStream content, String contentType) throws IOException {
-        String objectName = jobId + "/" + filename;
+        // Force filename to document.pdf (ignore user-provided filename for security)
+        String objectName = "jobs/" + jobId + "/document.pdf";
         BlobId blobId = BlobId.of(bucketName, objectName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
                 .setContentType(contentType)
