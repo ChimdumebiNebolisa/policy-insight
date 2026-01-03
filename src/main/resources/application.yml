@@ -57,6 +57,12 @@ app:
   security:
     token-secret: ${APP_TOKEN_SECRET:change-me-in-production}
     allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:8080}
+  rate-limit:
+    upload:
+      max-per-hour: ${APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR:10}
+    qa:
+      max-per-hour: ${APP_RATE_LIMIT_QA_MAX_PER_HOUR:20}
+      max-per-job: ${APP_RATE_LIMIT_QA_MAX_PER_JOB:3}
   storage:
     mode: ${APP_STORAGE_MODE:local}  # local (default) | gcp
     local-dir: ${APP_STORAGE_LOCAL_DIR:.local-storage}

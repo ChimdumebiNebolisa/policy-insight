@@ -2,6 +2,7 @@ package com.policyinsight.api;
 
 import com.policyinsight.api.messaging.JobPublisher;
 import com.policyinsight.api.storage.StorageService;
+import com.policyinsight.security.RateLimitService;
 import com.policyinsight.security.TokenService;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.PolicyJobRepository;
@@ -47,17 +48,20 @@ public class DocumentController {
     private final PolicyJobRepository policyJobRepository;
     private final TracingServiceInterface tracingService;
     private final TokenService tokenService;
+    private final RateLimitService rateLimitService;
 
     public DocumentController(
             StorageService storageService,
             JobPublisher jobPublisher,
             PolicyJobRepository policyJobRepository,
             TokenService tokenService,
+            RateLimitService rateLimitService,
             @Autowired(required = false) TracingServiceInterface tracingService) {
         this.storageService = storageService;
         this.jobPublisher = jobPublisher;
         this.policyJobRepository = policyJobRepository;
         this.tokenService = tokenService;
+        this.rateLimitService = rateLimitService;
         this.tracingService = tracingService;
     }
 
@@ -89,6 +93,23 @@ public class DocumentController {
                 file.getOriginalFilename(), file.getSize(), file.getContentType());
 
         try (io.opentelemetry.context.Scope scope = uploadSpan != null ? uploadSpan.makeCurrent() : null) {
+
+        // Check rate limit
+        if (rateLimitService.checkUploadRateLimit(request)) {
+            logger.warn("Upload rate limit exceeded for IP: {}", rateLimitService.extractClientIp(request));
+            try {
+                response.setStatus(429); // HTTP 429 Too Many Requests
+                response.setContentType("application/json");
+                response.setCharacterEncoding("UTF-8");
+                response.getWriter().write(String.format(
+                    "{\"error\":\"RATE_LIMIT_EXCEEDED\",\"message\":\"Upload rate limit exceeded. Please try again later.\",\"timestamp\":\"%s\"}",
+                    java.time.Instant.now()
+                ));
+            } catch (IOException e) {
+                logger.error("Failed to write rate limit error response", e);
+            }
+            return null; // Response already written
+        }
 
         // Validate file is present
         if (file.isEmpty()) {

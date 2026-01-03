@@ -1,6 +1,7 @@
 package com.policyinsight.api;
 
 import com.policyinsight.processing.QaService;
+import com.policyinsight.security.RateLimitService;
 import com.policyinsight.security.TokenService;
 import com.policyinsight.shared.dto.QuestionRequest;
 import com.policyinsight.shared.dto.QuestionResponse;
@@ -42,11 +43,13 @@ public class QaController {
     private final QaService qaService;
     private final PolicyJobRepository policyJobRepository;
     private final TokenService tokenService;
+    private final RateLimitService rateLimitService;
 
-    public QaController(QaService qaService, PolicyJobRepository policyJobRepository, TokenService tokenService) {
+    public QaController(QaService qaService, PolicyJobRepository policyJobRepository, TokenService tokenService, RateLimitService rateLimitService) {
         this.qaService = qaService;
         this.policyJobRepository = policyJobRepository;
         this.tokenService = tokenService;
+        this.rateLimitService = rateLimitService;
     }
 
     /**
@@ -95,6 +98,13 @@ public class QaController {
         logger.info("Received Q&A request: documentId={}, questionLength={}",
                 jobUuid, question != null ? question.length() : 0);
 
+        // Check per-IP rate limit
+        if (rateLimitService.checkQaRateLimit(httpRequest)) {
+            logger.warn("Q&A rate limit exceeded for IP: {}", rateLimitService.extractClientIp(httpRequest));
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(buildErrorResponse("Q&A rate limit exceeded. Please try again later."));
+        }
+
         // Verify document exists and is completed
         PolicyJob job = policyJobRepository.findByJobUuid(jobUuid).orElse(null);
         if (job == null) {
@@ -129,11 +139,12 @@ public class QaController {
             }
         }
 
-        // Check question count limit
+        // Check per-job question quota (server-side enforcement)
         long questionCount = qaService.getQuestionCount(jobUuid);
-        if (questionCount >= 3) {
+        int maxPerJob = rateLimitService.getQaMaxPerJob();
+        if (questionCount >= maxPerJob) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(buildErrorResponse("Maximum question limit (3) reached for this document session"));
+                    .body(buildErrorResponse(String.format("Maximum question limit (%d) reached for this document session", maxPerJob)));
         }
 
         try {
