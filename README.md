@@ -1,6 +1,6 @@
 # PolicyInsight
 
-Production-grade legal document analysis service with Datadog observability. Built for the AI Partner Catalyst Devpost hackathon (Datadog Challenge track).
+Production-grade legal document analysis service with Datadog observability.
 
 ## Overview
 
@@ -243,7 +243,7 @@ PolicyInsight uses **capability tokens** for access control:
 
 ## Milestones
 
-See [tasks.md](./tasks.md) for the complete implementation roadmap.
+See [tasks.md](./markdown/tasks.md) for the complete implementation roadmap.
 
 **Current Status**:
 - ✅ M1: Capability-token security
@@ -257,3 +257,10 @@ See [tasks.md](./tasks.md) for the complete implementation roadmap.
 
 Apache 2.0
 
+## Documentation
+
+Additional documentation is available in the `/markdown` directory.
+
+## Contributing
+
+For questions or issues, please refer to the documentation in the `/markdown` directory.

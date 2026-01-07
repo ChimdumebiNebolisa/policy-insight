@@ -1,8 +1,8 @@
-# PolicyInsight – Datadog Challenge Track PRD
+# PolicyInsight – Datadog Integration PRD
 
 ## 1. Executive Summary
 
-**PolicyInsight** is a production-grade backend service that analyzes legal documents (PDFs) and outputs plain-English risk reports with mandatory source citations. Built to demonstrate **junior engineer who can ship + operate a service**, this submission showcases:
+**PolicyInsight** is a production-grade backend service that analyzes legal documents (PDFs) and outputs plain-English risk reports with mandatory source citations. Built to demonstrate **junior engineer who can ship + operate a service**, this project showcases:
 
 - ✅ **Full-stack backend-leaning architecture**: Java 21 + Spring Boot REST API + server-rendered Thymeleaf UI
 - ✅ **Async resilience**: Document ingestion → Pub/Sub workers → async job tracking + polling
@@ -12,7 +12,7 @@
 - ✅ **CI/CD + reliability**: GitHub Actions (test→build→deploy), versioned releases, rollback strategy
 - ✅ **Datadog integration**: 3+ detection rules, incident automation, dashboard exports, traffic generator for demo proof
 
-**Why this matters for judges:** This is not a toy. It's a service a junior engineer could operate in production—with clear signals about what's breaking, why, and how to fix it.
+**Why this matters:** This is not a toy. It's a service a junior engineer could operate in production—with clear signals about what's breaking, why, and how to fix it.
 
 ---
 
@@ -157,19 +157,19 @@ CREATE TABLE policy_jobs (
   pdf_gcs_path VARCHAR(255),
   pdf_filename VARCHAR(255),
   file_size_bytes BIGINT,
-  
+
   -- Processing metadata
   classification VARCHAR(50), -- TOS, PRIVACY_POLICY, LEASE
   classification_confidence DECIMAL(3,2),
   doc_type_detected_page INT,
-  
+
   -- Output pointers
   report_gcs_path VARCHAR(255),
   chunks_json_gcs_path VARCHAR(255),
-  
+
   -- For Datadog correlation
   dd_trace_id VARCHAR(255),
-  
+
   INDEX idx_uuid (job_uuid),
   INDEX idx_status_created (status, created_at DESC)
 );
@@ -187,7 +187,7 @@ CREATE TABLE document_chunks (
   end_offset INT,
   span_confidence DECIMAL(3,2),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  
+
   FOREIGN KEY (job_uuid) REFERENCES policy_jobs(job_uuid),
   INDEX idx_job_uuid (job_uuid)
 );
@@ -206,7 +206,7 @@ CREATE TABLE reports (
   risk_taxonomy JSONB,   -- {Data, Financial, LegalRights, Termination, Modification}
   generated_at TIMESTAMP,
   gcs_path VARCHAR(255),
-  
+
   FOREIGN KEY (job_uuid) REFERENCES policy_jobs(job_uuid) UNIQUE,
   INDEX idx_job_uuid (job_uuid)
 );
@@ -222,7 +222,7 @@ CREATE TABLE qa_interactions (
   cited_chunks JSONB,  -- [{chunk_id, page_num, text}]
   confidence VARCHAR(20), -- CONFIDENT, ABSTAINED
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  
+
   FOREIGN KEY (job_uuid) REFERENCES policy_jobs(job_uuid),
   INDEX idx_job_uuid (job_uuid)
 );
@@ -237,7 +237,7 @@ CREATE TABLE share_links (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   expires_at TIMESTAMP, -- 7 days from creation
   access_count INT DEFAULT 0,
-  
+
   FOREIGN KEY (job_uuid) REFERENCES policy_jobs(job_uuid),
   INDEX idx_token (share_token),
   INDEX idx_expires_at (expires_at)
@@ -558,7 +558,7 @@ Raw text
 ```
 First 2000 chars of extracted text
   → Rules-based classifier:
-      - Match keywords (TOS: "Terms of Service", "Agree", "bound"; 
+      - Match keywords (TOS: "Terms of Service", "Agree", "bound";
                         Privacy: "data", "collect", "process";
                         Lease: "rent", "property", "tenant")
       - If confidence ≥ 0.90: return classification
@@ -594,7 +594,7 @@ All chunks
 Grounding layer:
   1. Extract top 3 risks from taxonomy
   2. For each risk, get corresponding chunks (max 3 chunks per risk)
-  3. Build context: 
+  3. Build context:
      "Extracted text: [chunk1], [chunk2], [chunk3]"
      "Risk category: [risk]"
      "Generate one plain-English bullet summarizing this risk."
@@ -658,7 +658,7 @@ At worker startup:
 At job start:
   - Span: operation_name="job.process"
   - Tags: job_id, document_classification, file_size_bytes
-  
+
 Per step:
   - Span: operation_name="extraction", tags=[duration, doc_ai_status, fallback_used]
   - Span: operation_name="classification", tags=[confidence, provider]
@@ -715,9 +715,9 @@ On completion:
 #### `GET /upload` – Upload Form Fragment (htmx)
 ```html
 <!-- upload.html -->
-<form id="upload-form" 
-      hx-post="/api/upload" 
-      hx-target="#status" 
+<form id="upload-form"
+      hx-post="/api/upload"
+      hx-target="#status"
       enctype="multipart/form-data">
   <div class="form-group">
     <label for="file-input">Select PDF:</label>
@@ -736,13 +736,13 @@ On completion:
 public ResponseEntity<?> uploadPdf(
     @RequestParam("file") MultipartFile file,
     HttpServletRequest request) {
-  
+
   // Validate file
   if (file.getSize() > 20 * 1024 * 1024) {
     return ResponseEntity.badRequest()
       .body(Map.of("error", "File exceeds 20 MB"));
   }
-  
+
   // Create job
   UUID jobId = UUID.randomUUID();
   PolicyJob job = new PolicyJob();
@@ -750,14 +750,14 @@ public ResponseEntity<?> uploadPdf(
   job.setStatus("PENDING");
   job.setPdfGcsPath("gs://bucket/jobs/" + jobId + "/document.pdf");
   policyJobRepository.save(job);
-  
+
   // Upload to GCS
   gcsClient.uploadFile(file.getInputStream(), job.getPdfGcsPath());
-  
+
   // Publish Pub/Sub
-  pubsubClient.publish("analyze-topic", 
+  pubsubClient.publish("analyze-topic",
     new AnalysisMessage(jobId));
-  
+
   // Return response (htmx will poll status)
   return ResponseEntity.accepted()
     .body(Map.of(
@@ -770,15 +770,15 @@ public ResponseEntity<?> uploadPdf(
 #### `GET /api/jobs/{jobId}/status` – Status Polling (htmx)
 ```html
 <!-- status-check.html (returned by controller, htmx polls) -->
-<div id="status-display" 
-     hx-get="/api/jobs/{jobId}/status" 
-     hx-trigger="load, every 2s" 
+<div id="status-display"
+     hx-get="/api/jobs/{jobId}/status"
+     hx-trigger="load, every 2s"
      hx-swap="outerHTML">
-  
+
   <p id="status-text">Status: PENDING</p>
   <progress id="progress-bar" value="0" max="100"></progress>
   <p id="eta">Estimated time remaining: --</p>
-  
+
   <!-- Once SUCCESS, auto-redirect to report view -->
 </div>
 
@@ -801,7 +801,7 @@ document.addEventListener('htmx:afterSettle', function(event) {
   <div class="header-section">
     <h2 th:text="${report.documentOverview.classification}"></h2>
     <p th:text="'Confidence: ' + ${report.documentOverview.confidence}"></p>
-    
+
     <div class="disclaimer">
       ⚠️ This is not legal advice. Verify important claims with a lawyer.
     </div>
@@ -811,7 +811,7 @@ document.addEventListener('htmx:afterSettle', function(event) {
   <section class="section-overview">
     <h3>Document Overview</h3>
     <ul>
-      <li th:each="fact : ${report.documentOverview.facts}" 
+      <li th:each="fact : ${report.documentOverview.facts}"
           th:text="${fact}"></li>
     </ul>
   </section>
@@ -826,7 +826,7 @@ document.addEventListener('htmx:afterSettle', function(event) {
           <summary>Citations</summary>
           <ul>
             <li th:each="cite : ${bullet.citations}">
-              Page <span th:text="${cite.pageNumber}"></span>: 
+              Page <span th:text="${cite.pageNumber}"></span>:
               <em th:text="${cite.textSpan}"></em>
             </li>
           </ul>
@@ -836,7 +836,7 @@ document.addEventListener('htmx:afterSettle', function(event) {
   </section>
 
   <!-- Section 3: Obligations & Restrictions (similar structure) -->
-  
+
   <!-- Section 4: Risk Taxonomy -->
   <section class="section-risks">
     <h3>Detected Risks</h3>
@@ -865,12 +865,12 @@ document.addEventListener('htmx:afterSettle', function(event) {
   <!-- Section 5: Q&A -->
   <section class="section-qa">
     <h3>Ask a Question</h3>
-    <form hx-post="/api/jobs/{jobId}/question" 
+    <form hx-post="/api/jobs/{jobId}/question"
           hx-target="#qa-results">
       <textarea name="question" placeholder="Ask a question about this document..." required></textarea>
       <button type="submit">Ask</button>
     </form>
-    
+
     <div id="qa-results">
       <div th:each="qa : ${qaHistory}" class="qa-item">
         <p><strong>Q: </strong><span th:text="${qa.question}"></span></p>
@@ -885,7 +885,7 @@ document.addEventListener('htmx:afterSettle', function(event) {
     <a href="/api/jobs/{jobId}/export" class="btn-secondary" download="report.pdf">
       📥 Download as PDF
     </a>
-    <button hx-post="/api/jobs/{jobId}/share" 
+    <button hx-post="/api/jobs/{jobId}/share"
             hx-target="#share-modal"
             class="btn-secondary">
       🔗 Get Share Link
@@ -902,7 +902,7 @@ document.addEventListener('htmx:afterSettle', function(event) {
     This is a shared read-only view of a PolicyInsight report.
     It expires on: <span th:text="${expiresAt}"></span>
   </div>
-  
+
   <!-- Same report sections as /jobs/{jobId}/report, but no Q&A input -->
   <!-- No export/share buttons -->
 </div>
@@ -956,7 +956,7 @@ Every risk statement, obligation, and Q&A answer must satisfy ONE of:
 #### A. Summary Generation (LLM)
 ```
 prompt = """
-You are a legal document analyzer. Your task is to generate ONE plain-English 
+You are a legal document analyzer. Your task is to generate ONE plain-English
 bullet point summarizing a risk or obligation found in a legal document.
 
 CRITICAL RULES:
@@ -982,7 +982,7 @@ if (contains_unsourced_claim(response, chunks)):
 ```
 qa_prompt = """
 Answer the following question using ONLY the provided document excerpts.
-If the document does not contain information to answer the question, 
+If the document does not contain information to answer the question,
 respond with exactly: "Insufficient evidence in document."
 
 Question: {question}
@@ -1020,7 +1020,7 @@ for category in [Data, Financial, LegalRights, Termination, Modification]:
         text: chunk.text,
         severity: infer_severity(chunk)
       })
-  
+
   if matches:
     risks_detected[category] = matches
   else:
@@ -1062,9 +1062,9 @@ for category in [Data, Financial, LegalRights, Termination, Modification]:
 **Persistent banner on every page:**
 ```
 ⚠️ DISCLAIMER
-PolicyInsight is an AI-powered analysis tool designed to help you understand 
-legal documents. It is NOT a substitute for legal advice. All outputs are 
-based on text analysis and may be incomplete or incorrect. Please review 
+PolicyInsight is an AI-powered analysis tool designed to help you understand
+legal documents. It is NOT a substitute for legal advice. All outputs are
+based on text analysis and may be incomplete or incorrect. Please review
 important claims with a qualified attorney before making decisions.
 ```
 
@@ -1072,7 +1072,7 @@ important claims with a qualified attorney before making decisions.
 ```
 Generated: 2025-01-29 10:00:00 UTC
 Tool: PolicyInsight v1.0
-Confidence: This report is based on automated analysis and extraction. 
+Confidence: This report is based on automated analysis and extraction.
 All claims are cited to source text. Confidence levels vary by section.
 ```
 
@@ -1127,7 +1127,7 @@ public void processJob(UUID jobId) {
     .withTag("job_id", jobId.toString())
     .withTag("service_name", "policyinsight")
     .start();
-  
+
   try {
     // Extraction
     Span extractSpan = tracer.buildSpan("extraction")
@@ -1139,7 +1139,7 @@ public void processJob(UUID jobId) {
     } finally {
       extractSpan.finish();
     }
-    
+
     // Classification
     Span classifySpan = tracer.buildSpan("classification")
       .asChildOf(parentSpan)
@@ -1150,7 +1150,7 @@ public void processJob(UUID jobId) {
     } finally {
       classifySpan.finish();
     }
-    
+
     // Risk scanning + summarization
     Span analysisSpan = tracer.buildSpan("analysis")
       .asChildOf(parentSpan)
@@ -1162,7 +1162,7 @@ public void processJob(UUID jobId) {
     } finally {
       analysisSpan.finish();
     }
-    
+
   } finally {
     parentSpan.finish();
   }
@@ -1178,36 +1178,36 @@ public String callGemini(String prompt, String taskType) {
     .withTag("model", "gemini-pro")
     .withTag("task_type", taskType)
     .start();
-  
+
   long startTime = System.currentTimeMillis();
-  
+
   try {
-    GenerateContentResponse response = 
+    GenerateContentResponse response =
       vertexAiClient.generateContent(prompt);
-    
+
     long duration = System.currentTimeMillis() - startTime;
-    
+
     // Extract token usage
     int inputTokens = response.getUsageMetadata().getPromptTokenCount();
     int outputTokens = response.getUsageMetadata().getCandidatesTokenCount();
-    
+
     llmSpan.setTag("input_tokens", inputTokens);
     llmSpan.setTag("output_tokens", outputTokens);
     llmSpan.setTag("total_tokens", inputTokens + outputTokens);
     llmSpan.setTag("duration_ms", duration);
-    
+
     // Estimate cost (Gemini pricing ~ $0.0005 / 1k input tokens, $0.0015 / 1k output)
     double estimatedCost = (inputTokens * 0.0005 + outputTokens * 0.0015) / 1000.0;
     llmSpan.setTag("estimated_cost_usd", estimatedCost);
-    
+
     // Log for aggregation
-    meterRegistry.counter("llm.tokens.input", 
-      "task", taskType, 
+    meterRegistry.counter("llm.tokens.input",
+      "task", taskType,
       "model", "gemini-pro")
       .increment(inputTokens);
-    
+
     return response.getContent().getParts(0).getText();
-    
+
   } catch (Exception e) {
     llmSpan.setTag("error", true);
     llmSpan.setTag("error.message", e.getMessage());
@@ -1225,25 +1225,25 @@ public DocumentProcessingResult extractWithDocumentAI(String gcsPath) {
   Span docaiSpan = tracer.buildSpan("documentai.extraction")
     .withTag("provider", "google-cloud-documentai")
     .start();
-  
+
   long startTime = System.currentTimeMillis();
-  
+
   try {
     ProcessResponse response = documentAiClient.process(gcsPath);
     long duration = System.currentTimeMillis() - startTime;
-    
+
     docaiSpan.setTag("duration_ms", duration);
     docaiSpan.setTag("page_count", response.getDocument().getPages().size());
     docaiSpan.setTag("confidence", response.getDocument().getConfidence());
-    
+
     meterRegistry.timer("documentai.extraction.latency_ms").record(duration, TimeUnit.MILLISECONDS);
-    
+
     return parseResponse(response);
-    
+
   } catch (StatusRuntimeException e) {
     docaiSpan.setTag("error", true);
     docaiSpan.setTag("grpc_status", e.getStatus().getCode().toString());
-    
+
     if (e.getStatus().getCode() == Status.Code.RESOURCE_EXHAUSTED) {
       meterRegistry.counter("documentai.quota_exceeded").increment();
       // Trigger fallback
@@ -1266,31 +1266,31 @@ public MeterBinder customMetrics() {
       .description("Time to process a single document")
       .publishPercentiles(0.5, 0.95, 0.99)
       .register(registry);
-    
+
     // Queue depth (gauge)
-    registry.gauge("pubsub.queue.depth", 
+    registry.gauge("pubsub.queue.depth",
       () -> pubsubClient.getQueueSize());
-    
+
     // LLM cost per job (histogram)
     Timer.builder("llm.cost_per_job_usd")
       .description("Estimated cost of Gemini calls per job")
       .register(registry);
-    
+
     // Citation coverage rate (gauge per job)
     registry.gauge("report.citation.coverage_pct",
       () -> computeCitationCoverageRate());
-    
+
     // Extraction confidence (histogram)
     Timer.builder("extraction.confidence_score")
       .publishPercentiles(0.5, 0.95)
       .register(registry);
-    
+
     // Fallback OCR usage (counter)
     registry.counter("extraction.fallback_used");
-    
+
     // Document AI quota errors (counter)
     registry.counter("documentai.quota_errors");
-    
+
     // HTTP request latency (already auto-instrumented by Spring Boot + dd-java-agent)
   };
 }
@@ -1381,7 +1381,7 @@ tags:
 description: |
   API response time (p95) has exceeded 2 seconds for the last 5 minutes.
   Possible causes: database slow query, Vertex AI API lag, GCS timeout.
-  
+
   Check:
   - Recent deployments (DD_VERSION tag)
   - Database connection pool exhaustion
@@ -1408,7 +1408,7 @@ When triggered:
       "recent_commits": fetch_recent_commits()
     }
   }
-  
+
   Include in incident context:
   - Link to PolicyInsight Ops dashboard (filtered to last 1h)
   - Link to trace search: {service:policyinsight, duration > 2000ms}
@@ -1436,7 +1436,7 @@ tags:
 description: |
   Queue depth has exceeded 50 jobs for the last 5 minutes.
   Workers may be slow or crashed.
-  
+
   Check:
   - Worker pod logs (Cloud Run)
   - Document AI quota/throttling
@@ -1459,7 +1459,7 @@ When triggered:
       "recent_errors": fetch_recent_errors_from_worker_logs()
     }
   }
-  
+
   Include:
   - Link to worker logs (last 1h, errors only)
   - Link to Cloud Run deployment page
@@ -1477,11 +1477,11 @@ rules:
   - metric: sum(last_5m): llm.cost_per_job_usd > 0.50
     threshold: 0.50
     description: "Cost per job exceeded $0.50 (likely infinite loop in prompt)"
-  
+
   - metric: sum(last_5m): llm.errors / llm.calls > 0.1
     threshold: 0.10
     description: "LLM error rate exceeded 10%"
-  
+
   - metric: avg(last_5m): report.citation.coverage_pct < 80
     threshold: 80
     description: "Citation coverage dropped below 80%"
@@ -1496,7 +1496,7 @@ description: |
   - Prompt injection / infinite token loop
   - Vertex AI service degradation
   - Grounding logic failure (low citation coverage)
-  
+
   Check:
   - Recent prompt changes
   - Vertex AI status page
@@ -1528,7 +1528,7 @@ When triggered:
       "affected_jobs": find_jobs_with_low_coverage()
     }
   }
-  
+
   Include:
   - Link to LLM token usage dashboard
   - Link to Vertex AI quota/throttling status
@@ -1690,7 +1690,7 @@ When a monitor triggers, automatically:
    - If "DocumentAI quota exceeded": call Document AI API
    - Check usage: go to Google Cloud Console > Document AI > Quotas
    - If at limit: document has high OCR load (scanned PDF)
-   
+
 2. **Vertex AI (Gemini):**
    - If "Gemini timeout" in logs: Vertex AI may be slow
    - Check Vertex AI status page: https://status.cloud.google.com
@@ -1766,7 +1766,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -1821,7 +1821,7 @@ jobs:
 
       - name: Generate OpenAPI spec
         run: mvn clean springdoc-openapi-maven-plugin:generate -DskipTests
-        
+
       - name: Upload OpenAPI spec as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -1866,7 +1866,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
       id-token: write
@@ -1991,7 +1991,7 @@ jobs:
             ## Deployment
             - Web: `${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/policyinsight-web:${{ steps.version.outputs.VERSION }}`
             - Worker: `${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/policyinsight-worker:${{ steps.version.outputs.VERSION }}`
-            
+
             ## Changes
             See commit log: ${{ github.server_url }}/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.event.after }}
 
@@ -2044,12 +2044,12 @@ jobs:
           else
             REVISION=${{ inputs.revision }}
           fi
-          
+
           if [ -z "$REVISION" ]; then
             echo "❌ Could not determine previous revision"
             exit 1
           fi
-          
+
           echo "Rolling back to revision: $REVISION"
           gcloud run services update-traffic policyinsight-web \
             --to-revisions $REVISION=100 \
@@ -2063,12 +2063,12 @@ jobs:
           else
             REVISION=${{ inputs.revision }}
           fi
-          
+
           if [ -z "$REVISION" ]; then
             echo "❌ Could not determine previous revision"
             exit 1
           fi
-          
+
           echo "Rolling back to revision: $REVISION"
           gcloud run services update-traffic policyinsight-worker \
             --to-revisions $REVISION=100 \
@@ -2115,7 +2115,7 @@ jobs:
 
 **CD retrieves:**
 - Docker images → Deploy to Cloud Run
-- Datadog JSON → Stored in repo for reference + submission evidence
+- Datadog JSON → Stored in repo for reference and documentation
 
 **Release artifacts:**
 - Versioned container images (e.g., `v1.0.0`, `v1.0.1`)
@@ -2320,7 +2320,7 @@ gcloud secrets add-iam-policy-binding datadog-api-key \
 ```bash
 # Create Datadog organization (if not exists)
 # Navigate to https://app.datadoghq.com/organization/new
-# Org name: "PolicyInsight (AI Partner Catalyst)"
+# Org name: "PolicyInsight"
 # Plan: Free / Pro trial
 
 # Generate API + App keys
@@ -2619,20 +2619,20 @@ policyinsight/
 ├── cloud-run-web.yaml                      # Cloud Run config (declarative)
 ├── cloud-run-worker.yaml
 ├── .env.example                            # Environment template
-└── README-SUBMISSION.md                    # Datadog Challenge submission checklist
+└── README-EVALUATION.md                    # Evaluation and verification checklist
 
 ```
 
 ---
 
-## 12. Demo Script (3 Minutes) + Judge Evidence Checklist
+## 12. Demo Script (3 Minutes) + Verification Checklist
 
 ### 12.1 Demo Flow (Oral + Screen)
 
 **[0:00–0:30] Intro & Problem Statement**
 ```
-"PolicyInsight analyzes legal documents and returns plain-English risk reports 
-with mandatory source citations. Today, I'll show you the system in action, 
+"PolicyInsight analyzes legal documents and returns plain-English risk reports
+with mandatory source citations. Today, I'll show you the system in action,
 and how we use Datadog to monitor it in production."
 ```
 
@@ -2684,19 +2684,19 @@ and how we use Datadog to monitor it in production."
 
 **[2:45–3:00] Wrap-up**
 ```
-"PolicyInsight demonstrates production-grade observability + safety. 
-With Datadog, we monitor latency, costs, and grounding quality in real time. 
-Every alert includes context, traces, and a runbook. 
+"PolicyInsight demonstrates production-grade observability + safety.
+With Datadog, we monitor latency, costs, and grounding quality in real time.
+Every alert includes context, traces, and a runbook.
 The system is ready to scale."
 ```
 
 ---
 
-### 12.2 Judge Evidence Checklist
+### 12.2 Verification Checklist
 
-Prepare screenshots/links in advance for judges to verify:
+Prepare screenshots/links in advance for verification:
 
-| Evidence | Screenshot/Link | Where Judges Will See It |
+| Evidence | Screenshot/Link | Where to Verify |
 |----------|-----------------|------------------------|
 | **Hosted App** | https://policyinsight.example.com | "Home page loads in < 2s" |
 | **Upload Flow** | Demo screen: upload form → progress → report | "User uploads PDF, sees real-time progress" |
@@ -2721,9 +2721,9 @@ Prepare screenshots/links in advance for judges to verify:
 
 ---
 
-## 13. Submission Checklist
+## 13. Deployment Checklist
 
-### Pre-Submission Tasks
+### Pre-Deployment Tasks
 
 - [ ] **Code Quality**
   - [ ] All tests passing (`mvn clean test`)
@@ -2741,7 +2741,7 @@ Prepare screenshots/links in advance for judges to verify:
   - [ ] `docs/` folder with DEPLOYMENT.md, ARCHITECTURE.md, OBSERVABILITY.md
 
 - [ ] **Datadog Setup**
-  - [ ] Org created: "PolicyInsight (AI Partner Catalyst)"
+  - [ ] Datadog organization configured
   - [ ] dd-java-agent integrated in Cloud Run containers
   - [ ] Traces visible in Datadog (no sampling loss)
   - [ ] Dashboards exported to JSON: `/datadog/dashboards/*.json`
@@ -2764,11 +2764,11 @@ Prepare screenshots/links in advance for judges to verify:
   - [ ] Script in `/scripts/traffic-generator.sh` (or Python equivalent)
   - [ ] Script triggers each monitor condition (latency spike, queue spike, token/cost spike)
   - [ ] Script generates evidence screenshots (before/after Datadog dashboard)
-  - [ ] Output documented in `README-SUBMISSION.md`
+  - [ ] Output documented in `README-EVALUATION.md`
 
 - [ ] **Demo Preparation**
   - [ ] 3-minute demo script memorized (see 12.1)
-  - [ ] Screenshots of each judge evidence item (see 12.2) in a folder
+  - [ ] Screenshots of each verification item (see 12.2) in a folder
   - [ ] Datadog org name, API key, and shared dashboard link ready
   - [ ] Live app URL tested (loads, accepts uploads, returns reports)
   - [ ] PDF export tested (downloads successfully, readable)
@@ -2776,21 +2776,21 @@ Prepare screenshots/links in advance for judges to verify:
 
 - [ ] **Documentation**
   - [ ] README.md: project overview, value prop, usage
-  - [ ] DEPLOYMENT.md: step-by-step GCP + Datadog setup (judge-ready)
+  - [ ] DEPLOYMENT.md: step-by-step GCP + Datadog setup
   - [ ] ARCHITECTURE.md: system design, module breakdown, data flow
   - [ ] OBSERVABILITY.md: Datadog integration, signals, dashboards, SLOs
   - [ ] API.md: OpenAPI spec (generated from code)
-  - [ ] README-SUBMISSION.md: contest-specific notes (judge evidence, org name, runbooks)
+  - [ ] README-EVALUATION.md: evaluation notes (verification evidence, org name, runbooks)
 
 ---
 
-### Submission Artifacts (to Devpost)
+### Project Artifacts
 
 ```
-[Submission Title]
+**Project Title:**
 "PolicyInsight – Production-Grade Legal Document Analysis with Datadog Observability"
 
-[Submission Description - max 5000 chars]
+**Project Description:**
 PolicyInsight is a backend-centric full-stack system that demonstrates production-grade observability, grounded AI safety, and cloud-native reliability.
 
 Key highlights:
@@ -2802,7 +2802,7 @@ Key highlights:
 - 3+ monitors + auto-incident creation with runbooks
 - CI/CD via GitHub Actions (test → build → versioned deploy → rollback capability)
 - Production safety: "cite-or-abstain" enforcement, no hallucination allowed
-- Judge evidence: dashboards, monitors, incidents, traces, cost analytics
+- Verification evidence: dashboards, monitors, incidents, traces, cost analytics
 
 [Hosted URL]
 https://policyinsight.example.com
@@ -2810,7 +2810,7 @@ https://policyinsight.example.com
 [Public Repository]
 https://github.com/yourusername/policyinsight
 
-[Devpost Submission Fields]
+**Project Details:**
 - Team: [Your name / team]
 - Inspiration: Legal documents are written for lawyers, not people. We built clarity + safety.
 - What it does: Analyze PDFs → get cited risk reports + grounded Q&A
@@ -2823,8 +2823,8 @@ https://github.com/yourusername/policyinsight
 [Demo Video Link]
 https://youtu.be/... (3 minutes, auto-upload with recording)
 
-[Judge Evidence Screenshots & Links]
-Folder: `/evidence/` or embeded in README-SUBMISSION.md
+**Verification Evidence Screenshots & Links:**
+Folder: `/evidence/` or embedded in README-EVALUATION.md
 - Hosted app screenshot
 - Report output with citations
 - Datadog dashboard (PolicyInsight-Ops)
@@ -2836,7 +2836,7 @@ Folder: `/evidence/` or embeded in README-SUBMISSION.md
 - Traffic generator output (before/after spikes)
 
 [Datadog Org Name]
-PolicyInsight (AI Partner Catalyst)
+PolicyInsight
 
 [Datadog JSON Exports]
 In repo: `/datadog/dashboards/`, `/datadog/monitors/`, `/datadog/slos/`
@@ -2845,7 +2845,7 @@ In repo: `/datadog/dashboards/`, `/datadog/monitors/`, `/datadog/slos/`
 https://github.com/yourusername/policyinsight/blob/main/docs/OBSERVABILITY.md#runbooks
 
 [Additional Notes]
-- Contest track: Datadog Challenge (Observability + AI)
+- Focus: Datadog Observability + AI Integration
 - Framework: Spring Boot 3.x (server-rendered, no React)
 - Deployment: Google Cloud Run (containerized, versioned, Datadog-instrumented)
 - Safety: "Cite-or-abstain" prevents hallucination; every claim is grounded
@@ -2976,27 +2976,27 @@ Time estimate: 8 hours
 Verification: Traces visible in Datadog, dashboard loads, monitor fires + creates incident, CD deploys to Cloud Run
 ```
 
-### Day 7: Polish + Demo + Submission
+### Day 7: Polish + Demo + Deployment
 ```
 Goal: Documentation, traffic generator, demo prep, final testing
 
 Tasks:
 - [ ] README.md: comprehensive overview + usage
-- [ ] DEPLOYMENT.md: step-by-step judge-ready guide (GCP + Datadog)
+- [ ] DEPLOYMENT.md: step-by-step deployment guide (GCP + Datadog)
 - [ ] ARCHITECTURE.md: diagrams + module breakdown
 - [ ] OBSERVABILITY.md: Datadog signals + dashboard + runbooks
 - [ ] APISchema.md: OpenAPI documentation
 - [ ] Traffic generator script (/scripts/traffic-generator.sh) → triggers each monitor
 - [ ] Screenshot evidence + documentation (in /evidence/ folder)
-- [ ] README-SUBMISSION.md: contest-specific guide + judge checklist
+- [ ] README-EVALUATION.md: evaluation guide + verification checklist
 - [ ] Final testing: demo flow end-to-end
 - [ ] Accessibility check (keyboard nav, screen reader)
 - [ ] Security audit (no hardcoded secrets, HTTPS, CSP headers)
 - [ ] Performance: measure latency, cold-start time, cost per job
-- [ ] Prepare Devpost submission
+- [ ] Prepare deployment documentation
 
 Time estimate: 6-8 hours
-Verification: Demo runs smoothly, all docs complete, Devpost submission ready, judges can access hosted URL + repo + dashboards
+Verification: Demo runs smoothly, all docs complete, deployment ready, evaluators can access hosted URL + repo + dashboards
 ```
 
 ---
@@ -3011,13 +3011,13 @@ Verification: Demo runs smoothly, all docs complete, Devpost submission ready, j
 | **4** | Analysis | Classification, risk scanning, summarization (grounded) | Report JSON with 5 sections, all cited |
 | **5** | Q&A + Export | Grounded Q&A, PDF export, share links | Full end-to-end flow works |
 | **6** | Observability + CI/CD | Datadog dashboards, monitors, GitHub Actions | Traces in Datadog, CD deploys to Cloud Run, incident created |
-| **7** | Polish + Demo | Docs, traffic generator, demo prep, submission | All judge evidence complete, Devpost ready |
+| **7** | Polish + Demo | Docs, traffic generator, demo prep, deployment | All verification evidence complete, deployment ready |
 
 ---
 
-# Appendix: Submission Success Metrics
+# Appendix: Success Metrics
 
-By the end of the build sprint, judges should be able to:
+By the end of the build sprint, evaluators should be able to:
 
 1. ✅ **Visit the hosted app** and upload a PDF → get a report in <30s
 2. ✅ **See citations** in every claim (page number + text span)

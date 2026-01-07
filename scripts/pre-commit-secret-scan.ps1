@@ -30,7 +30,7 @@ try {
         Write-Host ""
         Write-Host "❌ Secret scan failed! Potential secrets detected." -ForegroundColor Red
         Write-Host "   Please remove any hardcoded secrets and use environment variables instead." -ForegroundColor Yellow
-        Write-Host "   See docs/SECURITY.md for guidance." -ForegroundColor Yellow
+        Write-Host "   See markdown/docs/SECURITY.md for guidance." -ForegroundColor Yellow
         exit 1
     }
 

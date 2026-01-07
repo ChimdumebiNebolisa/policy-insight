@@ -4,7 +4,7 @@ This document provides quick pointers for judges evaluating the PolicyInsight su
 
 ## Quick Links
 
-- **Main README**: [README.md](./README.md)
+- **Main README**: [README.md](../README.md)
 - **Observability Guide**: [docs/OBSERVABILITY.md](./docs/OBSERVABILITY.md)
 - **Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
 - **Demo Guide**: [DEMO.md](./DEMO.md)

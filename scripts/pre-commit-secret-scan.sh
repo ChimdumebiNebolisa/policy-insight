@@ -30,7 +30,7 @@ if [ $EXIT_CODE -eq 1 ]; then
     echo ""
     echo "❌ Secret scan failed! Potential secrets detected."
     echo "   Please remove any hardcoded secrets and use environment variables instead."
-    echo "   See docs/SECURITY.md for guidance."
+    echo "   See markdown/docs/SECURITY.md for guidance."
     exit 1
 fi
 

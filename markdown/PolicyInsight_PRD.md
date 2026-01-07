@@ -1,19 +1,18 @@
-# PolicyInsight – Datadog Challenge PRD
-## AI Partner Catalyst Hackathon
+# PolicyInsight – Product Requirements Document
 
-**Last Updated:** December 28, 2025  
-**Product Name:** PolicyInsight  
-**Contest Track:** Datadog Challenge (Google Cloud + Vertex AI)  
-**Resume Signal:** Full-stack Java/Spring Boot backend with production-grade observability  
+**Last Updated:** December 28, 2025
+**Product Name:** PolicyInsight
+**Focus:** Production-grade observability with Datadog integration (Google Cloud + Vertex AI)
+**Resume Signal:** Full-stack Java/Spring Boot backend with production-grade observability
 
 ---
 
 ## 1. Executive Summary
 
-PolicyInsight is a **production-ready, backend-leaning full-stack application** that analyzes legal documents (PDFs) and generates plain-English, cited risk reports with grounded Q&A. Optimized for the Datadog Challenge, it demonstrates:
+PolicyInsight is a **production-ready, backend-leaning full-stack application** that analyzes legal documents (PDFs) and generates plain-English, cited risk reports with grounded Q&A. It demonstrates:
 
 - ✅ **Java 21 + Spring Boot** service architecture with REST API + server-rendered UI (Thymeleaf)
-- ✅ **PostgreSQL + Flyway** for schema versioning and data integrity  
+- ✅ **PostgreSQL + Flyway** for schema versioning and data integrity
 - ✅ **Google Cloud Platform integration** (Cloud SQL, Cloud Storage, Document AI, Vertex AI, Pub/Sub, Cloud Run)
 - ✅ **Async job processing** via Pub/Sub for reliable document analysis pipelines
 - ✅ **End-to-end Datadog observability:** APM tracing, structured JSON logs, LLM telemetry, cost tracking, and actionable incident detection
@@ -22,7 +21,7 @@ PolicyInsight is a **production-ready, backend-leaning full-stack application** 
 - ✅ **"Cite-or-abstain" enforcement:** every claim references source text; hallucinations are structurally prevented
 - ✅ **Evidence-ready:** dashboards, monitors (3+ SLOs), traffic generator, runbooks, and Datadog JSON exports
 
-**Target Judges:** Engineers and platform leads evaluating: (a) can this person ship a real service? (b) do they think operationally? (c) do they instrument for observability from day one?
+**Target Audience:** Engineers and platform leads evaluating: (a) can this person ship a real service? (b) do they think operationally? (c) do they instrument for observability from day one?
 
 ---
 
@@ -226,27 +225,27 @@ CREATE UNIQUE INDEX idx_chunks_uniq ON chunks(document_id, chunk_index);
 CREATE TABLE analysis_results (
   id SERIAL PRIMARY KEY,
   document_id UUID NOT NULL UNIQUE REFERENCES documents(id) ON DELETE CASCADE,
-  
+
   -- Overview
   parties JSONB,  -- {detected_parties: ["Company A", "You"]}
   effective_date VARCHAR(50),
   jurisdiction VARCHAR(100),
-  
+
   -- Plain-English Summary
   summary JSONB,  -- {bullets: [{text: "...", chunk_ids: [1,2,3]}]}
-  
+
   -- Obligations & Restrictions
   obligations JSONB,  -- {items: [{text: "...", severity: "high", chunk_ids: []}]}
   restrictions JSONB,  -- {items: [...]}
   termination_triggers JSONB,  -- {items: [...]}
-  
+
   -- Risk Taxonomy (5 categories)
   risks_data_privacy JSONB,  -- {detected: true, items: [{text: "...", severity: "high", chunk_ids: []}]}
   risks_financial JSONB,
   risks_legal_waivers JSONB,
   risks_termination JSONB,
   risks_modification JSONB,
-  
+
   -- Metadata
   extraction_confidence DECIMAL(3,2),
   citation_coverage_rate DECIMAL(3,2),  -- % of claims with citations
@@ -981,7 +980,7 @@ before signing important agreements.
 <form hx-post="/api/questions"
       hx-target="#qa-results"
       hx-swap="beforeend">
-  <textarea name="question" 
+  <textarea name="question"
             placeholder="Ask a question..."
             maxlength="500"></textarea>
   <button type="submit">Ask</button>
@@ -1016,15 +1015,15 @@ before signing important agreements.
 
 1. **Prompt Engineering:**
    ```
-   System: You are a legal document analyzer. STRICT RULE: Every claim you make 
-   MUST cite specific chunks by ID. If no evidence exists in the document, 
+   System: You are a legal document analyzer. STRICT RULE: Every claim you make
+   MUST cite specific chunks by ID. If no evidence exists in the document,
    respond with: "No evidence found for [claim]."
-   
+
    Do NOT:
    - Infer intent
    - Speculate
    - Use phrases like "likely" or "probably"
-   
+
    For each claim, provide:
    - Text (max 200 chars, plain English)
    - Severity (low/medium/high)
@@ -1052,10 +1051,10 @@ before signing important agreements.
    if (relevantChunks.isEmpty()) {
      return "This document does not address [question topic].";
    }
-   
+
    // Pass chunks to Gemini with prompt:
    // "Answer ONLY from provided chunks. If not found, respond: 'Not stated in this document.'"
-   
+
    // Parse response; validate citation presence
    if (!response.contains("chunk_id") && !response.contains("abstain")) {
      // Fallback: force abstention
@@ -1096,7 +1095,7 @@ before signing important agreements.
 
 ### Objective
 
-Demonstrate production-grade observability: end-to-end APM tracing, structured logging, LLM cost tracking, SLO-driven alerting, and incident response automation. **Judges should see:** traces flow through every service layer, dashboards show real-time health, monitors trigger incidents with context and runbooks.
+Demonstrate production-grade observability: end-to-end APM tracing, structured logging, LLM cost tracking, SLO-driven alerting, and incident response automation. **Observability features:** traces flow through every service layer, dashboards show real-time health, monitors trigger incidents with context and runbooks.
 
 ### APM Instrumentation
 
@@ -1162,12 +1161,12 @@ spring:
 ```java
 @Configuration
 public class DatadogConfig {
-  
+
   @Bean
   public ServletFilter tracingFilter() {
     return new TracingFilter();
   }
-  
+
   public static class TracingFilter implements Filter {
     @Override
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
@@ -1175,16 +1174,16 @@ public class DatadogConfig {
       // Datadog dd-java-agent auto-injects trace context; we ensure propagation
       HttpServletRequest httpReq = (HttpServletRequest) req;
       HttpServletResponse httpRes = (HttpServletResponse) res;
-      
+
       // Get trace ID from agent
       String traceId = httpReq.getHeader("x-datadog-trace-id");
       String spanId = httpReq.getHeader("x-datadog-span-id");
-      
+
       // Store in MDC for logs
       MDC.put("dd.trace_id", traceId);
       MDC.put("dd.span_id", spanId);
       MDC.put("dd.service", "policyinsight");
-      
+
       try {
         chain.doFilter(req, res);
       } finally {
@@ -1200,48 +1199,48 @@ public class DatadogConfig {
 ```java
 @Service
 public class DocumentService {
-  
+
   private static final Tracer tracer = GlobalTracer.get();
-  
+
   public AnalysisResult analyzeDocument(String documentId) {
     // Create custom span
     Scope scope = tracer.buildSpan("document.analyze")
       .withTag("document_id", documentId)
       .withTag("service", "policyinsight")
       .startActive(true);
-    
+
     try {
       // Extract
       Scope extractScope = tracer.buildSpan("document.extraction")
         .asChildOf(scope.span())
         .withTag("stage", "extraction")
         .startActive(true);
-      
+
       extractText(documentId);
       extractScope.close();
-      
+
       // Classify
       Scope classifyScope = tracer.buildSpan("document.classification")
         .asChildOf(scope.span())
         .withTag("stage", "classification")
         .startActive(true);
-      
+
       String docType = classifyDocument(documentId);
       classifyScope.span().setTag("document_type", docType);
       classifyScope.close();
-      
+
       // Risk scan
       Scope riskScope = tracer.buildSpan("document.risk_scan")
         .asChildOf(scope.span())
         .withTag("stage", "risk_scan")
         .startActive(true);
-      
+
       List<Risk> risks = scanRisks(documentId);
       riskScope.span().setTag("risks_count", risks.size());
       riskScope.close();
-      
+
       return buildAnalysisResult(documentId, docType, risks);
-      
+
     } finally {
       scope.close();
     }
@@ -1254,45 +1253,45 @@ public class DocumentService {
 ```java
 @Service
 public class GeminiService {
-  
+
   private final VertexAI vertexAI;
   private final Tracer tracer = GlobalTracer.get();
-  
+
   public String callGemini(String prompt, String model) {
     Scope scope = tracer.buildSpan("llm.call")
       .withTag("llm.model", model)
       .withTag("llm.provider", "vertex_ai")
       .withTag("llm.temperature", 0.2)
       .startActive(true);
-    
+
     long startTime = System.nanoTime();
     int inputTokens = 0, outputTokens = 0;
-    
+
     try {
       GenerativeModel genModel = new GenerativeModel(model, vertexAI);
       GenerateContentResponse response = genModel.generateContent(prompt);
-      
+
       // Extract token usage (if available in response)
       // Vertex AI may return usage info in UsageMetadata
-      
+
       Content content = response.getContent();
       String text = content.getParts().get(0).getText();
-      
+
       // Emit custom metrics
       long durationMs = (System.nanoTime() - startTime) / 1_000_000;
       GlobalRegistry.get()
         .timer("policyinsight.llm.latency_ms")
         .record(durationMs, TimeUnit.MILLISECONDS);
-      
+
       scope.span().setTag("llm.response_length", text.length());
       scope.span().setTag("llm.latency_ms", durationMs);
-      
+
       // Log token usage (if available)
       // scope.span().setTag("llm.input_tokens", inputTokens);
       // scope.span().setTag("llm.output_tokens", outputTokens);
-      
+
       return text;
-      
+
     } catch (Exception e) {
       scope.span().setTag("error", true);
       scope.span().setTag("error.message", e.getMessage());
@@ -1321,25 +1320,25 @@ public class GeminiService {
 ```java
 @Component
 public class MetricsRegistry {
-  
+
   private final MeterRegistry meterRegistry;
-  
+
   public MetricsRegistry(MeterRegistry meterRegistry) {
     this.meterRegistry = meterRegistry;
     initializeMetrics();
   }
-  
+
   private void initializeMetrics() {
     // Request latency (histogram)
     meterRegistry.timer("policyinsight.api.latency_ms",
       "endpoint", "document.upload",
       "method", "POST");
-    
+
     // Error rate (counter)
     meterRegistry.counter("policyinsight.api.errors",
       "endpoint", "document.upload",
       "status_code", "400");
-    
+
     // Document processing
     meterRegistry.timer("policyinsight.document.processing_latency_ms",
       "document_type", "tos");
@@ -1347,19 +1346,19 @@ public class MetricsRegistry {
       "status", "completed");
     meterRegistry.gauge("policyinsight.document.queue_depth",
       "topic", "document-analysis");
-    
+
     // Extraction metrics
     meterRegistry.timer("policyinsight.extraction.latency_ms",
       "service", "document_ai");
     meterRegistry.gauge("policyinsight.extraction.confidence",
       "document_id", "doc-123");
-    
+
     // Risk detection
     meterRegistry.gauge("policyinsight.analysis.citation_coverage_rate",
       "document_id", "doc-123");
     meterRegistry.gauge("policyinsight.analysis.risks_detected_count",
       "risk_category", "data_privacy");
-    
+
     // LLM metrics
     meterRegistry.timer("policyinsight.llm.latency_ms",
       "model", "gemini-2.0-flash");
@@ -1367,16 +1366,16 @@ public class MetricsRegistry {
       "call_type", "summary_generation");
     meterRegistry.gauge("policyinsight.llm.estimated_cost_usd",
       "period", "hourly");
-    
+
     // Q&A metrics
     meterRegistry.timer("policyinsight.qa.latency_ms",
       "grounded", "true");
     meterRegistry.counter("policyinsight.qa.grounded_rate",
       "question_category", "obligation");
-    
+
     // PDF export
     meterRegistry.timer("policyinsight.pdf.generation_latency_ms");
-    
+
     // Pub/Sub worker
     meterRegistry.gauge("policyinsight.worker.job_latency_ms",
       "stage", "extraction");
@@ -1550,7 +1549,7 @@ Document analysis queue is backed up:
   Metric: policyinsight.pubsub.queue_age_seconds
   Threshold: 300s (5 min)
   Current: {{value}} s
-  
+
 Impact: Users will experience slow report generation.
 
 Investigation:
@@ -1559,7 +1558,7 @@ Investigation:
   3. Check worker logs for errors: gcloud logging read "resource.labels.service_name=policyinsight-worker"
   4. Verify Vertex AI quota/rate limits: https://console.cloud.google.com/quotas
   5. Check Document AI quota
-  
+
 Action:
   - Scale worker replicas: kubectl scale deployment policyinsight-worker --replicas=5
   - Monitor queue age for next 10 min
@@ -1602,12 +1601,12 @@ LLM cost anomaly OR citation coverage drop detected:
   Metric A: policyinsight.llm.estimated_cost_usd
   Status: {{metric_a_status}}
   Value: {{metric_a_value}} USD/hour
-  
+
   Metric B: policyinsight.analysis.citation_coverage_rate
   Status: {{metric_b_status}}
   Value: {{metric_b_value}} %
-  
-Impact: 
+
+Impact:
   - Cost spike: LLM API is consuming more tokens than expected (possible bug, hallucination)
   - Citation coverage drop: System may be hallucinating (not grounding claims in document text)
 
@@ -1716,11 +1715,11 @@ When a monitor triggers → Datadog automatically:
    - Is CPU/memory spiking?
    - Is database connection pool exhausted?
    - Is there a Pub/Sub queue backlog (workers overloaded)?
-   
+
 2. Check Vertex AI API status:
    - https://status.cloud.google.com/ (check Vertex AI section)
    - Are rate limits/quotas hit?
-   
+
 3. Check current Git revision deployed:
    - `gcloud run services describe policyinsight --region us-central1`
    - Compare with HEAD: `git log --oneline -1`
@@ -1740,14 +1739,14 @@ When a monitor triggers → Datadog automatically:
   - Check slow query log: `gcloud sql operations list --instance policyinsight-db | head -5`
   - Kill long-running queries: `gcloud sql connect policyinsight-db -- -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state='idle'"`
   - If queries are legitimate: Scale DB (add replicas, increase instance size)
-  
+
 ### Scenario 3: Upstream API Failure (Vertex AI, Document AI)
 - **Cause:** Google Cloud API is slow/erroring
 - **Action:**
   - Check logs for API errors: `gcloud logging read "resource.labels.service_name=policyinsight AND severity=ERROR" --limit 20`
   - If Document AI is slow: Retry with fallback (text-only extraction)
   - If Gemini is rate-limited: Implement exponential backoff (already done in code)
-  
+
 ## Rollback (If Latency Still High After 5 minutes)
 
 If you suspect a recent code change caused latency:
@@ -1784,7 +1783,7 @@ gcloud run services describe policyinsight --region us-central1 --format='value(
 
 ### Traffic Generator Script
 
-Purpose: Trigger each monitor (latency spike, queue backlog, cost/citation anomaly) for judges to see incident creation and dashboard integration.
+Purpose: Trigger each monitor (latency spike, queue backlog, cost/citation anomaly) to demonstrate incident creation and dashboard integration.
 
 ```bash
 #!/bin/bash
@@ -1793,7 +1792,7 @@ Purpose: Trigger each monitor (latency spike, queue backlog, cost/citation anoma
 set -e
 
 POLICYINSIGHT_URL="https://policyinsight-app.cloudrun.com"
-JUDGE_DOCS_DIR="./test-documents"
+TEST_DOCS_DIR="./test-documents"
 
 echo "🚀 PolicyInsight Datadog Monitor Trigger Script"
 echo "==============================================="
@@ -1806,9 +1805,9 @@ echo "   Uploading 50 documents in parallel (will queue on backend)"
 
 for i in {1..50}; do
   curl -X POST "$POLICYINSIGHT_URL/api/documents/upload" \
-    -F "file=@$JUDGE_DOCS_DIR/sample-tos.pdf" \
+    -F "file=@$TEST_DOCS_DIR/sample-tos.pdf" \
     &
-  
+
   # Rate limit to avoid overwhelming network
   if [ $((i % 10)) -eq 0 ]; then
     sleep 2
@@ -1858,7 +1857,7 @@ echo ""
 
 echo "🎯 All monitors triggered!"
 echo ""
-echo "📋 Judge Observation Checklist:"
+echo "📋 Monitor Observation Checklist:"
 echo "  ✅ Monitor 1 (API Latency): Should fire ~30 seconds"
 echo "  ✅ Monitor 2 (Queue Age): Should fire ~2 minutes"
 echo "  ✅ Monitor 3 (Cost/Citation): Depends on LLM telemetry"
@@ -1900,7 +1899,7 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15-alpine
@@ -1915,41 +1914,41 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history for Sonar
-      
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: 21
           distribution: temurin
           cache: maven
-      
+
       - name: Lint & Format Check
         run: |
           ./mvnw spotless:check
           ./mvnw checkstyle:check
-      
+
       - name: Unit Tests
         run: ./mvnw test
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/policyinsight_test
           SPRING_DATASOURCE_USERNAME: postgres
           SPRING_DATASOURCE_PASSWORD: postgres
-      
+
       - name: Integration Tests
         run: ./mvnw verify -P integration-tests
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/policyinsight_test
-      
+
       - name: Build Docker Image
         run: |
           docker build -t policyinsight:${{ github.sha }} .
           docker image ls
-      
+
       - name: Verify DB Migrations
         run: |
           docker run --rm \
@@ -1957,10 +1956,10 @@ jobs:
             -e SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/policyinsight_test" \
             policyinsight:${{ github.sha }} \
             ./mvnw flyway:validate
-      
+
       - name: Generate OpenAPI Spec
         run: ./mvnw springdoc-openapi:generate
-      
+
       - name: SonarQube Analysis (Optional)
         run: |
           ./mvnw sonar:sonar \
@@ -1968,13 +1967,13 @@ jobs:
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
         if: always()
-      
+
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: target/surefire-reports/**/*.xml
-      
+
       - name: Comment PR with Results
         if: always()
         uses: actions/github-script@v6
@@ -2009,14 +2008,14 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
       id-token: write
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Extract Version
         id: version
         run: |
@@ -2027,30 +2026,30 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "image=$IMAGE_REPO/$PROJECT_ID/policyinsight:$VERSION" >> $GITHUB_OUTPUT
-      
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-      
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
-      
+
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev
-      
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: 21
           distribution: temurin
           cache: maven
-      
+
       - name: Build with Maven
         run: ./mvnw clean package -DskipTests -Dapp.version=${{ steps.version.outputs.version }}
-      
+
       - name: Build Docker Image
         run: |
           docker build \
@@ -2058,12 +2057,12 @@ jobs:
             -t $IMAGE_REPO/$PROJECT_ID/policyinsight:latest \
             --build-arg VERSION=${{ steps.version.outputs.version }} \
             .
-      
+
       - name: Push to Artifact Registry
         run: |
           docker push ${{ steps.version.outputs.image }}
           docker push $IMAGE_REPO/$PROJECT_ID/policyinsight:latest
-      
+
       - name: Deploy to Cloud Run (Canary: 10% traffic)
         id: deploy-canary
         run: |
@@ -2084,34 +2083,34 @@ jobs:
           DD_SERVICE: policyinsight
           DD_ENV: prod
           DD_VERSION: ${{ steps.version.outputs.version }}
-      
+
       - name: Run Smoke Tests (Canary)
         run: |
           SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
             --region $REGION --format='value(status.url)')
-          
+
           # Health check
           curl -f $SERVICE_URL/health || exit 1
-          
+
           # Readiness check
           curl -f $SERVICE_URL/readiness || exit 1
-          
+
           # Upload test document
           curl -X POST $SERVICE_URL/api/documents/upload \
             -F "file=@./test-documents/sample-tos.pdf" || exit 1
         timeout-minutes: 5
-      
+
       - name: Promote to Prod (90% traffic)
         if: success()
         run: |
           # Get new revision
           NEW_REV=$(gcloud run services describe $SERVICE_NAME \
             --region $REGION --format='value(status.traffic[0].revision.name)')
-          
+
           # Get old revision (if exists)
           OLD_REV=$(gcloud run services describe $SERVICE_NAME \
             --region $REGION --format='value(status.traffic[1].revision.name)') || true
-          
+
           # Traffic split: 90% new, 10% old (for quick rollback)
           if [ -n "$OLD_REV" ]; then
             gcloud run services update-traffic $SERVICE_NAME \
@@ -2122,20 +2121,20 @@ jobs:
               --region $REGION \
               --to-revisions=$NEW_REV=100
           fi
-      
+
       - name: Wait for Metrics Stabilization
         run: |
           # Wait 5 minutes for metrics to stabilize
           sleep 300
-          
+
           # Check error rate (should be <1%)
           ERROR_RATE=$(gcloud monitoring time-series list \
             --filter='metric.type="run.googleapis.com/request_count" AND resource.labels.service_name="policyinsight"' \
             --format='value(metric.type)')
-          
+
           # If error rate high, trigger automatic rollback
           # (Can implement via a Cloud Function or secondary script)
-      
+
       - name: Publish Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
@@ -2143,9 +2142,9 @@ jobs:
           files: target/policyinsight-*.jar
           body: |
             Docker Image: ${{ steps.version.outputs.image }}
-            
+
             Deployment Status: ✅ Live on Cloud Run
-            
+
             Dashboard: https://app.datadoghq.com/dashboard/policyinsight-ops
             Incident Response: https://app.datadoghq.com/incidents
 ```
@@ -2171,15 +2170,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-    
+
     steps:
       - uses: google-github-actions/auth@v1
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-      
+
       - uses: google-github-actions/setup-gcloud@v1
-      
+
       - name: Get Previous Revision
         id: prev-rev
         if: ${{ inputs.revision == '' }}
@@ -2188,18 +2187,18 @@ jobs:
             --region us-central1 \
             --format='value(status.traffic[1].revision.name)')
           echo "revision=$REV" >> $GITHUB_OUTPUT
-      
+
       - name: Rollback Traffic
         run: |
           REVISION=${{ inputs.revision || steps.prev-rev.outputs.revision }}
           gcloud run services update-traffic policyinsight \
             --region us-central1 \
             --to-revisions=$REVISION=${{ inputs.percentage }}
-          
+
           gcloud run services describe policyinsight \
             --region us-central1 \
             --format='value(status.traffic[*].revision.name, status.traffic[*].percent)'
-      
+
       - name: Notify Slack
         uses: slackapi/slack-github-action@v1
         with:
@@ -2712,9 +2711,9 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
 
 ---
 
-## 12. Demo Script (3 Minutes) + Judge Evidence Checklist
+## 12. Demo Script (3 Minutes) + Verification Checklist
 
-### Demo Narrative (Read to Judges)
+### Demo Narrative
 
 > **[0:00–0:30] Opening**
 >
@@ -2735,7 +2734,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
 > "The system enforces a strict 'cite-or-abstain' rule. Watch: I'll ask a question it can't answer from the document." [Ask "What is the CEO's favorite color?"]
 > "See? It refuses to hallucinate. It says, 'This document does not address that topic.'"
 >
-> Now ask a grounded question: "Can they increase my rent?" 
+> Now ask a grounded question: "Can they increase my rent?"
 > "It answers with evidence: 'Section 4.2 states rent can increase with 30-day notice.' And it cites the specific chunks."
 >
 > **[1:50–2:20] Observability**
@@ -2754,7 +2753,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
 
 ---
 
-### Judge Evidence Checklist
+### Verification Checklist
 
 | Item | Evidence | Screenshot/Link |
 |------|----------|---|
@@ -2781,11 +2780,11 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
 
 ---
 
-## 13. Submission Checklist
+## 13. Deployment Checklist
 
 - [ ] **Hosted App URL** – Cloud Run service deployed, accessible, not requiring auth
   - `https://policyinsight-[project-id].run.app`
-  
+
 - [ ] **Public GitHub Repo**
   - [ ] OSI-approved license in LICENSE file (e.g., MIT, Apache 2.0)
   - [ ] README with "Deploy in 5 Minutes" quick-start guide (local + cloud)
@@ -2798,7 +2797,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
   - [ ] Deployment guide in `/docs/DEPLOYMENT.md`
   - [ ] Architecture diagram in `/docs/ARCHITECTURE.md`
   - [ ] OpenAPI spec in `/docs/openapi.json`
-  
+
 - [ ] **Datadog Configuration**
   - [ ] Org name clearly stated (e.g., "policyinsight-demo")
   - [ ] Dashboard "PolicyInsight Ops" created, visible at provided URL
@@ -2806,7 +2805,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
   - [ ] SLOs defined (request success rate, latency, citation coverage)
   - [ ] Incident example shown (via traffic generator run + screenshot)
   - [ ] All JSON exports committed to repo
-  
+
 - [ ] **Video Demo (3 Minutes)**
   - [ ] Upload PDF and show report generation
   - [ ] Ask grounded question, show answer with citations
@@ -2816,7 +2815,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
   - [ ] Show GitHub Actions deploy workflow
   - [ ] Total runtime: <3 minutes, no editing, speak clearly
   - [ ] Upload to YouTube (unlisted) or include as `.mp4` in repo
-  
+
 - [ ] **Evidence Screenshots**
   - [ ] App landing page (upload UI, disclaimer)
   - [ ] Report page (5 sections, citations visible)
@@ -2826,19 +2825,19 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
   - [ ] Monitor fired + incident created (screenshot)
   - [ ] PDF export (readable, includes disclaimer)
   - [ ] Share link (read-only report, works)
-  
+
 - [ ] **API Documentation**
   - [ ] OpenAPI spec generated and committed
   - [ ] Swagger UI accessible at `/swagger-ui.html`
   - [ ] Key endpoints documented (upload, status, report, question, export, share)
-  
+
 - [ ] **Deployment Docs**
   - [ ] Google Cloud setup script (create project, enable APIs, provision resources)
   - [ ] Datadog setup script (create org, import dashboards, configure monitors)
   - [ ] Step-by-step deployment guide (cloud + local dev)
   - [ ] Environment variables documented (required, optional, secrets)
   - [ ] Rollback procedure documented
-  
+
 - [ ] **Code Quality**
   - [ ] Maven build succeeds (`./mvnw clean package`)
   - [ ] Tests pass (`./mvnw test`)
@@ -2846,21 +2845,21 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
   - [ ] No security warnings (dependency check, SAST)
   - [ ] Code comments for non-obvious logic
   - [ ] Commit history is clean (squash if needed)
-  
+
 - [ ] **LLM Configuration**
   - [ ] Vertex AI project ID and credentials configured
   - [ ] Gemini model selected (2.0-flash or stable)
   - [ ] Prompts committed to repo (in `/src/main/resources/prompts/` or inline with comments)
   - [ ] Token counting implemented (for cost tracking)
   - [ ] Fallback behavior documented (if Vertex AI unavailable)
-  
+
 - [ ] **Safety & Compliance**
   - [ ] "Not legal advice" disclaimer on every page
   - [ ] Cite-or-abstain enforcement verified (manual spot-check of 5 reports)
   - [ ] No hallucinations in Q&A (abstains appropriately)
   - [ ] No PII stored unencrypted (documents auto-delete after 30 days)
   - [ ] Database connections use SSL/TLS
-  
+
 - [ ] **Observability**
   - [ ] dd-java-agent instrumentation configured
   - [ ] Custom spans and metrics emitted
@@ -2869,8 +2868,8 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
   - [ ] LLM calls instrumented (latency, tokens, errors)
   - [ ] At least 3 monitors with runbooks created
   - [ ] SLOs defined and visible on dashboard
-  
-- [ ] **Judge-Ready Package**
+
+- [ ] **Deployment-Ready Package**
   - [ ] Single `README.md` in repo root with:
     - [ ] 1-sentence product description
     - [ ] "Deploy in 5 Minutes" section (with copy-paste commands)
@@ -3021,7 +3020,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
   - [ ] Export JSON to `/datadog/` folder
 - [ ] Traffic generator script: `./scripts/trigger-monitors.sh`
   - [ ] Upload documents, trigger latency spike, queue backlog, cost anomaly
-  - [ ] Judges can run to see monitors fire + incidents created
+  - [ ] Traffic generator can be run to see monitors fire + incidents created
 
 **Deliverable:** Full user flow works (upload → report → Q&A → export → share). Datadog dashboards + monitors + SLOs live. Traffic generator script ready.
 
@@ -3058,7 +3057,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
 - [ ] Demo video (3 min):
   - [ ] Record: upload PDF → see report → ask Q&A → show dashboard → trigger monitor
   - [ ] Edit, add subtitles, upload to YouTube (unlisted)
-- [ ] Final submission package:
+- [ ] Final deployment package:
   - [ ] Public GitHub repo (MIT license)
   - [ ] Hosted Cloud Run URL
   - [ ] Datadog org name
@@ -3066,7 +3065,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
   - [ ] Evidence screenshots
   - [ ] JSON exports (dashboards, monitors)
 
-**Deliverable:** Everything is deployed, working, documented, and ready for judges. Demo video submitted. All submission checklist items complete.
+**Deliverable:** Everything is deployed, working, documented, and ready for evaluation. Demo video prepared. All deployment checklist items complete.
 
 ---
 
@@ -3074,17 +3073,17 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
 
 **PolicyInsight** is a production-ready, backend-leaning service that demonstrates advanced engineering practices:
 
-✅ **Stack:** Java 21 + Spring Boot, PostgreSQL, Google Cloud (Run, SQL, Storage, Document AI, Vertex AI), Pub/Sub async processing  
-✅ **Observability:** Datadog APM + logs + custom metrics + LLM instrumentation + incident automation  
-✅ **Reliability:** Idempotent jobs, retries, fallbacks, graceful degradation  
-✅ **Safety:** Cite-or-abstain enforcement, hallucination detection, grounded Q&A  
-✅ **DevOps:** GitHub Actions CI/CD, container orchestration, versioned releases, automated rollback  
-✅ **Documentation:** Deployment guide, runbooks, architecture diagrams, traffic generator  
+✅ **Stack:** Java 21 + Spring Boot, PostgreSQL, Google Cloud (Run, SQL, Storage, Document AI, Vertex AI), Pub/Sub async processing
+✅ **Observability:** Datadog APM + logs + custom metrics + LLM instrumentation + incident automation
+✅ **Reliability:** Idempotent jobs, retries, fallbacks, graceful degradation
+✅ **Safety:** Cite-or-abstain enforcement, hallucination detection, grounded Q&A
+✅ **DevOps:** GitHub Actions CI/CD, container orchestration, versioned releases, automated rollback
+✅ **Documentation:** Deployment guide, runbooks, architecture diagrams, traffic generator
 
-This is **not a toy**. It's a system a junior engineer could own, deploy, and operate in production. Judges will see professional-grade observability, incident response, and engineering rigor.
+This is **not a toy**. It's a system a junior engineer could own, deploy, and operate in production. The system demonstrates professional-grade observability, incident response, and engineering rigor.
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** December 28, 2025  
-**Status:** Ready for Submission
+**Document Version:** 1.0
+**Last Updated:** December 28, 2025
+**Status:** Ready for Deployment

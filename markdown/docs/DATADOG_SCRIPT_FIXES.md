@@ -65,7 +65,7 @@ This document summarizes the fixes applied to the Datadog apply/export scripts t
 
 ### 7. Updated Documentation
 
-**File**: `docs/OBSERVABILITY.md`
+**File**: `markdown/docs/OBSERVABILITY.md`
 
 **Added**:
 - "Runbook: API Key Validation" section with PowerShell commands using `Invoke-RestMethod`/`Invoke-WebRequest`
@@ -82,7 +82,7 @@ This document summarizes the fixes applied to the Datadog apply/export scripts t
 4. **Modified**: `scripts/datadog/export-assets.py` - Complete rewrite with proper error handling
 5. **Modified**: `scripts/datadog/apply-assets.ps1` - Exit code propagation
 6. **Modified**: `scripts/datadog/export-assets.ps1` - Exit code propagation
-7. **Modified**: `docs/OBSERVABILITY.md` - Added Runbook section
+7. **Modified**: `markdown/docs/OBSERVABILITY.md` - Added Runbook section
 
 ## Verification
 

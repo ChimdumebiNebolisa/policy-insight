@@ -75,11 +75,11 @@ The following test files contain hardcoded `"postgres"` password for Testcontain
 
 #### ✅ ACCEPTABLE: Example Values in Documentation
 The following files contain example/placeholder values (e.g., `"your-api-key"`, `"postgres"`):
-- `docs/OBSERVABILITY.md` - Contains example commands with placeholder values
-- `datadog/README.md` - Contains example setup commands
-- `README-SUBMISSION.md` - Contains example commands
-- `PolicyInsight_Datadog_Challenge_PRD.md` - Contains example commands
-- `PolicyInsight_Hackathon_PRD.md` - Contains example commands
+- `markdown/docs/OBSERVABILITY.md` - Contains example commands with placeholder values
+- `markdown/datadog/README.md` - Contains example setup commands
+- `markdown/README-EVALUATION.md` - Contains example commands
+- `markdown/PolicyInsight_Datadog_PRD.md` - Contains example commands
+- `markdown/PolicyInsight_PRD.md` - Contains example commands
 
 **Status**: ✅ Acceptable - These are documentation examples, not real secrets. However, they have been updated to reference environment variables.
 
@@ -108,8 +108,8 @@ The following files were already using environment variables correctly:
 - ✅ CI will fail if secrets are detected in future commits
 
 ### 4. Documentation
-- ✅ Created comprehensive `docs/SECURITY.md` guide
-- ✅ Updated `docs/OBSERVABILITY.md` to reference security best practices
+- ✅ Created comprehensive `markdown/docs/SECURITY.md` guide
+- ✅ Updated `markdown/docs/OBSERVABILITY.md` to reference security best practices
 - ✅ Documented all environment variables in `.env.example`
 
 ### 5. .gitignore Updates
@@ -171,12 +171,12 @@ gitleaks detect --source . --log-opts="--all" --verbose
 1. ✅ Review this report with the team
 2. ✅ Rotate any secrets that may have been in git history
 3. ✅ Set up environment variables in CI/CD pipelines
-4. ✅ Train team on secret management best practices (see `docs/SECURITY.md`)
+4. ✅ Train team on secret management best practices (see `markdown/docs/SECURITY.md`)
 5. ✅ Monitor gitleaks CI scans for future commits
 
 ## References
 
-- Security Guide: `docs/SECURITY.md`
+- Security Guide: `markdown/docs/SECURITY.md`
 - Environment Variables: `.env.example`
 - Pre-commit Hooks: `scripts/pre-commit-secret-scan.*`
 - CI Configuration: `.github/workflows/ci.yml`

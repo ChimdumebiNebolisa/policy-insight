@@ -78,7 +78,7 @@ export DD_LOGS_INJECTION=true
 export DATADOG_ENABLED=true
 ```
 
-**Recommended**: Use `.env` file for local development (see `.env.example` and `docs/SECURITY.md` for details).
+**Recommended**: Use `.env` file for local development (see `.env.example` and `SECURITY.md` for details).
 
 ### Step 3: Download dd-java-agent
 
