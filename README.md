@@ -243,8 +243,6 @@ PolicyInsight uses **capability tokens** for access control:
 
 ## Milestones
 
-See [tasks.md](./markdown/tasks.md) for the complete implementation roadmap.
-
 **Current Status**:
 - ✅ M1: Capability-token security
 - ✅ M2: Rate limiting + quotas
