@@ -9,58 +9,33 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 /**
- * Filter that enforces capability-token security for protected endpoints.
+ * Interceptor that enforces capability-token security for protected endpoints.
  * Validates tokens from cookies or headers and applies CSRF protection for state-changing operations.
  */
 @Component
-public class JobTokenInterceptor extends OncePerRequestFilter {
+public class JobTokenInterceptor implements HandlerInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(JobTokenInterceptor.class);
 
     private static final String TOKEN_HEADER = "X-Job-Token";
     private static final String COOKIE_PREFIX = "pi_job_token_";
 
-    // Public endpoints that do not require token validation
-    private static final List<String> PUBLIC_PATHS = List.of(
-        "/",
-        "/api/documents/upload",
-        "/health",
-        "/actuator/health",
-        "/actuator/readiness",
-        "/swagger-ui",
-        "/v3/api-docs",
-        "/internal/pubsub"
-    );
-
-    // Patterns for protected endpoints that contain job UUID in path
-    private static final List<Pattern> PROTECTED_PATTERNS = List.of(
-        Pattern.compile("^/api/documents/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/status$"),
-        Pattern.compile("^/api/documents/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/export/pdf$"),
-        Pattern.compile("^/api/documents/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/share$"),
-        Pattern.compile("^/documents/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/report$"),
-        Pattern.compile("^/api/questions/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$")
-    );
-
     // Protected endpoints that need special handling (UUID in body/params)
     private static final List<String> PROTECTED_SPECIAL_PATHS = List.of(
         "/api/questions"
-    );
-
-    // Pattern for share view (public, does not require job token)
-    private static final Pattern SHARE_VIEW_PATTERN = Pattern.compile(
-        "^/documents/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/share/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
     );
 
     private final TokenService tokenService;
@@ -81,34 +56,22 @@ public class JobTokenInterceptor extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(
+    public boolean preHandle(
             HttpServletRequest request,
             HttpServletResponse response,
-            jakarta.servlet.FilterChain filterChain)
-            throws jakarta.servlet.ServletException, IOException {
+            Object handler) throws Exception {
 
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        // Check if path is public
-        if (isPublicPath(path)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // Check if path is share view (public)
-        if (SHARE_VIEW_PATTERN.matcher(path).matches()) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // Extract job UUID from protected path or request
-        Optional<UUID> jobUuidOpt = extractJobUuid(path, request);
+        // Extract job UUID from path variables when available
+        Optional<UUID> jobUuidOpt = extractJobUuid(request);
 
         // For /api/questions POST, handle specially (UUID may be in body for JSON)
         if (PROTECTED_SPECIAL_PATHS.contains(path) && "POST".equals(method)) {
-            // Try to get UUID from params (form data)
-            jobUuidOpt = extractJobUuid(path, request);
+            if (jobUuidOpt.isEmpty()) {
+                jobUuidOpt = extractJobUuidFromParams(request);
+            }
             if (jobUuidOpt.isEmpty()) {
                 // For JSON requests, UUID is in body - we can't read it here easily
                 // Check if token is in header - if yes, allow through and controller validates
@@ -116,25 +79,23 @@ public class JobTokenInterceptor extends OncePerRequestFilter {
                 if (tokenHeader == null || tokenHeader.isBlank()) {
                     logger.debug("Missing token header for /api/questions POST");
                     sendUnauthorized(response, "Missing job token");
-                    return;
+                    return false;
                 }
                 // Check CSRF
                 if (!validateCsrf(request)) {
                     logger.debug("CSRF validation failed: path={}, method={}", path, method);
                     sendForbidden(response, "CSRF validation failed");
-                    return;
+                    return false;
                 }
                 // Allow through - controller will validate token matches document_id
-                filterChain.doFilter(request, response);
-                return;
+                return true;
             }
             // Fall through to normal validation with UUID from params
         }
 
         if (jobUuidOpt.isEmpty()) {
-            // Path doesn't match protected pattern, allow through (may be handled by other filters)
-            filterChain.doFilter(request, response);
-            return;
+            // No job UUID found in path - allow through
+            return true;
         }
 
         UUID jobUuid = jobUuidOpt.get();
@@ -144,27 +105,27 @@ public class JobTokenInterceptor extends OncePerRequestFilter {
         if (token == null) {
             logger.debug("Missing token for protected endpoint: path={}, jobUuid={}", path, jobUuid);
             sendUnauthorized(response, "Missing or invalid job token");
-            return;
+            return false;
         }
 
         // Validate token
         PolicyJob job = policyJobRepository.findByJobUuid(jobUuid).orElse(null);
         if (job == null) {
             logger.debug("Job not found: jobUuid={}", jobUuid);
-            sendUnauthorized(response, "Job not found");
-            return;
+            sendNotFound(response, "Job not found");
+            return false;
         }
 
         if (job.getAccessTokenHmac() == null) {
             logger.debug("Job has no token HMAC: jobUuid={}", jobUuid);
             sendUnauthorized(response, "Job token not configured");
-            return;
+            return false;
         }
 
         if (!tokenService.verifyToken(token, job.getAccessTokenHmac())) {
             logger.debug("Token validation failed: path={}, jobUuid={}", path, jobUuid);
             sendUnauthorized(response, "Invalid job token");
-            return;
+            return false;
         }
 
         // CSRF protection for state-changing methods (except /internal/pubsub)
@@ -172,47 +133,44 @@ public class JobTokenInterceptor extends OncePerRequestFilter {
             if (!validateCsrf(request)) {
                 logger.debug("CSRF validation failed: path={}, method={}", path, method);
                 sendForbidden(response, "CSRF validation failed");
-                return;
+                return false;
             }
         }
 
         // Token valid, proceed
-        filterChain.doFilter(request, response);
+        return true;
     }
 
-    private boolean isPublicPath(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
-    }
-
-    private Optional<UUID> extractJobUuid(String path, HttpServletRequest request) {
-        // Try path patterns first
-        for (Pattern pattern : PROTECTED_PATTERNS) {
-            java.util.regex.Matcher matcher = pattern.matcher(path);
-            if (matcher.find()) {
-                try {
-                    // First capture group is job UUID (if present)
-                    if (matcher.groupCount() >= 1) {
-                        String uuidStr = matcher.group(1);
+    private Optional<UUID> extractJobUuid(HttpServletRequest request) {
+        Object attribute = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+        if (attribute instanceof Map<?, ?> uriVariables) {
+            Object id = uriVariables.get("id");
+            if (id == null) {
+                id = uriVariables.get("document_id");
+            }
+            if (id != null) {
+                String uuidStr = id.toString();
+                if (!uuidStr.isBlank()) {
+                    try {
                         return Optional.of(UUID.fromString(uuidStr));
+                    } catch (IllegalArgumentException e) {
+                        logger.debug("Invalid UUID in path variables: {}", uuidStr);
                     }
-                } catch (IllegalArgumentException e) {
-                    logger.debug("Invalid UUID in path: {}", path);
                 }
             }
         }
+        return Optional.empty();
+    }
 
-        // For /api/questions (POST), try to extract from request parameter
-        if (PROTECTED_SPECIAL_PATHS.contains(path)) {
-            String documentIdParam = request.getParameter("document_id");
-            if (documentIdParam != null && !documentIdParam.isBlank()) {
-                try {
-                    return Optional.of(UUID.fromString(documentIdParam));
-                } catch (IllegalArgumentException e) {
-                    logger.debug("Invalid document_id parameter: {}", documentIdParam);
-                }
+    private Optional<UUID> extractJobUuidFromParams(HttpServletRequest request) {
+        String documentIdParam = request.getParameter("document_id");
+        if (documentIdParam != null && !documentIdParam.isBlank()) {
+            try {
+                return Optional.of(UUID.fromString(documentIdParam));
+            } catch (IllegalArgumentException e) {
+                logger.debug("Invalid document_id parameter: {}", documentIdParam);
             }
         }
-
         return Optional.empty();
     }
 
@@ -286,6 +244,16 @@ public class JobTokenInterceptor extends OncePerRequestFilter {
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(String.format(
             "{\"error\":\"FORBIDDEN\",\"message\":\"%s\",\"timestamp\":\"%s\"}",
+            message, java.time.Instant.now()
+        ));
+    }
+
+    private void sendNotFound(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(String.format(
+            "{\"error\":\"NOT_FOUND\",\"message\":\"%s\",\"timestamp\":\"%s\"}",
             message, java.time.Instant.now()
         ));
     }

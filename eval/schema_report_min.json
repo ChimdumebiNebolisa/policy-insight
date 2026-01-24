@@ -1,0 +1,57 @@
+{
+  "description": "Minimal JSON schema for report-json endpoint response",
+  "type": "object",
+  "required": ["jobId", "report"],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "Job UUID"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when report was generated (required when status is SUCCESS)"
+    },
+    "report": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "documentOverview": {
+          "description": "Document overview JSONB field (can be null or empty)"
+        },
+        "summaryBullets": {
+          "description": "Summary bullets JSONB field (can be null or empty)"
+        },
+        "obligations": {
+          "description": "Obligations JSONB field (can be null or empty)"
+        },
+        "restrictions": {
+          "description": "Restrictions JSONB field (can be null or empty)"
+        },
+        "terminationTriggers": {
+          "description": "Termination triggers JSONB field (can be null or empty)"
+        },
+        "riskTaxonomy": {
+          "description": "Risk taxonomy JSONB field (can be null or empty)"
+        }
+      }
+    },
+    "chunksMeta": {
+      "type": "object",
+      "required": ["chunkCount"],
+      "properties": {
+        "chunkCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of document chunks"
+        },
+        "avgSpanConfidence": {
+          "type": ["number", "null"],
+          "description": "Average span confidence across chunks (can be null)"
+        }
+      }
+    }
+  }
+}
+

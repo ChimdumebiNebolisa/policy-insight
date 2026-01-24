@@ -1,6 +1,7 @@
 package com.policyinsight.api;
 
 import com.policyinsight.processing.DocumentJobProcessor;
+import com.policyinsight.security.JobTokenInterceptor;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.PolicyJobRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,9 @@ class PubSubControllerTest {
     @MockBean
     private PolicyJobRepository policyJobRepository;
 
+    @MockBean
+    private JobTokenInterceptor jobTokenInterceptor;
+
     @BeforeEach
     void setUp() {
         reset(documentJobProcessor, tokenVerifier, policyJobRepository);
@@ -46,6 +50,7 @@ class PubSubControllerTest {
         when(tokenVerifier.verifyToken(any())).thenReturn(true);
         // Default: repository update succeeds (1 row updated = job was PENDING)
         when(policyJobRepository.updateStatusIfPending(any())).thenReturn(1);
+        when(policyJobRepository.updateStatusIfPendingWithLease(any(), any())).thenReturn(1);
         // Default: repository find returns a job
         PolicyJob mockJob = new PolicyJob(UUID.randomUUID());
         mockJob.setStatus("PROCESSING");

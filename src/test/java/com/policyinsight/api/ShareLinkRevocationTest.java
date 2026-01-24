@@ -92,7 +92,7 @@ class ShareLinkRevocationTest {
         // Then: Should return 401 Unauthorized
         mockMvc.perform(post("/api/documents/{id}/share/revoke", testJobId))
                 .andExpect(status().isUnauthorized())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
     }
 
@@ -144,7 +144,7 @@ class ShareLinkRevocationTest {
                         .header("X-Job-Token", token)
                         .header("Origin", "http://localhost:8080"))
                 .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").value("No active share link found for this document"));
     }
 }

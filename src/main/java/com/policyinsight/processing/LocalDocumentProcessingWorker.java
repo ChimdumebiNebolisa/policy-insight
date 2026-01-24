@@ -577,6 +577,7 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
 
         // Update job status
         job.setStatus("SUCCESS");
+        job.setCompletedAt(Instant.now());
     }
 
     /**

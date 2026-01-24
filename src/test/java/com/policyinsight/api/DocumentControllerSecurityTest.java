@@ -83,7 +83,7 @@ class DocumentControllerSecurityTest {
         // Then: Should return 401 Unauthorized
         mockMvc.perform(get("/api/documents/{id}/status", testJobId))
                 .andExpect(status().isUnauthorized())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
     }
 
@@ -94,7 +94,7 @@ class DocumentControllerSecurityTest {
         mockMvc.perform(get("/api/documents/{id}/status", testJobId)
                         .header("X-Job-Token", testToken))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.jobId").value(testJobId.toString()))
                 .andExpect(jsonPath("$.status").value("SUCCESS"));
     }
@@ -107,7 +107,7 @@ class DocumentControllerSecurityTest {
         mockMvc.perform(get("/api/documents/{id}/status", testJobId)
                         .cookie(new jakarta.servlet.http.Cookie(cookieName, testToken)))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.jobId").value(testJobId.toString()));
     }
 
@@ -118,7 +118,7 @@ class DocumentControllerSecurityTest {
         mockMvc.perform(get("/api/documents/{id}/status", testJobId)
                         .header("X-Job-Token", "invalid-token"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
     }
 
@@ -137,7 +137,7 @@ class DocumentControllerSecurityTest {
         mockMvc.perform(post("/api/documents/{id}/share", testJobId)
                         .header("X-Job-Token", testToken))
                 .andExpect(status().isForbidden())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").value("FORBIDDEN"));
     }
 

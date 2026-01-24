@@ -5,8 +5,12 @@ import com.policyinsight.api.storage.StorageService;
 import com.policyinsight.api.validation.PdfValidator;
 import com.policyinsight.security.RateLimitService;
 import com.policyinsight.security.TokenService;
+import com.policyinsight.shared.model.DocumentChunk;
 import com.policyinsight.shared.model.PolicyJob;
+import com.policyinsight.shared.model.Report;
+import com.policyinsight.shared.repository.DocumentChunkRepository;
 import com.policyinsight.shared.repository.PolicyJobRepository;
+import com.policyinsight.shared.repository.ReportRepository;
 import com.policyinsight.observability.TracingServiceInterface;
 import com.policyinsight.util.Strings;
 import io.opentelemetry.api.trace.Span;
@@ -30,6 +34,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -47,6 +52,8 @@ public class DocumentController {
     private final StorageService storageService;
     private final JobPublisher jobPublisher;
     private final PolicyJobRepository policyJobRepository;
+    private final ReportRepository reportRepository;
+    private final DocumentChunkRepository documentChunkRepository;
     private final TracingServiceInterface tracingService;
     private final TokenService tokenService;
     private final RateLimitService rateLimitService;
@@ -56,6 +63,8 @@ public class DocumentController {
             StorageService storageService,
             JobPublisher jobPublisher,
             PolicyJobRepository policyJobRepository,
+            ReportRepository reportRepository,
+            DocumentChunkRepository documentChunkRepository,
             TokenService tokenService,
             RateLimitService rateLimitService,
             PdfValidator pdfValidator,
@@ -63,6 +72,8 @@ public class DocumentController {
         this.storageService = storageService;
         this.jobPublisher = jobPublisher;
         this.policyJobRepository = policyJobRepository;
+        this.reportRepository = reportRepository;
+        this.documentChunkRepository = documentChunkRepository;
         this.tokenService = tokenService;
         this.rateLimitService = rateLimitService;
         this.pdfValidator = pdfValidator;
@@ -320,6 +331,121 @@ public class DocumentController {
 
             return ResponseEntity.ok(jsonResponse);
         }
+    }
+
+    @GetMapping("/{id}/report-json")
+    @Operation(summary = "Get report data in JSON format",
+               description = "Returns the report data for a completed job. Requires X-Job-Token header.")
+    public ResponseEntity<?> getReportJson(
+            @Parameter(description = "Job ID returned from upload endpoint")
+            @PathVariable("id") String id,
+            @RequestHeader(value = "X-Job-Token", required = false) String tokenHeader,
+            HttpServletRequest request) {
+
+        UUID jobUuid;
+        try {
+            jobUuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "INVALID_JOB_ID");
+            errorResponse.put("message", "Invalid job ID format: " + id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
+        // Verify token
+        PolicyJob job = policyJobRepository.findByJobUuid(jobUuid).orElse(null);
+        if (job == null) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "JOB_NOT_FOUND");
+            errorResponse.put("message", "Job not found: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+
+        // Extract token from header
+        String token = tokenHeader;
+        if (token == null || token.isBlank()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "UNAUTHORIZED");
+            errorResponse.put("message", "Missing job token");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
+
+        // Verify token
+        if (job.getAccessTokenHmac() == null || !tokenService.verifyToken(token, job.getAccessTokenHmac())) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "FORBIDDEN");
+            errorResponse.put("message", "Invalid job token");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+        }
+
+        // Check status - must be SUCCESS
+        String status = job.getStatus();
+        if (!"SUCCESS".equals(status)) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("jobId", id);
+            errorResponse.put("status", status);
+            errorResponse.put("message", "Report not available. Job status is " + status);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+        }
+
+        // Fetch report
+        Report report = reportRepository.findByJobUuid(jobUuid).orElse(null);
+        if (report == null) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("jobId", id);
+            errorResponse.put("status", status);
+            errorResponse.put("message", "Report not found for this job");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+        }
+
+        // Fetch chunks for metadata
+        List<DocumentChunk> chunks = documentChunkRepository.findByJobUuid(jobUuid);
+        long chunkCount = chunks.size();
+
+        // Compute average span confidence
+        Double avgSpanConfidence = null;
+        if (!chunks.isEmpty()) {
+            double sum = 0.0;
+            int count = 0;
+            for (DocumentChunk chunk : chunks) {
+                if (chunk.getSpanConfidence() != null) {
+                    sum += chunk.getSpanConfidence().doubleValue();
+                    count++;
+                }
+            }
+            if (count > 0) {
+                avgSpanConfidence = sum / count;
+            }
+        }
+
+        // Build response
+        Map<String, Object> response = new HashMap<>();
+        response.put("jobId", id);
+        if (report.getGeneratedAt() != null) {
+            response.put("generatedAt", report.getGeneratedAt().toString());
+        }
+
+        // Build report object
+        Map<String, Object> reportData = new HashMap<>();
+        reportData.put("documentOverview", report.getDocumentOverview());
+        reportData.put("summaryBullets", report.getSummaryBullets());
+        reportData.put("obligations", report.getObligations());
+        reportData.put("restrictions", report.getRestrictions());
+        reportData.put("terminationTriggers", report.getTerminationTriggers());
+        reportData.put("riskTaxonomy", report.getRiskTaxonomy());
+        response.put("report", reportData);
+
+        // Build chunksMeta object
+        Map<String, Object> chunksMeta = new HashMap<>();
+        chunksMeta.put("chunkCount", (int) chunkCount);
+        if (avgSpanConfidence != null) {
+            chunksMeta.put("avgSpanConfidence", Math.round(avgSpanConfidence * 100.0) / 100.0);
+        } else {
+            chunksMeta.put("avgSpanConfidence", null);
+        }
+        response.put("chunksMeta", chunksMeta);
+
+        return ResponseEntity.ok(response);
     }
 
     /**

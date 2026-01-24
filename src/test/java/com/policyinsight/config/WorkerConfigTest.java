@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
-import org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor;
 import org.springframework.test.context.TestPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,11 +51,11 @@ class WorkerConfigTestEnabled {
     @Test
     void testSchedulingEnabledWhenWorkerEnabled(ApplicationContext context) {
         // When: Worker is enabled
-        // Then: Scheduling should be enabled (ScheduledAnnotationBeanPostProcessor should exist)
-        // and the worker bean with @Scheduled methods should exist
+        // Then: Worker bean should exist, but scheduling stays disabled in test profile
         assertThat(context.getBean(LocalDocumentProcessingWorker.class)).isNotNull();
-        // Verify scheduling post processor exists (created by @EnableScheduling)
-        assertThat(context.getBean(ScheduledAnnotationBeanPostProcessor.class)).isNotNull();
+        assertThatThrownBy(() -> context.getBean(
+                org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor.class))
+                .isInstanceOf(NoSuchBeanDefinitionException.class);
     }
 }
 

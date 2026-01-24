@@ -2,6 +2,8 @@ package com.policyinsight.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.policyinsight.TestPdfFactory;
+import com.policyinsight.processing.DocumentJobProcessor;
+import com.policyinsight.security.TokenService;
 import com.policyinsight.shared.model.DocumentChunk;
 import com.policyinsight.shared.model.PolicyJob;
 import com.policyinsight.shared.repository.DocumentChunkRepository;
@@ -49,6 +51,7 @@ class LocalProcessingIntegrationTest {
 
     // Per-test-run marker to isolate cleanup to this test run only
     private static final String TEST_RUN_ID = "it-" + UUID.randomUUID().toString().substring(0, 8);
+    private static final String JOB_TOKEN_HEADER = "X-Job-Token";
 
     @Container
     @SuppressWarnings("resource")
@@ -74,6 +77,12 @@ class LocalProcessingIntegrationTest {
 
     @Autowired
     private PolicyJobRepository policyJobRepository;
+
+    @Autowired
+    private TokenService tokenService;
+
+    @Autowired
+    private DocumentJobProcessor documentJobProcessor;
 
     @Autowired
     private DocumentChunkRepository documentChunkRepository;
@@ -143,7 +152,7 @@ class LocalProcessingIntegrationTest {
         MvcResult uploadResult = mockMvc.perform(multipart("/api/documents/upload")
                         .file(file))
                 .andExpect(status().isAccepted())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.jobId").exists())
                 .andExpect(jsonPath("$.status").value("PENDING"))
                 .andReturn();
@@ -153,10 +162,13 @@ class LocalProcessingIntegrationTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> response = objectMapper.readValue(responseJson, Map.class);
         String jobIdString = (String) response.get("jobId");
+        String token = (String) response.get("token");
         UUID jobId = UUID.fromString(jobIdString);
 
+        documentJobProcessor.processDocument(jobId);
+
         // Poll status endpoint until SUCCESS (with timeout)
-        String finalStatus = pollStatusUntilComplete(jobId, 30);
+        String finalStatus = pollStatusUntilComplete(jobId, token, 30);
 
         // Then: Assert job completed successfully
         PolicyJob finalJob = policyJobRepository.findByJobUuid(jobId).orElseThrow();
@@ -194,7 +206,7 @@ class LocalProcessingIntegrationTest {
         MvcResult uploadResult = mockMvc.perform(multipart("/api/documents/upload")
                         .file(file))
                 .andExpect(status().isAccepted())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.jobId").exists())
                 .andExpect(jsonPath("$.status").value("PENDING"))
                 .andReturn();
@@ -204,10 +216,13 @@ class LocalProcessingIntegrationTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> response = objectMapper.readValue(responseJson, Map.class);
         String jobIdString = (String) response.get("jobId");
+        String token = (String) response.get("token");
         UUID jobId = UUID.fromString(jobIdString);
 
+        documentJobProcessor.processDocument(jobId);
+
         // Poll status endpoint until FAILED (with timeout)
-        String finalStatus = pollStatusUntilComplete(jobId, 30);
+        String finalStatus = pollStatusUntilComplete(jobId, token, 30);
 
         // Then: Assert job failed with non-empty error message
         // Note: We only assert FAILED status and non-empty error message, not specific keywords,
@@ -228,15 +243,16 @@ class LocalProcessingIntegrationTest {
      * @return the final status (SUCCESS or FAILED)
      * @throws Exception if polling fails or timeout is exceeded
      */
-    private String pollStatusUntilComplete(UUID jobId, int timeoutSeconds) throws Exception {
+    private String pollStatusUntilComplete(UUID jobId, String token, int timeoutSeconds) throws Exception {
         long startTime = System.currentTimeMillis();
         long timeoutMs = TimeUnit.SECONDS.toMillis(timeoutSeconds);
         String status = null;
 
         while (System.currentTimeMillis() - startTime < timeoutMs) {
-            MvcResult statusResult = mockMvc.perform(get("/api/documents/{id}/status", jobId))
+            MvcResult statusResult = mockMvc.perform(get("/api/documents/{id}/status", jobId)
+                            .header(JOB_TOKEN_HEADER, token))
                     .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                     .andReturn();
 
             String statusJson = statusResult.getResponse().getContentAsString();
@@ -260,16 +276,14 @@ class LocalProcessingIntegrationTest {
     @Test
     void testExportPdfReturns409WhenNotSuccess() throws Exception {
         // Given: A job in PENDING status
-        PolicyJob job = new PolicyJob(testJobId);
-        job.setStatus("PENDING");
-        job.setPdfFilename("test.pdf");
-        policyJobRepository.save(job);
+        String token = createJobWithToken(testJobId, "PENDING");
 
         // When: Request PDF export
         // Then: Should return 409 Conflict with JSON error
-        mockMvc.perform(get("/api/documents/{id}/export/pdf", testJobId))
+        mockMvc.perform(get("/api/documents/{id}/export/pdf", testJobId)
+                        .header(JOB_TOKEN_HEADER, token))
                 .andExpect(status().isConflict())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").exists())
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("processing")));
     }
@@ -277,16 +291,15 @@ class LocalProcessingIntegrationTest {
     @Test
     void testShareReturns409WhenNotSuccess() throws Exception {
         // Given: A job in PENDING status
-        PolicyJob job = new PolicyJob(testJobId);
-        job.setStatus("PENDING");
-        job.setPdfFilename("test.pdf");
-        policyJobRepository.save(job);
+        String token = createJobWithToken(testJobId, "PENDING");
 
         // When: Request share link
         // Then: Should return 409 Conflict with JSON error
-        mockMvc.perform(post("/api/documents/{id}/share", testJobId))
+        mockMvc.perform(post("/api/documents/{id}/share", testJobId)
+                        .header(JOB_TOKEN_HEADER, token)
+                        .header("Origin", "http://localhost:8080"))
                 .andExpect(status().isConflict())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").exists())
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("processing")));
     }
@@ -294,17 +307,17 @@ class LocalProcessingIntegrationTest {
     @Test
     void testStatusEndpointReturnsAccurateState() throws Exception {
         // Given: A job in PROCESSING status
-        PolicyJob job = new PolicyJob(testJobId);
-        job.setStatus("PROCESSING");
-        job.setPdfFilename("test.pdf");
+        String token = createJobWithToken(testJobId, "PROCESSING");
+        PolicyJob job = policyJobRepository.findByJobUuid(testJobId).orElseThrow();
         job.setStartedAt(Instant.now());
         policyJobRepository.save(job);
 
         // When: Request status
         // Then: Should return accurate status
-        mockMvc.perform(get("/api/documents/{id}/status", testJobId))
+        mockMvc.perform(get("/api/documents/{id}/status", testJobId)
+                        .header(JOB_TOKEN_HEADER, token))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.jobId").value(testJobId.toString()))
                 .andExpect(jsonPath("$.status").value("PROCESSING"))
                 .andExpect(jsonPath("$.message").exists());
@@ -313,35 +326,52 @@ class LocalProcessingIntegrationTest {
     @Test
     void testExportPdfReturns404WhenJobNotFound() throws Exception {
         UUID nonExistentId = UUID.randomUUID();
+        String token = tokenService.generateToken();
 
         // When: Request PDF export for non-existent job
         // Then: Should return 404 Not Found
-        mockMvc.perform(get("/api/documents/{id}/export/pdf", nonExistentId))
+        mockMvc.perform(get("/api/documents/{id}/export/pdf", nonExistentId)
+                        .header(JOB_TOKEN_HEADER, token))
                 .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").exists());
     }
 
     @Test
     void testShareReturns404WhenJobNotFound() throws Exception {
         UUID nonExistentId = UUID.randomUUID();
+        String token = tokenService.generateToken();
 
         // When: Request share link for non-existent job
         // Then: Should return 404 Not Found
-        mockMvc.perform(post("/api/documents/{id}/share", nonExistentId))
+        mockMvc.perform(post("/api/documents/{id}/share", nonExistentId)
+                        .header(JOB_TOKEN_HEADER, token)
+                        .header("Origin", "http://localhost:8080"))
                 .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").exists());
     }
 
     @Test
     void testInvalidUuidFormatReturns400() throws Exception {
+        String token = tokenService.generateToken();
         // When: Request with invalid UUID format
         // Then: Should return 400 Bad Request
-        mockMvc.perform(get("/api/documents/{id}/status", "invalid-uuid"))
+        mockMvc.perform(get("/api/documents/{id}/status", "invalid-uuid")
+                        .header(JOB_TOKEN_HEADER, token))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").exists());
+    }
+
+    private String createJobWithToken(UUID jobId, String status) {
+        String token = tokenService.generateToken();
+        PolicyJob job = new PolicyJob(jobId);
+        job.setStatus(status);
+        job.setPdfFilename("test.pdf");
+        job.setAccessTokenHmac(tokenService.computeHmac(token));
+        policyJobRepository.save(job);
+        return token;
     }
 }
 
