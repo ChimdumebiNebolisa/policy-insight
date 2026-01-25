@@ -1702,6 +1702,7 @@ Final status JSON:
 - 2026-01-25T10:53:14Z: `git switch milestone-3-cloudrun-execution` failed because `docs/MILESTONE_3_EXECUTION_REPORT.md` would be overwritten. Fixed by committing the report on `main` before switching branches.
 - 2026-01-25T10:55:22Z: `gcloud --version` failed because `gcloud` was not on PATH. Fixed by prepending `$env:LOCALAPPDATA\Google\Cloud SDK\google-cloud-sdk\bin` to `PATH` and re-running the command.
 - 2026-01-25T10:56:44Z: `gcloud config get-value project` failed because `gcloud` was not on PATH in the new shell invocation. Fixed by prepending the Cloud SDK bin to `PATH` and re-running the command.
+- 2026-01-25T10:58:40Z: Step 2 variables printed with empty `$PROJECT`/`$REGION` because PowerShell variables did not persist across tool calls. Fixed by re-running steps 1-2 in a single command.
 
 ## Step 1: gcloud pre-checks (rerun)
 
@@ -1731,4 +1732,44 @@ us-central1
 `gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com storage.googleapis.com pubsub.googleapis.com`:
 ```
 Operation "operations/acat.p2-828177954618-b16a7b8b-bdb9-4f8a-9737-1c09350f8de0" finished successfully.
+```
+
+## Step 3: Plan step 1 preflight (repeat)
+
+```
+Google Cloud SDK 553.0.0
+bq 2.1.27
+core 2026.01.16
+gcloud-crc32c 1.0.0
+gsutil 5.35
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+policy-insight
+us-central1
+```
+
+## Step 4: Plan step 2 constants (rerun in single call)
+
+Initial attempt printed empty `$PROJECT`/`$REGION`; re-ran in a single command to keep variables in scope.
+
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+PROJECT=policy-insight
+REGION=us-central1
+SERVICE=policy-insight
+SQL_INSTANCE=policy-insight-db
+DB_NAME=policyinsight
+DB_USER=policyinsight
+BUCKET=policy-insight-policyinsight
+RUNTIME_SA=policy-insight-runner@policy-insight.iam.gserviceaccount.com
+VPC_CONNECTOR=policy-insight-connector
+```
+
+## Step 5: Plan step 3 enable APIs
+
+`gcloud services enable run.googleapis.com cloudbuild.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com storage.googleapis.com artifactregistry.googleapis.com vpcaccess.googleapis.com servicenetworking.googleapis.com --project $PROJECT`:
+```
+Your active configuration is: [policy-insight]
+Operation "operations/acat.p2-828177954618-e6f3c4ef-d74a-42d1-8109-4399c27369f0" finished successfully.
 ```
