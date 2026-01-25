@@ -1121,3 +1121,576 @@ Final status JSON:
 ```
 {"jobId":"afa5384e-4d14-4f2c-9f98-bfdf2b0a7cab","reportUrl":"/documents/afa5384e-4d14-4f2c-9f98-bfdf2b0a7cab/report","message":"Analysis completed successfully","status":"SUCCESS"}
 ```
+
+## Phase 0: Preflight (2026-01-25T10:07:56.0000000-06:00)
+
+Command:
+```
+Test-Path docs/MILESTONE_3_PLAN.md
+```
+
+Output:
+```
+True
+```
+
+Command:
+```
+$PLACEHOLDER_PATTERN = ("T","O","D","O","|","Y","O","U","R","_","|","R","E","P","L","A","C","E","_","M","E") -join ""
+Select-String -Path docs/MILESTONE_3_PLAN.md -Pattern $PLACEHOLDER_PATTERN | Where-Object { $_.Line -notmatch "Select-String -Path docs/MILESTONE_3_PLAN.md" }
+```
+
+Output:
+```
+(no matches)
+```
+
+Command:
+```
+git status
+```
+
+Output:
+```
+On branch milestone-3-cloudrun-execution
+Your branch is up to date with 'origin/milestone-3-cloudrun-execution'.
+
+nothing to commit, working tree clean
+```
+
+## Step 1: Preflight gcloud + project + region (2026-01-25T10:09:23.0000000-06:00)
+
+Command (initial attempt):
+```
+gcloud --version
+$PROJECT = (gcloud config get-value project).Trim()
+$REGION = (gcloud config get-value run/region).Trim()
+$PROJECT
+$REGION
+```
+
+Result (failure):
+```
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ gcloud --version
++ ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:2 char:13
++ $PROJECT = (gcloud config get-value project).Trim()
++             ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:3 char:12
++ $REGION = (gcloud config get-value run/region).Trim()
++            ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+```
+
+Fix:
+- Add Google Cloud SDK bin to PATH for this shell session.
+
+Command (re-run):
+```
+$gcloudBin = "$env:LOCALAPPDATA\Google\Cloud SDK\google-cloud-sdk\bin"
+$env:Path = "$gcloudBin;$env:Path"
+gcloud --version
+$PROJECT = (gcloud config get-value project).Trim()
+$REGION = (gcloud config get-value run/region).Trim()
+$PROJECT
+$REGION
+```
+
+Output:
+```
+Google Cloud SDK 553.0.0
+bq 2.1.27
+core 2026.01.16
+gcloud-crc32c 1.0.0
+gsutil 5.35
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+policy-insight
+us-central1
+```
+
+## Step 2: Define names and constants (2026-01-25T10:12:44.0000000-06:00)
+
+Command (initial attempt):
+```
+$SERVICE = "policy-insight"
+$SQL_INSTANCE = "policy-insight-db"
+$DB_NAME = "policyinsight"
+$DB_USER = "policyinsight"
+$BUCKET = "$PROJECT-policyinsight"
+$RUNTIME_SA_NAME = "policy-insight-runner"
+$RUNTIME_SA = "$RUNTIME_SA_NAME@$PROJECT.iam.gserviceaccount.com"
+$SECRET_DB_PASSWORD = "db-password"
+$SECRET_APP_TOKEN = "app-token-secret"
+$VPC_CONNECTOR = "policy-insight-connector"
+$PRIVATE_SERVICE_RANGE = "policy-insight-psa"
+$PUBSUB_TOPIC = "policy-insight-topic"
+$PUBSUB_SUB = "policy-insight-push"
+"PROJECT=$PROJECT"
+"REGION=$REGION"
+"SERVICE=$SERVICE"
+"SQL_INSTANCE=$SQL_INSTANCE"
+"DB_NAME=$DB_NAME"
+"DB_USER=$DB_USER"
+"BUCKET=$BUCKET"
+"RUNTIME_SA=$RUNTIME_SA"
+"VPC_CONNECTOR=$VPC_CONNECTOR"
+```
+
+Result (failure: `$PROJECT` / `$REGION` not set in this shell):
+```
+PROJECT=
+REGION=
+SERVICE=
+SQL_INSTANCE=
+DB_NAME=
+DB_USER=
+BUCKET=
+RUNTIME_SA=
+VPC_CONNECTOR=
+```
+
+Command (re-run, still failing because `gcloud` not on PATH):
+```
+$PROJECT = (gcloud config get-value project).Trim()
+$REGION = (gcloud config get-value run/region).Trim()
+...
+```
+
+Result (failure):
+```
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:13
++ $PROJECT = (gcloud config get-value project).Trim()
++             ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:2 char:12
++ $REGION = (gcloud config get-value run/region).Trim()
++            ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+PROJECT=
+REGION=
+SERVICE=policy-insight
+SQL_INSTANCE=policy-insight-db
+DB_NAME=policyinsight
+DB_USER=policyinsight
+BUCKET=-policyinsight
+RUNTIME_SA=policy-insight-runner@.iam.gserviceaccount.com
+VPC_CONNECTOR=policy-insight-connector
+```
+
+Fix:
+- Add Google Cloud SDK bin to PATH and re-define `$PROJECT`/`$REGION`.
+
+Command (re-run):
+```
+$gcloudBin = "$env:LOCALAPPDATA\Google\Cloud SDK\google-cloud-sdk\bin"
+$env:Path = "$gcloudBin;$env:Path"
+$PROJECT = (gcloud config get-value project).Trim()
+$REGION = (gcloud config get-value run/region).Trim()
+$SERVICE = "policy-insight"
+$SQL_INSTANCE = "policy-insight-db"
+$DB_NAME = "policyinsight"
+$DB_USER = "policyinsight"
+$BUCKET = "$PROJECT-policyinsight"
+$RUNTIME_SA_NAME = "policy-insight-runner"
+$RUNTIME_SA = "$RUNTIME_SA_NAME@$PROJECT.iam.gserviceaccount.com"
+$SECRET_DB_PASSWORD = "db-password"
+$SECRET_APP_TOKEN = "app-token-secret"
+$VPC_CONNECTOR = "policy-insight-connector"
+$PRIVATE_SERVICE_RANGE = "policy-insight-psa"
+$PUBSUB_TOPIC = "policy-insight-topic"
+$PUBSUB_SUB = "policy-insight-push"
+"PROJECT=$PROJECT"
+"REGION=$REGION"
+"SERVICE=$SERVICE"
+"SQL_INSTANCE=$SQL_INSTANCE"
+"DB_NAME=$DB_NAME"
+"DB_USER=$DB_USER"
+"BUCKET=$BUCKET"
+"RUNTIME_SA=$RUNTIME_SA"
+"VPC_CONNECTOR=$VPC_CONNECTOR"
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+PROJECT=policy-insight
+REGION=us-central1
+SERVICE=policy-insight
+SQL_INSTANCE=policy-insight-db
+DB_NAME=policyinsight
+DB_USER=policyinsight
+BUCKET=policy-insight-policyinsight
+RUNTIME_SA=policy-insight-runner@policy-insight.iam.gserviceaccount.com
+VPC_CONNECTOR=policy-insight-connector
+```
+
+## Step 3: Enable required APIs (2026-01-25T10:13:49.0000000-06:00)
+
+Command:
+```
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com storage.googleapis.com artifactregistry.googleapis.com vpcaccess.googleapis.com servicenetworking.googleapis.com --project $PROJECT
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Operation "operations/acf.p2-828177954618-ce6705ba-45fb-4e08-bf93-906b228caa02" finished successfully.
+```
+
+## Step 4: Configure private services access (2026-01-25T10:15:18.0000000-06:00)
+
+Command:
+```
+gcloud compute addresses create $PRIVATE_SERVICE_RANGE --global --purpose=VPC_PEERING --prefix-length=16 --network=default --project $PROJECT
+gcloud services vpc-peerings connect --service=servicenetworking.googleapis.com --ranges=$PRIVATE_SERVICE_RANGE --network=default --project $PROJECT
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Created [https://www.googleapis.com/compute/v1/projects/policy-insight/global/addresses/policy-insight-psa].
+Operation "operations/pssn.p24-828177954618-341b7816-5b4c-4c86-bee9-c37d3790c028" finished successfully.
+```
+
+## Step 5: Create Serverless VPC Access connector (2026-01-25T10:16:55.0000000-06:00)
+
+Command:
+```
+gcloud compute networks vpc-access connectors create $VPC_CONNECTOR --region $REGION --network default --range 10.8.0.0/28 --project $PROJECT
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Create request issued for: [policy-insight-connector]
+Waiting for operation [projects/policy-insight/locations/us-central1/operations/211122d7-5ebf-45bc-8a89-4c86d0a3c2bc] to complete...
+.........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................done.
+Created connector [policy-insight-connector].
+```
+
+## Step 6: Cloud SQL instance, database, user, connection name (2026-01-25T10:20:08.0000000-06:00)
+
+Command:
+```
+gcloud sql instances create $SQL_INSTANCE --database-version=POSTGRES_15 --tier=db-custom-1-3840 --region $REGION --network=default --no-assign-ip --project $PROJECT
+gcloud sql databases create $DB_NAME --instance $SQL_INSTANCE --project $PROJECT
+$DB_PASSWORD = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+gcloud sql users create $DB_USER --instance $SQL_INSTANCE --password $DB_PASSWORD --project $PROJECT
+gcloud sql instances describe $SQL_INSTANCE --project $PROJECT --format="value(connectionName)"
+```
+
+Output (instance/db already exist):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.sql.instances.create) Resource in projects [policy-insight] is the subject of a conflict: The Cloud SQL instance already exists.
+ERROR: (gcloud.sql.databases.create) HTTPError 400: Invalid request: failed to create database policyinsight. Detail: pq: database "policyinsight" already exists.
+Creating Cloud SQL user...
+.done.
+Created user [policyinsight].
+policy-insight:us-central1:policy-insight-db
+```
+
+Fix:
+- Describe existing instance and database for evidence.
+
+Command:
+```
+gcloud sql instances describe $SQL_INSTANCE --project $PROJECT
+gcloud sql databases describe $DB_NAME --instance $SQL_INSTANCE --project $PROJECT
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+backendType: SECOND_GEN
+connectionName: policy-insight:us-central1:policy-insight-db
+createTime: '2026-01-25T07:16:31.821Z'
+databaseInstalledVersion: POSTGRES_15_15
+databaseVersion: POSTGRES_15
+...
+state: RUNNABLE
+...
+charset: UTF8
+collation: en_US.UTF8
+instance: policy-insight-db
+kind: sql#database
+name: policyinsight
+project: policy-insight
+```
+
+## Step 7: Create GCS bucket (2026-01-25T10:21:31.0000000-06:00)
+
+Command:
+```
+gcloud storage buckets create "gs://$BUCKET" --location $REGION --project $PROJECT --uniform-bucket-level-access
+```
+
+Output (acceptable):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Creating gs://policy-insight-policyinsight/...
+ERROR: (gcloud.storage.buckets.create) HTTPError 409: Your previous request to create the named bucket succeeded and you already own it.
+```
+
+## Step 8: Create runtime service account (2026-01-25T10:22:07.0000000-06:00)
+
+Command:
+```
+gcloud iam service-accounts create $RUNTIME_SA_NAME --project $PROJECT
+```
+
+Output (acceptable):
+```
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.iam.service-accounts.create) Resource in projects [policy-insight] is the subject of a conflict: Service account policy-insight-runner already exists within project projects/policy-insight.
+- '@type': type.googleapis.com/google.rpc.ResourceInfo
+  resourceName: projects/policy-insight/serviceAccounts/policy-insight-runner@policy-insight.iam.gserviceaccount.com
+```
+
+## Step 9: Grant IAM roles (2026-01-25T10:22:48.0000000-06:00)
+
+Command:
+```
+gcloud projects add-iam-policy-binding $PROJECT --member "serviceAccount:$RUNTIME_SA" --role roles/cloudsql.client
+gcloud projects add-iam-policy-binding $PROJECT --member "serviceAccount:$RUNTIME_SA" --role roles/secretmanager.secretAccessor
+gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" --member "serviceAccount:$RUNTIME_SA" --role roles/storage.objectAdmin
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Updated IAM policy for project [policy-insight].
+...
+Updated IAM policy for project [policy-insight].
+...
+bindings:
+- members:
+  - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+  role: roles/storage.objectAdmin
+etag: CAQ=
+kind: storage#policy
+resourceId: projects/_/buckets/policy-insight-policyinsight
+version: 1
+```
+
+## Step 10: Create secrets in Secret Manager (2026-01-25T10:24:03.0000000-06:00)
+
+Command:
+```
+gcloud secrets create $SECRET_DB_PASSWORD --replication-policy=automatic --project $PROJECT
+$tmp = New-TemporaryFile
+$DB_PASSWORD = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+Set-Content -Path $tmp -Value $DB_PASSWORD -NoNewline
+gcloud secrets versions add $SECRET_DB_PASSWORD --data-file=$tmp --project $PROJECT
+Remove-Item $tmp
+
+$APP_TOKEN_SECRET = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+$tmp = New-TemporaryFile
+Set-Content -Path $tmp -Value $APP_TOKEN_SECRET -NoNewline
+gcloud secrets create $SECRET_APP_TOKEN --replication-policy=automatic --project $PROJECT
+gcloud secrets versions add $SECRET_APP_TOKEN --data-file=$tmp --project $PROJECT
+Remove-Item $tmp
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subject of a conflict: Secret [projects/828177954618/secrets/db-password] already exists.
+Created version [5] of the secret [db-password].
+ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subject of a conflict: Secret [projects/828177954618/secrets/app-token-secret] already exists.
+Created version [3] of the secret [app-token-secret].
+```
+
+## Step 11: Deploy Cloud Run from source (2026-01-25T10:25:05.0000000-06:00)
+
+Command (initial attempt):
+```
+gcloud run deploy $SERVICE --source . --region $REGION --project $PROJECT --service-account $RUNTIME_SA --add-cloudsql-instances $CONNECTION_NAME --vpc-connector $VPC_CONNECTOR --vpc-egress=private-ranges-only --min-instances 0 --allow-unauthenticated --set-env-vars "SPRING_PROFILES_ACTIVE=cloudrun,SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL,DB_HOST=/cloudsql/$CONNECTION_NAME,DB_PORT=5432,DB_NAME=$DB_NAME,DB_USER=$DB_USER,APP_STORAGE_MODE=gcp,GCS_BUCKET_NAME=$BUCKET,APP_MESSAGING_MODE=local,APP_PROCESSING_MODE=local,POLICYINSIGHT_WORKER_ENABLED=true,APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR=10,APP_RATE_LIMIT_QA_MAX_PER_HOUR=20,APP_RATE_LIMIT_QA_MAX_PER_JOB=3,APP_PROCESSING_MAX_TEXT_LENGTH=1000000,APP_PROCESSING_STAGE_TIMEOUT_SECONDS=300,APP_VALIDATION_PDF_MAX_PAGES=100,APP_VALIDATION_PDF_MAX_TEXT_LENGTH=1048576,APP_RETENTION_DAYS=30,APP_LOCAL_WORKER_POLL_MS=2000,APP_LOCAL_WORKER_BATCH_SIZE=5,APP_JOB_LEASE_DURATION_MINUTES=30,APP_JOB_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_BASE_DELAY_MS=1000" --set-secrets "DB_PASSWORD=$SECRET_DB_PASSWORD:latest,APP_TOKEN_SECRET=$SECRET_APP_TOKEN:latest"
+```
+
+Result (failure):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.run.deploy) No secret version specified for DB_PASSWORD. Use DB_PASSWORD:latest to reference the latest version.
+```
+
+Fix:
+- Use PowerShell variable braces to avoid `$SECRET_DB_PASSWORD:latest` scoping.
+
+Command (re-run):
+```
+gcloud run deploy $SERVICE --source . --region $REGION --project $PROJECT --service-account $RUNTIME_SA --add-cloudsql-instances $CONNECTION_NAME --vpc-connector $VPC_CONNECTOR --vpc-egress=private-ranges-only --min-instances 0 --allow-unauthenticated --set-env-vars "SPRING_PROFILES_ACTIVE=cloudrun,SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL,DB_HOST=/cloudsql/$CONNECTION_NAME,DB_PORT=5432,DB_NAME=$DB_NAME,DB_USER=$DB_USER,APP_STORAGE_MODE=gcp,GCS_BUCKET_NAME=$BUCKET,APP_MESSAGING_MODE=local,APP_PROCESSING_MODE=local,POLICYINSIGHT_WORKER_ENABLED=true,APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR=10,APP_RATE_LIMIT_QA_MAX_PER_HOUR=20,APP_RATE_LIMIT_QA_MAX_PER_JOB=3,APP_PROCESSING_MAX_TEXT_LENGTH=1000000,APP_PROCESSING_STAGE_TIMEOUT_SECONDS=300,APP_VALIDATION_PDF_MAX_PAGES=100,APP_VALIDATION_PDF_MAX_TEXT_LENGTH=1048576,APP_RETENTION_DAYS=30,APP_LOCAL_WORKER_POLL_MS=2000,APP_LOCAL_WORKER_BATCH_SIZE=5,APP_JOB_LEASE_DURATION_MINUTES=30,APP_JOB_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_BASE_DELAY_MS=1000" --set-secrets "DB_PASSWORD=${SECRET_DB_PASSWORD}:latest,APP_TOKEN_SECRET=${SECRET_APP_TOKEN}:latest"
+```
+
+Result (failure):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Building using Dockerfile and deploying container to Cloud Run service [policy-insight] in project [policy-insight] region [us-central1]
+Building and deploying...
+Validating configuration.......done
+Uploading sources...........................done
+Building Container....................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................done
+Setting IAM Policy..........done
+Creating Revision................................................................................................................................................................................................................................................................................................................................failed
+Deployment failed
+ERROR: (gcloud.run.deploy) The user-provided container failed to start and listen on the port defined provided by the PORT=8080 environment variable within the allocated timeout. This can happen when the container port is misconfigured or if the timeout is too short. The health check timeout can be extended. Logs for this revision might contain more information.
+
+Logs URL: https://console.cloud.google.com/logs/viewer?project=policy-insight&resource=cloud_run_revision/service_name/policy-insight/revision_name/policy-insight-00015-887&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22policy-insight%22%0Aresource.labels.revision_name%3D%22policy-insight-00015-887%22 
+```
+
+Diagnosis:
+- Cloud Run logs show DB authentication failure.
+
+Command (attempted logs read):
+```
+gcloud logs read "resource.type=cloud_run_revision AND resource.labels.service_name=policy-insight AND resource.labels.revision_name=policy-insight-00015-887" --limit 50 --project $PROJECT
+```
+
+Result (failure):
+```
+Your active configuration is: [policy-insight]
+ERROR: (gcloud) Invalid choice: 'logs'.
+```
+
+Command (service logs read):
+```
+gcloud run services logs read policy-insight --region $REGION --project $PROJECT --limit 50
+```
+
+Output (excerpt):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'flywayInitializer' ... Unable to obtain connection from database: FATAL: password authentication failed for user "policyinsight"
+...
+Message    : FATAL: password authentication failed for user "policyinsight"
+```
+
+Fix:
+- Reset DB user password and update Secret Manager to match.
+
+Command:
+```
+$DB_PASSWORD = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+gcloud sql users set-password $DB_USER --instance $SQL_INSTANCE --password $DB_PASSWORD --project $PROJECT
+$tmp = New-TemporaryFile
+Set-Content -Path $tmp -Value $DB_PASSWORD -NoNewline
+gcloud secrets versions add $SECRET_DB_PASSWORD --data-file=$tmp --project $PROJECT
+Remove-Item $tmp
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Updating Cloud SQL user...
+.done.
+Created version [6] of the secret [db-password].
+```
+
+Command (re-run deploy):
+```
+gcloud run deploy $SERVICE --source . --region $REGION --project $PROJECT --service-account $RUNTIME_SA --add-cloudsql-instances $CONNECTION_NAME --vpc-connector $VPC_CONNECTOR --vpc-egress=private-ranges-only --min-instances 0 --allow-unauthenticated --set-env-vars "SPRING_PROFILES_ACTIVE=cloudrun,SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL,DB_HOST=/cloudsql/$CONNECTION_NAME,DB_PORT=5432,DB_NAME=$DB_NAME,DB_USER=$DB_USER,APP_STORAGE_MODE=gcp,GCS_BUCKET_NAME=$BUCKET,APP_MESSAGING_MODE=local,APP_PROCESSING_MODE=local,POLICYINSIGHT_WORKER_ENABLED=true,APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR=10,APP_RATE_LIMIT_QA_MAX_PER_HOUR=20,APP_RATE_LIMIT_QA_MAX_PER_JOB=3,APP_PROCESSING_MAX_TEXT_LENGTH=1000000,APP_PROCESSING_STAGE_TIMEOUT_SECONDS=300,APP_VALIDATION_PDF_MAX_PAGES=100,APP_VALIDATION_PDF_MAX_TEXT_LENGTH=1048576,APP_RETENTION_DAYS=30,APP_LOCAL_WORKER_POLL_MS=2000,APP_LOCAL_WORKER_BATCH_SIZE=5,APP_JOB_LEASE_DURATION_MINUTES=30,APP_JOB_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_BASE_DELAY_MS=1000" --set-secrets "DB_PASSWORD=${SECRET_DB_PASSWORD}:latest,APP_TOKEN_SECRET=${SECRET_APP_TOKEN}:latest"
+```
+
+Output (success):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Building using Dockerfile and deploying container to Cloud Run service [policy-insight] in project [policy-insight] region [us-central1]
+Building and deploying...
+Validating configuration........done
+Uploading sources.............................done
+Building Container.......................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................done
+Setting IAM Policy.............done
+Creating Revision..............................................................................................................................................................................................................................................................................................................done
+Routing traffic.....done
+Done.
+Service [policy-insight] revision [policy-insight-00016-p6h] has been deployed and is serving 100 percent of traffic.
+Service URL: https://policy-insight-828177954618.us-central1.run.app
+```
+
+## Step 12: Safe env var update (2026-01-25T10:27:54.0000000-06:00)
+
+Command:
+```
+$SERVICE_URL = (gcloud run services describe $SERVICE --region $REGION --project $PROJECT --format="value(status.url)").Trim()
+gcloud run services update $SERVICE --region $REGION --project $PROJECT --update-env-vars "APP_BASE_URL=$SERVICE_URL,APP_ALLOWED_ORIGINS=$SERVICE_URL"
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Deploying...
+Creating Revision........................................................................................................................................................................................................................................................done
+Routing traffic.....done
+Done.
+Service [policy-insight] revision [policy-insight-00017-spp] has been deployed and is serving 100 percent of traffic.
+Service URL: https://policy-insight-828177954618.us-central1.run.app
+```
+
+## Step 13: Smoke tests (2026-01-25T10:28:10.0000000-06:00)
+
+Health check:
+```
+curl.exe -i "https://policy-insight-828177954618.us-central1.run.app/health"
+```
+
+Output:
+```
+HTTP/1.1 200 OK
+x-request-id: 37da4b3a-0024-4d3c-b2f4-c6c8c01e0e94
+content-type: application/json
+date: Sun, 25 Jan 2026 10:28:18 GMT
+server: Google Frontend
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+Transfer-Encoding: chunked
+
+{"checks":{"db":"UP"},"status":"UP","timestamp":"2026-01-25T10:28:18.541035475Z"}
+```
+
+Upload response (token partially redacted):
+```
+{"jobId":"a2c4e012-c097-4450-9ac4-4d05a1028b93","statusUrl":"/api/documents/a2c4e012-c097-4450-9ac4-4d05a1028b93/status","message":"Document uploaded successfully. Processing will begin shortly.","token":"ZqWJFtLM0IavQlanJ925...FhWb_0","status":"PENDING"}
+```
+
+Status polling:
+```
+0	PENDING
+1	PROCESSING
+2	SUCCESS
+```
+
+Final status JSON:
+```
+{"jobId":"a2c4e012-c097-4450-9ac4-4d05a1028b93","reportUrl":"/documents/a2c4e012-c097-4450-9ac4-4d05a1028b93/report","message":"Analysis completed successfully","status":"SUCCESS"}
+```
