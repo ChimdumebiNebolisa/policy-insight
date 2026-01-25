@@ -42,6 +42,7 @@ out/
 Thumbs.db
 *.png
 *.jpg
+*.jpeg
 
 # Environment variables and secrets
 .env
