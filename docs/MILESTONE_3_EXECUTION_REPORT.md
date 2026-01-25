@@ -151,6 +151,24 @@ To set the active account, run:
     $ gcloud config set account `ACCOUNT`
 ```
 
+### Phase 3.2: Enable APIs (initial failure)
+
+```
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ gcloud services enable run.googleapis.com cloudbuild.googleapis.com a ...
++ ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+```
+
+### Phase 3.2: Enable APIs (fixed)
+
+```
+Operation "operations/acat.p2-828177954618-6e8d93b6-3d6c-4499-bd8d-957952580fa4" finished successfully.
+```
+
 Command:
 ```
 gcloud projects describe $(gcloud config get-value project)
@@ -2038,9 +2056,9 @@ index 2690919..04c945b 100644
 +- 2026-01-25T11:06:48Z: `gcloud storage buckets create gs://policy-insight-policyinsight ...` returned HTTP 409 (bucket already exists). Treated as acceptable and re-ran the command to capture evidence.
 +- 2026-01-25T11:08:04Z: `gcloud iam service-accounts create policy-insight-runner ...` failed because the service account already exists. Treated as acceptable and re-ran the command to capture evidence.
 +- 2026-01-25T11:10:02Z: `gcloud run deploy ...` failed because the secret version suffix was not parsed in PowerShell. Fixed by using `${SECRET_DB_PASSWORD}:latest` and `${SECRET_APP_TOKEN}:latest` in `--set-secrets` and re-running the deploy command.
- 
+
  ## Step 1: gcloud pre-checks (rerun)
- 
+
 @@ -1773,3 +1779,235 @@ VPC_CONNECTOR=policy-insight-connector
  Your active configuration is: [policy-insight]
  Operation "operations/acat.p2-828177954618-e6f3c4ef-d74a-42d1-8109-4399c27369f0" finished successfully.
@@ -2277,3 +2295,52 @@ index 2690919..04c945b 100644
 +ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subject of a conflict: Secret [projects/828177954618/secrets/app-token-secret] already exists.
 +Created version [4] of the secret [app-token-secret].
 +```
+
+## Phase 3 start (2026-01-25T05:38:24-06:00)
+
+Current branch: `milestone-3-cloudrun-execution`
+
+### Phase 3.1: gcloud config and auth (initial failure)
+
+```
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ gcloud config get-value project; gcloud config get-value run/region;  ...
++ ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:34
++ gcloud config get-value project; gcloud config get-value run/region;  ...
++                                  ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:70
++ ... get-value project; gcloud config get-value run/region; gcloud auth li ...
++                                                            ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+```
+
+### Phase 3.1: gcloud config and auth (fixed)
+
+```
+C:\Users\Chimdumebi\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin\gcloud
+C:\Users\Chimdumebi\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd
+Your active configuration is: [policy-insight]
+policy-insight
+Your active configuration is: [policy-insight]
+us-central1
+       Credentialed Accounts
+ACTIVE  ACCOUNT
+*       chimdumebinebolisa@gmail.com
+
+To set the active account, run:
+    $ gcloud config set account `ACCOUNT`
+```
