@@ -2296,6 +2296,254 @@ index 2690919..04c945b 100644
 +Created version [4] of the secret [app-token-secret].
 +```
 
+## Step 1: gcloud pre-checks (current run)
+
+```
+Google Cloud SDK 553.0.0
+bq 2.1.27
+core 2026.01.16
+gcloud-crc32c 1.0.0
+gsutil 5.35
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+policy-insight
+us-central1
+```
+
+## Step 2: Define names and constants (current run)
+
+```
+PROJECT=policy-insight
+REGION=us-central1
+SERVICE=policy-insight
+SQL_INSTANCE=policy-insight-db
+DB_NAME=policyinsight
+DB_USER=policyinsight
+BUCKET=policy-insight-policyinsight
+RUNTIME_SA=policy-insight-runner@policy-insight.iam.gserviceaccount.com
+VPC_CONNECTOR=policy-insight-connector
+```
+
+## Step 3: Enable required APIs (current run)
+
+```
+Your active configuration is: [policy-insight]
+Operation "operations/acat.p2-828177954618-bbd319d6-2fcf-412e-9152-8452a0f7008d" finished successfully.
+```
+
+## Step 4: Private services access (current run)
+
+```
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.compute.addresses.create) Could not fetch resource:
+ - The resource 'projects/policy-insight/global/addresses/policy-insight-psa' already exists
+
+Operation "operations/pssn.p24-828177954618-18523696-e33f-4438-9915-698bb68f9706" finished successfully.
+```
+
+## Step 5: VPC connector (current run)
+
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.compute.networks.vpc-access.connectors.create) ALREADY_EXISTS: Requested entity already exists
+```
+
+## Step 6: Cloud SQL instance, database, user, connection name (current run)
+
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.sql.instances.create) Resource in projects [policy-insight] is the subject of a conflict: The Cloud SQL instance already exists.
+ERROR: (gcloud.sql.databases.create) HTTPError 400: Invalid request: failed to create database policyinsight. Detail: pq: database "policyinsight" already exists.
+Creating Cloud SQL user...
+.done.
+Created user [policyinsight].
+policy-insight:us-central1:policy-insight-db
+```
+
+## Step 7: GCS bucket create (current run)
+
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Creating gs://policy-insight-policyinsight/...
+ERROR: (gcloud.storage.buckets.create) HTTPError 409: Your previous request to create the named bucket succeeded and you already own it.
+```
+
+## Step 8: Runtime service account create (current run)
+
+```
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.iam.service-accounts.create) Resource in projects [policy-insight] is the subject of a conflict: Service account policy-insight-runner already exists within project projects/policy-insight.
+- '@type': type.googleapis.com/google.rpc.ResourceInfo
+  resourceName: projects/policy-insight/serviceAccounts/policy-insight-runner@policy-insight.iam.gserviceaccount.com
+```
+
+## Step 9: IAM bindings (current run)
+
+```
+Your active configuration is: [policy-insight]
+Updated IAM policy for project [policy-insight].
+bindings:
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-artifactregistry.iam.gserviceaccount.com
+  role: roles/artifactregistry.serviceAgent
+- members:
+  - serviceAccount:828177954618@cloudbuild.gserviceaccount.com
+  role: roles/cloudbuild.builds.builder
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-cloudbuild.iam.gserviceaccount.com
+  role: roles/cloudbuild.serviceAgent
+- members:
+  - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/cloudsql.client
+- members:
+  - serviceAccount:service-828177954618@compute-system.iam.gserviceaccount.com
+  role: roles/compute.serviceAgent
+- members:
+  - serviceAccount:service-828177954618@containerregistry.iam.gserviceaccount.com
+  role: roles/containerregistry.ServiceAgent
+- members:
+  - serviceAccount:828177954618-compute@developer.gserviceaccount.com
+  - serviceAccount:828177954618@cloudservices.gserviceaccount.com
+  role: roles/editor
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-pubsub.iam.gserviceaccount.com
+  role: roles/iam.serviceAccountTokenCreator
+- members:
+  - user:chimdumebinebolisa@gmail.com
+  role: roles/owner
+- members:
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/pubsub.publisher
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-pubsub.iam.gserviceaccount.com
+  role: roles/pubsub.serviceAgent
+- members:
+  - serviceAccount:service-828177954618@serverless-robot-prod.iam.gserviceaccount.com
+  role: roles/run.serviceAgent
+- members:
+  - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/secretmanager.secretAccessor
+- members:
+  - serviceAccount:service-828177954618@service-networking.iam.gserviceaccount.com
+  role: roles/servicenetworking.serviceAgent
+- members:
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/storage.objectCreator
+- members:
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/storage.objectViewer
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-vpcaccess.iam.gserviceaccount.com
+  role: roles/vpcaccess.serviceAgent
+etag: BwZJNONY1Bw=
+version: 1
+Updated IAM policy for project [policy-insight].
+bindings:
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-artifactregistry.iam.gserviceaccount.com
+  role: roles/artifactregistry.serviceAgent
+- members:
+  - serviceAccount:828177954618@cloudbuild.gserviceaccount.com
+  role: roles/cloudbuild.builds.builder
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-cloudbuild.iam.gserviceaccount.com
+  role: roles/cloudbuild.serviceAgent
+- members:
+  - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/cloudsql.client
+- members:
+  - serviceAccount:service-828177954618@compute-system.iam.gserviceaccount.com
+  role: roles/compute.serviceAgent
+- members:
+  - serviceAccount:service-828177954618@containerregistry.iam.gserviceaccount.com
+  role: roles/containerregistry.ServiceAgent
+- members:
+  - serviceAccount:828177954618-compute@developer.gserviceaccount.com
+  - serviceAccount:828177954618@cloudservices.gserviceaccount.com
+  role: roles/editor
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-pubsub.iam.gserviceaccount.com
+  role: roles/iam.serviceAccountTokenCreator
+- members:
+  - user:chimdumebinebolisa@gmail.com
+  role: roles/owner
+- members:
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/pubsub.publisher
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-pubsub.iam.gserviceaccount.com
+  role: roles/pubsub.serviceAgent
+- members:
+  - serviceAccount:service-828177954618@serverless-robot-prod.iam.gserviceaccount.com
+  role: roles/run.serviceAgent
+- members:
+  - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/secretmanager.secretAccessor
+- members:
+  - serviceAccount:service-828177954618@service-networking.iam.gserviceaccount.com
+  role: roles/servicenetworking.serviceAgent
+- members:
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/storage.objectCreator
+- members:
+  - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+  - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  role: roles/storage.objectViewer
+- members:
+  - serviceAccount:service-828177954618@gcp-sa-vpcaccess.iam.gserviceaccount.com
+  role: roles/vpcaccess.serviceAgent
+etag: BwZJNOOgnAM=
+version: 1
+bindings:
+- members:
+  - projectEditor:policy-insight
+  - projectOwner:policy-insight
+  role: roles/storage.legacyBucketOwner
+- members:
+  - projectViewer:policy-insight
+  role: roles/storage.legacyBucketReader
+- members:
+  - projectEditor:policy-insight
+  - projectOwner:policy-insight
+  role: roles/storage.legacyObjectOwner
+- members:
+  - projectViewer:policy-insight
+  role: roles/storage.legacyObjectReader
+- members:
+  - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+  role: roles/storage.objectAdmin
+etag: CAY=
+kind: storage#policy
+resourceId: projects/_/buckets/policy-insight-policyinsight
+version: 1
+```
+
+## Step 10: Secret creation (current run)
+
+```
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subject of a conflict: Secret [projects/828177954618/secrets/db-password] already exists.
+Created version [8] of the secret [db-password].
+ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subject of a conflict: Secret [projects/828177954618/secrets/app-token-secret] already exists.
+Created version [5] of the secret [app-token-secret].
+```
+
 ## Phase 3 start (2026-01-25T05:38:24-06:00)
 
 Current branch: `milestone-3-cloudrun-execution`
