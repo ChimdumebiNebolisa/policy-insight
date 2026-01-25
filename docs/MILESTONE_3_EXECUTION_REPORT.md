@@ -2689,30 +2689,30 @@ To set the active account, run:
 
 ### Phase 3 start (local session)
 
-Date/time (local): Sunday, January 25, 2026 6:03:05 AM  
-Current branch: milestone-3-cloudrun-execution  
+Date/time (local): Sunday, January 25, 2026 6:03:05 AM
+Current branch: milestone-3-cloudrun-execution
 Phase 3 start
 
 ```
 Sunday, January 25, 2026 6:03:05 AM
 milestone-3-cloudrun-execution
-gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
 Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
 At line:1 char:38
 + Get-Date; git branch --show-current; gcloud config get-value project; ...
 +                                      ~~~~~~
     + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
     + FullyQualifiedErrorId : CommandNotFoundException
- 
-gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
 Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
 At line:1 char:71
 + ... ranch --show-current; gcloud config get-value project; gcloud config  ...
 +                                                            ~~~~~~
     + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
     + FullyQualifiedErrorId : CommandNotFoundException
- 
-gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
 Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
 At line:1 char:107
 
@@ -2721,7 +2721,7 @@ At line:1 char:107
 +                                                            ~~~~~~
     + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
     + FullyQualifiedErrorId : CommandNotFoundException
- 
+
 ```
 
 ### Phase 3 start (gcloud config/auth after PATH fix)
@@ -2846,4 +2846,208 @@ Creating Cloud SQL user...
 .done.
 Created user [policyinsight].
 policy-insight:us-central1:policy-insight-db
+```
+
+### Phase 3.4: Secrets + IAM (runtime service account access)
+
+Commands:
+```powershell
+gcloud storage buckets create "gs://$BUCKET" --location $REGION --project $PROJECT --uniform-bucket-level-access
+gcloud iam service-accounts create $RUNTIME_SA_NAME --project $PROJECT
+gcloud projects add-iam-policy-binding $PROJECT --member "serviceAccount:$RUNTIME_SA" --role roles/cloudsql.client
+gcloud projects add-iam-policy-binding $PROJECT --member "serviceAccount:$RUNTIME_SA" --role roles/secretmanager.secretAccessor
+gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" --member "serviceAccount:$RUNTIME_SA" --role roles/storage.objectAdmin
+gcloud secrets create $SECRET_DB_PASSWORD --replication-policy=automatic --project $PROJECT
+$tmp = New-TemporaryFile
+Set-Content -Path $tmp -Value $DB_PASSWORD -NoNewline
+gcloud secrets versions add $SECRET_DB_PASSWORD --data-file=$tmp --project $PROJECT
+Remove-Item $tmp
+
+$APP_TOKEN_SECRET = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+$tmp = New-TemporaryFile
+Set-Content -Path $tmp -Value $APP_TOKEN_SECRET -NoNewline
+gcloud secrets create $SECRET_APP_TOKEN --replication-policy=automatic --project $PROJECT
+gcloud secrets versions add $SECRET_APP_TOKEN --data-file=$tmp --project $PROJECT
+Remove-Item $tmp
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Creating gs://policy-insight-policyinsight/...
+ERROR: (gcloud.storage.buckets.create) HTTPError 409: Your previous request to create the named bucket succeeded and you already own it.
+ERROR: (gcloud.iam.service-accounts.create) Resource in projects [policy-insight] is the subject of a conflict: Service account policy-insight-runner already exists within project projects/policy-insight.
+- '@type': type.googleapis.com/google.rpc.ResourceInfo
+  resourceName: projects/policy-insight/serviceAccounts/policy-insight-runner@policy-insight.iam.gserviceaccount.com
+Updated IAM policy for project [policy-insight].
+bindings:
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-artifactregistry.iam.gserviceaccount.com
+   role: roles/artifactregistry.serviceAgent
+ - members:
+   - serviceAccount:828177954618@cloudbuild.gserviceaccount.com
+   role: roles/cloudbuild.builds.builder
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-cloudbuild.iam.gserviceaccount.com
+   role: roles/cloudbuild.serviceAgent
+ - members:
+   - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/cloudsql.client
+ - members:
+   - serviceAccount:service-828177954618@compute-system.iam.gserviceaccount.com
+   role: roles/compute.serviceAgent
+ - members:
+   - serviceAccount:service-828177954618@containerregistry.iam.gserviceaccount.com
+   role: roles/containerregistry.ServiceAgent
+ - members:
+   - serviceAccount:828177954618-compute@developer.gserviceaccount.com
+   - serviceAccount:828177954618@cloudservices.gserviceaccount.com
+   role: roles/editor
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-pubsub.iam.gserviceaccount.com
+   role: roles/iam.serviceAccountTokenCreator
+ - members:
+   - user:chimdumebinebolisa@gmail.com
+   role: roles/owner
+ - members:
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/pubsub.publisher
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-pubsub.iam.gserviceaccount.com
+   role: roles/pubsub.serviceAgent
+ - members:
+   - serviceAccount:service-828177954618@serverless-robot-prod.iam.gserviceaccount.com
+   role: roles/run.serviceAgent
+ - members:
+   - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/secretmanager.secretAccessor
+ - members:
+   - serviceAccount:service-828177954618@service-networking.iam.gserviceaccount.com
+   role: roles/servicenetworking.serviceAgent
+ - members:
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/storage.objectCreator
+ - members:
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/storage.objectViewer
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-vpcaccess.iam.gserviceaccount.com
+   role: roles/vpcaccess.serviceAgent
+etag: BwZJNTzjrlE=
+version: 1
+Updated IAM policy for project [policy-insight].
+bindings:
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-artifactregistry.iam.gserviceaccount.com
+   role: roles/artifactregistry.serviceAgent
+ - members:
+   - serviceAccount:828177954618@cloudbuild.gserviceaccount.com
+   role: roles/cloudbuild.builds.builder
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-cloudbuild.iam.gserviceaccount.com
+   role: roles/cloudbuild.serviceAgent
+ - members:
+   - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/cloudsql.client
+ - members:
+   - serviceAccount:service-828177954618@compute-system.iam.gserviceaccount.com
+   role: roles/compute.serviceAgent
+ - members:
+   - serviceAccount:service-828177954618@containerregistry.iam.gserviceaccount.com
+   role: roles/containerregistry.ServiceAgent
+ - members:
+   - serviceAccount:828177954618-compute@developer.gserviceaccount.com
+   - serviceAccount:828177954618@cloudservices.gserviceaccount.com
+   role: roles/editor
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-pubsub.iam.gserviceaccount.com
+   role: roles/iam.serviceAccountTokenCreator
+ - members:
+   - user:chimdumebinebolisa@gmail.com
+   role: roles/owner
+ - members:
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/pubsub.publisher
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-pubsub.iam.gserviceaccount.com
+   role: roles/pubsub.serviceAgent
+ - members:
+   - serviceAccount:service-828177954618@serverless-robot-prod.iam.gserviceaccount.com
+   role: roles/run.serviceAgent
+ - members:
+   - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/secretmanager.secretAccessor
+ - members:
+   - serviceAccount:service-828177954618@service-networking.iam.gserviceaccount.com
+   role: roles/servicenetworking.serviceAgent
+ - members:
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/storage.objectCreator
+ - members:
+   - serviceAccount:policyinsight-web@policy-insight.iam.gserviceaccount.com
+   - serviceAccount:policyinsight-worker@policy-insight.iam.gserviceaccount.com
+   role: roles/storage.objectViewer
+ - members:
+   - serviceAccount:service-828177954618@gcp-sa-vpcaccess.iam.gserviceaccount.com
+   role: roles/vpcaccess.serviceAgent
+etag: BwZJNT1CPXg=
+version: 1
+bindings:
+ - members:
+   - projectEditor:policy-insight
+   - projectOwner:policy-insight
+   role: roles/storage.legacyBucketOwner
+ - members:
+   - projectViewer:policy-insight
+   role: roles/storage.legacyBucketReader
+ - members:
+   - projectEditor:policy-insight
+   - projectOwner:policy-insight
+   role: roles/storage.legacyObjectOwner
+ - members:
+   - projectViewer:policy-insight
+   role: roles/storage.legacyObjectReader
+ - members:
+   - serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com
+   role: roles/storage.objectAdmin
+etag: CAc=
+kind: storage#policy
+resourceId: projects/_/buckets/policy-insight-policyinsight
+version: 1
+ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subject of a conflict: Secret [projects/828177954618/secrets/db-password] already exists.
+ERROR: (gcloud.secrets.versions.add) INVALID_ARGUMENT: Secret Payload cannot be empty.
+ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subject of a conflict: Secret [projects/828177954618/secrets/app-token-secret] already exists.
+Created version [6] of the secret [app-token-secret].
+```
+
+Fix (reset DB password and add secret version):
+```powershell
+$DB_PASSWORD = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+gcloud sql users set-password $DB_USER --instance $SQL_INSTANCE --password $DB_PASSWORD --project $PROJECT
+$tmp = New-TemporaryFile
+Set-Content -Path $tmp -Value $DB_PASSWORD -NoNewline
+gcloud secrets versions add $SECRET_DB_PASSWORD --data-file=$tmp --project $PROJECT
+Remove-Item $tmp
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Updating Cloud SQL user...
+.done.
+Created version [9] of the secret [db-password].
 ```
