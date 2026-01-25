@@ -13,7 +13,7 @@ PolicyInsight is a **production-ready, backend-leaning full-stack application** 
 
 - ✅ **Java 21 + Spring Boot** service architecture with REST API + server-rendered UI (Thymeleaf)
 - ✅ **PostgreSQL + Flyway** for schema versioning and data integrity
-- ✅ **Google Cloud Platform integration** (Cloud SQL, Cloud Storage, Document AI, Vertex AI, Pub/Sub, Cloud Run)
+- ✅ **Google Cloud Platform integration** (Cloud SQL, Cloud Storage, Vertex AI, Pub/Sub, Cloud Run)
 - ✅ **Async job processing** via Pub/Sub for reliable document analysis pipelines
 - ✅ **End-to-end Datadog observability:** APM tracing, structured JSON logs, LLM telemetry, cost tracking, and actionable incident detection
 - ✅ **CI/CD with GitHub Actions:** automated testing, containerization, Cloud Run deployment, versioned releases
@@ -70,7 +70,7 @@ so I can forward results to others or save for records.
 |---------|---------|
 | **Document Types** | Terms of Service, Privacy Policy, Lease Agreement (3 types; auto-detected) |
 | **Input** | PDF files only; size limit 50 MB |
-| **OCR** | Google Cloud Document AI (primary); fallback: text-only extraction |
+| **OCR** | PDFBox text extraction only (no OCR); Gemini-only pipeline |
 | **Citation Mapping** | Page numbers + text span coordinates; chunk-level provenance |
 | **Risk Taxonomy** | Data/Privacy, Financial, Legal Rights Waivers, Termination, Modification |
 | **Report Sections** | Overview, Summary (10 bullets max), Obligations, Restrictions, Termination Triggers, Risks, Q&A |
@@ -87,6 +87,7 @@ so I can forward results to others or save for records.
 - Negotiation suggestions or expert marketplace
 - >3 document types
 - Bulk processing or enterprise features
+- Document AI OCR integration (out of scope; PDFBox text extraction only)
 - Advanced analytics or custom reports
 - Voice input, rich text editors, or annotation tools
 
@@ -117,7 +118,7 @@ so I can forward results to others or save for records.
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ Worker Service: Subscriber to "document-analysis-topic" │   │
 │  │ - Pulls job messages asynchronously                      │   │
-│  │ - Executes: Document AI → Chunking → Risk Scan → LLM    │   │
+│  │ - Executes: PDFBox extraction → Chunking → Risk Scan → LLM │  │
 │  │ - Publishes result back to DB via API or direct update   │   │
 │  └─────────────────────────────────────────────────────────┘   │
 ├────────────────────────────────────────────────────────────────┤
@@ -163,7 +164,7 @@ so I can forward results to others or save for records.
 | **API Gateway** | Request routing, auth, rate limiting, request ID logging | Spring MVC, custom filters |
 | **Document Service** | Upload, storage, metadata tracking, session management | Spring Service, Cloud Storage client |
 | **Ingestion Worker** | Consume Pub/Sub messages, orchestrate pipeline, publish results | Spring Cloud Pub/Sub, Spring Cloud Task (or custom scheduled service) |
-| **Extraction Service** | Call Document AI, parse response, map citations | Google Cloud Document AI client, custom chunking logic |
+| **Extraction Service** | Extract text from PDFs and map citations | PDFBox text extraction, custom chunking logic |
 | **Analysis Service** | Risk scanning, classification, confidence scoring | Prompt engineering, Vertex AI client, rule-based taxonomy mapper |
 | **LLM Service** | Calls to Gemini via Vertex AI; token tracking; retry/timeout | OpenFeign + Vertex AI API, custom instrumentation |
 | **Export Service** | PDF generation with inline citations, shareable link generation | iText PDF library, token generation (UUID) |
@@ -395,7 +396,7 @@ Or, on error:
 {
   "document_id": "uuid-doc-id",
   "status": "failed",
-  "error": "Document AI extraction failed after 3 retries. See details at /api/documents/uuid-doc-id/error"
+  "error": "Text extraction failed after 3 retries. See details at /api/documents/uuid-doc-id/error"
 }
 ```
 
@@ -631,12 +632,8 @@ STAGE 2: Extraction (Async Worker)
   ├─ Consume Pub/Sub message
   ├─ Update DB: status='processing', stage='extraction'
   ├─ Download PDF from GCS → temp storage
-  ├─ Call Google Document AI: {document_uri, mime_type='application/pdf'}
-  │  └─ Response: [Page 1 text, Page 2 text, ...] + [bounding_boxes, layout]
-  ├─ FALLBACK (if Document AI fails after 3 retries):
-  │  └─ Use PyPDF2 or pdfplumber to extract raw text (no OCR)
-  │  └─ Log: "Document AI unavailable; using text-only fallback"
-  │  └─ Store: confidence_score = 0.5 (to signal lower reliability)
+  ├─ Extract text via PDFBox (text-only, no OCR)
+  └─ Store: confidence_score = 0.5 (to signal lower reliability)
   ├─ Chunk extracted text: 500–800 tokens per chunk, with page overlap
   ├─ For each chunk:
   │   ├─ Store in chunks table: (document_id, chunk_index, text, page_number, bounding_box, confidence)
@@ -702,7 +699,7 @@ STAGE 8: Serve Report
 |---|---|---|---|---|
 | GCS upload | Exponential: 2s, 4s, 8s | 3 | 2^n | Return 500; log error |
 | Pub/Sub publish | Exponential | 3 | 2^n | Retry via scheduled task (Cloud Tasks) |
-| Document AI | Exponential | 3 | 2^n | Use text-only fallback (PyPDF2); mark confidence=0.5 |
+| PDFBox extraction | None | 0 | N/A | Fail job; surface error |
 | Gemini API (rate limit) | Exponential: 5s, 10s, 20s | 2 | 5 * 2^n | Return 503; client retries |
 | Gemini API (quota) | None; use fallback | 0 | N/A | Return "Service temporarily unavailable"; queue for retry in 5 min |
 | DB write | Exponential | 2 | 2^n | Log error, alert on Slack |
@@ -1557,7 +1554,7 @@ Investigation:
   2. Verify worker service is running: kubectl get pods -l app=policyinsight-worker
   3. Check worker logs for errors: gcloud logging read "resource.labels.service_name=policyinsight-worker"
   4. Verify Vertex AI quota/rate limits: https://console.cloud.google.com/quotas
-  5. Check Document AI quota
+  5. Review worker logs for extraction/storage errors
 
 Action:
   - Scale worker replicas: kubectl scale deployment policyinsight-worker --replicas=5
@@ -1740,11 +1737,10 @@ When a monitor triggers → Datadog automatically:
   - Kill long-running queries: `gcloud sql connect policyinsight-db -- -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state='idle'"`
   - If queries are legitimate: Scale DB (add replicas, increase instance size)
 
-### Scenario 3: Upstream API Failure (Vertex AI, Document AI)
+### Scenario 3: Upstream API Failure (Vertex AI)
 - **Cause:** Google Cloud API is slow/erroring
 - **Action:**
   - Check logs for API errors: `gcloud logging read "resource.labels.service_name=policyinsight AND severity=ERROR" --limit 20`
-  - If Document AI is slow: Retry with fallback (text-only extraction)
   - If Gemini is rate-limited: Implement exponential backoff (already done in code)
 
 ## Rollback (If Latency Still High After 5 minutes)
@@ -2245,7 +2241,6 @@ gcloud services enable \
   cloudsql.googleapis.com \
   storage.googleapis.com \
   aiplatform.googleapis.com \
-  documentai.googleapis.com \
   pubsub.googleapis.com \
   cloudkms.googleapis.com \
   logging.googleapis.com \
@@ -2297,10 +2292,6 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:policyinsight-app@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/aiplatform.user"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:policyinsight-app@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/documentai.processor.user"
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:policyinsight-app@${PROJECT_ID}.iam.gserviceaccount.com" \
@@ -2776,7 +2767,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
 | **Datadog JSON Exports** | Dashboard, monitor, SLO JSON files committed to `/datadog/` folder | `/datadog/dashboards/policyinsight-ops.json` in repo |
 | **Traffic Generator Script** | Script that triggers monitors is provided and runnable | `./scripts/trigger-monitors.sh` in repo |
 | **Cost Estimate** | LLM cost per hour is tracked and displayed on dashboard | Dashboard widget showing `policyinsight.llm.estimated_cost_usd` |
-| **Fallback Behavior** | Document AI unavailable → app degrades gracefully with text-only extraction | Upload document, see extraction_confidence = 0.5 in response |
+| **Fallback Behavior** | PDFBox text extraction uses fixed confidence | Upload document, see extraction_confidence = 0.5 in response |
 
 ---
 
@@ -2926,15 +2917,13 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
 
 ### Day 3: Extraction & Chunking Pipeline
 
-**Goal:** Document AI integration + text extraction + citation mapping
+**Goal:** PDFBox text extraction + citation mapping
 
-- [ ] Google Document AI client setup (authenticate via service account)
-- [ ] Call Document AI API: send PDF → get extracted text + layout
-- [ ] Fallback: if Document AI fails, use PyPDF2 text extraction
+- [ ] PDFBox text extraction wired in worker
 - [ ] Chunking logic: split text into 500–800 token chunks, with page overlap
 - [ ] Citation mapping: store chunks with page numbers, bounding boxes
 - [ ] Async worker service (subscribe to Pub/Sub, process documents)
-  - [ ] Consume message, call Document AI, store chunks in DB
+  - [ ] Consume message, extract text, store chunks in DB
   - [ ] Update document status: processing → completed/failed
   - [ ] Error handling: retries with exponential backoff
 - [ ] Datadog metrics: extraction latency, confidence score
@@ -3073,7 +3062,7 @@ docker exec -it policyinsight-postgres psql -U policyinsight -d policyinsight -c
 
 **PolicyInsight** is a production-ready, backend-leaning service that demonstrates advanced engineering practices:
 
-✅ **Stack:** Java 21 + Spring Boot, PostgreSQL, Google Cloud (Run, SQL, Storage, Document AI, Vertex AI), Pub/Sub async processing
+✅ **Stack:** Java 21 + Spring Boot, PostgreSQL, Google Cloud (Run, SQL, Storage, Vertex AI), Pub/Sub async processing
 ✅ **Observability:** Datadog APM + logs + custom metrics + LLM instrumentation + incident automation
 ✅ **Reliability:** Idempotent jobs, retries, fallbacks, graceful degradation
 ✅ **Safety:** Cite-or-abstain enforcement, hallucination detection, grounded Q&A

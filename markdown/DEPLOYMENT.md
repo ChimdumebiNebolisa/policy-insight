@@ -244,7 +244,6 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:policyinsight-worker@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/documentai.apiUser"
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:policyinsight-worker@$PROJECT_ID.iam.gserviceaccount.com" \

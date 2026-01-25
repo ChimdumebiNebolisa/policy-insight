@@ -2,7 +2,7 @@
   "name": "[PolicyInsight] API Latency P95 > 2000ms",
   "type": "metric alert",
   "query": "avg(last_5m):p95:trace.http.request.duration{service:policy-insight} > 2000",
-  "message": "API latency P95 has exceeded 2000ms for the last 5 minutes.\n\nThis may indicate:\n- Slow database queries\n- External API delays (Gemini, Document AI)\n- Resource constraints\n\n@on-call-engineering",
+  "message": "API latency P95 has exceeded 2000ms for the last 5 minutes.\n\nThis may indicate:\n- Slow database queries\n- External API delays (Gemini)\n- Resource constraints\n\n@on-call-engineering",
   "tags": [
     "service:policy-insight",
     "alert_type:latency",

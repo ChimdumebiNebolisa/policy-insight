@@ -26,7 +26,7 @@ Upload a PDF legal document → Get a structured risk report with every claim ci
 #### A. Input & Processing
 - **PDF upload** (multipart form, file validation, size limits 20 MB)
 - **Automatic document classification** (Terms of Service, Privacy Policy, Lease Agreement; inference + confidence)
-- **OCR + text extraction** via Google Cloud Document AI (with explicit fallback if unavailable)
+- **Text extraction** via PDFBox (text-only); Document AI is out of scope
 - **Citation mapping** (text chunks + page numbers preserved)
 
 #### B. Core Report Output (5 Sections, Always Cited)
@@ -60,7 +60,7 @@ Upload a PDF legal document → Get a structured risk report with every claim ci
 | **View Report** | User scrolls through 5 sections | All sections populated; every claim has page ref + span highlight option |
 | **Ask Questions** | User submits up to 3 Q&A queries | Answer is cited OR explicitly says "not in doc"; zero hallucinations |
 | **Export** | User clicks "Download PDF" or "Get Share Link" | PDF downloads with watermark + disclaimer; link is valid 7 days; read-only |
-| **Fallback** | Document AI is unavailable | System gracefully uses embedded OCR/text-fallback; user is notified; report may have reduced confidence |
+| **Extraction** | PDFBox text extraction | System uses text-only extraction; report uses fixed confidence score |
 
 ### Out-of-Scope (Explicit Non-Goals)
 - Multi-language support
@@ -70,6 +70,7 @@ Upload a PDF legal document → Get a structured risk report with every claim ci
 - Advanced negotiation suggestions
 - Document types beyond 3
 - Browser extensions
+- Document AI OCR integration
 - Voice input
 
 ---
@@ -103,7 +104,7 @@ Upload a PDF legal document → Get a structured risk report with every claim ci
 │        Pub/Sub Worker Service (Cloud Run)                        │
 │  ┌─────────────────────────────────────────────────────────────┐│
 │  │ 1. Fetch PDF from GCS                                        ││
-│  │ 2. Extract text + OCR (Document AI or fallback)             ││
+│  │ 2. Extract text (PDFBox, text-only)                         ││
 │  │ 3. Chunk + map citations (text spans, page numbers)         ││
 │  │ 4. Classify document (LLM or rules)                         ││
 │  │ 5. Generate risk report (Gemini + grounding)                ││
@@ -127,7 +128,7 @@ Upload a PDF legal document → Get a structured risk report with every claim ci
 |--------|---------|------|
 | **api.web** | REST controllers, request routing, session handling | Spring MVC + Thymeleaf |
 | **api.service** | Business logic: upload, job dispatch, report assembly | Spring Service beans |
-| **api.extraction** | Document AI integration + fallback text extraction | DocumentAI client, fallback OCR |
+| **api.extraction** | PDFBox text extraction | PDFBox |
 | **api.chunking** | Text segmentation + citation mapping (spans, pages) | Regex + coordinate mapping |
 | **api.classification** | Document type inference (rules + optional LLM) | Spring component |
 | **api.analysis** | Risk taxonomy scanning + Gemini summarization | Gemini API wrapper |
@@ -258,7 +259,7 @@ Upload PDF (multipart)
   ↓
 Worker picks up job
   → Fetch PDF from GCS
-  → Extract text + OCR (Document AI or fallback)
+  → Extract text (PDFBox, text-only)
   → Create document_chunks rows
   → LLM classify, summarize, analyze
   → Create reports row
@@ -333,7 +334,7 @@ or (on error):
 {
   "jobId": "550e8400-e29b-41d4-a716-446655440000",
   "status": "FAILED",
-  "errorMessage": "Document AI quota exceeded; fallback OCR confidence too low"
+  "errorMessage": "Text extraction failed; confidence too low"
 }
 ```
 
@@ -514,26 +515,20 @@ User submits PDF via Thymeleaf form
 
 ---
 
-### Step 2: Extract Text & OCR (Async Worker)
+### Step 2: Extract Text (Async Worker)
 
 ```
 Pub/Sub message consumed by worker
   → Load policy_jobs row
   → Fetch PDF from GCS
-  → Call Google Cloud Document AI:
-      - Layout Analysis (document structure)
-      - OCR (text from images)
-      - Text extraction (structured text + coordinates)
-  → On failure (quota, timeout): Fall back to embedded OCR library (Tesseract or Apache PDFBox)
+  → Extract text via PDFBox (text-only, no OCR)
   → Store raw extracted text
   → Continue to Step 3
 ```
 
-**Fallback Strategy:**
-- If Document AI times out (>30s) or returns quota error: use PDFBox text extraction + Tesseract OCR for images
-- Log fallback to Datadog as a warning metric
-- Include fallback_used flag in report metadata
-- Proceed with reduced confidence if fallback needed
+**Extraction Notes:**
+- PDFBox extraction uses a fixed confidence score
+- No external OCR service is used in this milestone
 
 ---
 
@@ -543,7 +538,7 @@ Pub/Sub message consumed by worker
 Raw text
   → Split into semantic chunks (paragraph-level, max 1000 chars)
   → For each chunk:
-      - Record page number (from Document AI coordinates)
+      - Record page number (from PDFBox)
       - Record character offsets (start, end)
       - Compute text span confidence (OCR confidence ÷ chunk length)
   → Insert rows into document_chunks table
@@ -1219,41 +1214,9 @@ public String callGemini(String prompt, String taskType) {
 }
 ```
 
-#### E. Document AI Observability
-```java
-public DocumentProcessingResult extractWithDocumentAI(String gcsPath) {
-  Span docaiSpan = tracer.buildSpan("documentai.extraction")
-    .withTag("provider", "google-cloud-documentai")
-    .start();
-
-  long startTime = System.currentTimeMillis();
-
-  try {
-    ProcessResponse response = documentAiClient.process(gcsPath);
-    long duration = System.currentTimeMillis() - startTime;
-
-    docaiSpan.setTag("duration_ms", duration);
-    docaiSpan.setTag("page_count", response.getDocument().getPages().size());
-    docaiSpan.setTag("confidence", response.getDocument().getConfidence());
-
-    meterRegistry.timer("documentai.extraction.latency_ms").record(duration, TimeUnit.MILLISECONDS);
-
-    return parseResponse(response);
-
-  } catch (StatusRuntimeException e) {
-    docaiSpan.setTag("error", true);
-    docaiSpan.setTag("grpc_status", e.getStatus().getCode().toString());
-
-    if (e.getStatus().getCode() == Status.Code.RESOURCE_EXHAUSTED) {
-      meterRegistry.counter("documentai.quota_exceeded").increment();
-      // Trigger fallback
-    }
-    throw e;
-  } finally {
-    docaiSpan.finish();
-  }
-}
-```
+#### E. Extraction Observability (PDFBox)
+- Extraction uses PDFBox; the worker span tags `provider=pdfbox`
+- Track extraction duration via job processing latency metrics
 
 #### F. Metrics Registry (Micrometer)
 ```java
@@ -1284,12 +1247,6 @@ public MeterBinder customMetrics() {
     Timer.builder("extraction.confidence_score")
       .publishPercentiles(0.5, 0.95)
       .register(registry);
-
-    // Fallback OCR usage (counter)
-    registry.counter("extraction.fallback_used");
-
-    // Document AI quota errors (counter)
-    registry.counter("documentai.quota_errors");
 
     // HTTP request latency (already auto-instrumented by Spring Boot + dd-java-agent)
   };
@@ -1330,15 +1287,7 @@ public MeterBinder customMetrics() {
    - Metric: `llm.cost_per_job_usd`
    - Aggregation: sum (cumulative)
 
-7. **Document AI Extraction Latency (timeseries)**
-   - Metric: `documentai.extraction.latency_ms`
-   - Aggregation: p50, p95
-
-8. **Extraction Fallback Rate (timeseries)**
-   - Metric: `extraction.fallback_used / total_extractions`
-   - Legend: "% using fallback OCR"
-
-9. **Citation Coverage Rate (gauge)**
+7. **Citation Coverage Rate (gauge)**
    - Metric: `report.citation.coverage_pct`
    - Target: ≥ 95%
 
@@ -1439,7 +1388,6 @@ description: |
 
   Check:
   - Worker pod logs (Cloud Run)
-  - Document AI quota/throttling
   - Gemini API quota/throttling
   - Worker crash logs
 ```
@@ -1635,11 +1583,11 @@ When a monitor triggers, automatically:
          "duration": "5 minutes",
          "dd_version": "abc123def456",
          "recent_commits": [
-           {"hash": "abc123", "message": "Optimize document AI chunking", "author": "alice", "time": "2025-01-29T08:30Z"},
+           {"hash": "abc123", "message": "Optimize PDFBox chunking", "author": "alice", "time": "2025-01-29T08:30Z"},
            {"hash": "def456", "message": "Add citation coverage metric", "author": "bob", "time": "2025-01-29T08:00Z"}
          ],
          "errors_in_logs": [
-           {"timestamp": "2025-01-29T10:04:30Z", "message": "DocumentAI quota exceeded", "job_id": "job-123", "trace_id": "trace-456"},
+          {"timestamp": "2025-01-29T10:04:30Z", "message": "Text extraction failed", "job_id": "job-123", "trace_id": "trace-456"},
            {"timestamp": "2025-01-29T10:03:50Z", "message": "Gemini timeout", "job_id": "job-122", "trace_id": "trace-455"}
          ],
          "links": {
@@ -1685,13 +1633,7 @@ When a monitor triggers, automatically:
    - Verify latest revision is stable (not crashing)
 
 ### Check Downstream Services
-1. **Document AI:**
-   - Open incident context > "errors_in_logs"
-   - If "DocumentAI quota exceeded": call Document AI API
-   - Check usage: go to Google Cloud Console > Document AI > Quotas
-   - If at limit: document has high OCR load (scanned PDF)
-
-2. **Vertex AI (Gemini):**
+1. **Vertex AI (Gemini):**
    - If "Gemini timeout" in logs: Vertex AI may be slow
    - Check Vertex AI status page: https://status.cloud.google.com
    - In Datadog, check "LLM Extraction Latency" widget (should be < 5s normally)
@@ -2140,7 +2082,6 @@ gcloud services enable run.googleapis.com
 gcloud services enable artifactregistry.googleapis.com
 gcloud services enable storage-api.googleapis.com
 gcloud services enable sqladmin.googleapis.com
-gcloud services enable documentai.googleapis.com
 gcloud services enable aiplatform.googleapis.com
 gcloud services enable pubsub.googleapis.com
 gcloud services enable logging.googleapis.com
@@ -2197,7 +2138,6 @@ gcloud projects add-iam-policy-binding policyinsight-prod \
 
 gcloud projects add-iam-policy-binding policyinsight-prod \
   --member="serviceAccount:policyinsight-worker@policyinsight-prod.iam.gserviceaccount.com" \
-  --role="roles/documentai.apiUser"
 
 gcloud projects add-iam-policy-binding policyinsight-prod \
   --member="serviceAccount:policyinsight-worker@policyinsight-prod.iam.gserviceaccount.com" \
@@ -2407,7 +2347,7 @@ curl -X GET https://api.datadoghq.com/api/v1/dashboard \
 # 4. Queue Depth
 # 5. LLM Token Usage
 # 6. LLM Cost
-# 7. Document AI Latency
+# 7. Extraction Latency
 # 8. Citation Coverage Rate
 # 9. SLO Burn Rate
 # 10. Recent Incidents
@@ -2556,7 +2496,7 @@ policyinsight/
 │   │   │   ├── api/
 │   │   │   │   ├── web/                    # REST controllers + Spring MVC
 │   │   │   │   ├── service/                # Business logic
-│   │   │   │   ├── extraction/             # Document AI integration
+│   │   │   │   ├── extraction/             # PDFBox text extraction
 │   │   │   │   ├── chunking/               # Text segmentation + citations
 │   │   │   │   ├── classification/         # Document type inference
 │   │   │   │   ├── analysis/               # Risk scanning + LLM calls
@@ -2756,7 +2696,7 @@ Prepare screenshots/links in advance for verification:
   - [ ] GCS bucket provisioned
   - [ ] Pub/Sub topic + subscription configured
   - [ ] Vertex AI API enabled + Gemini accessible
-  - [ ] Document AI API available (or fallback tested)
+  - [ ] PDFBox extraction validated (sample PDFs)
   - [ ] All secrets in Secret Manager (not in env vars)
   - [ ] Service accounts with least-privilege IAM
 
@@ -2797,7 +2737,7 @@ Key highlights:
 - Java 21 + Spring Boot REST API + server-rendered Thymeleaf UI
 - Async job processing (Pub/Sub) + Cloud SQL + GCS
 - Vertex AI Gemini for text summarization + risk analysis
-- Google Cloud Document AI for OCR + layout extraction
+- PDFBox text extraction (no external OCR)
 - Datadog APM: end-to-end tracing, LLM cost analytics, grounding coverage metrics
 - 3+ monitors + auto-incident creation with runbooks
 - CI/CD via GitHub Actions (test → build → versioned deploy → rollback capability)
@@ -2815,10 +2755,10 @@ https://github.com/yourusername/policyinsight
 - Inspiration: Legal documents are written for lawyers, not people. We built clarity + safety.
 - What it does: Analyze PDFs → get cited risk reports + grounded Q&A
 - How we built it: Spring Boot + Vertex AI + Datadog
-- Challenges: Grounding LLM outputs (cite-or-abstain), handling missing Document AI quota
+- Challenges: Grounding LLM outputs (cite-or-abstain), controlling extraction quality
 - Accomplishments: Production system + observability dashboard + auto-incident + SLOs
 - What's next: Multi-language support, negotiation suggestions, expert review marketplace
-- Built with: Java, Spring Boot, Google Cloud (Run, SQL, Storage, Vertex AI, Document AI), Pub/Sub, PostgreSQL, Datadog, GitHub Actions
+- Built with: Java, Spring Boot, Google Cloud (Run, SQL, Storage, Vertex AI), Pub/Sub, PostgreSQL, Datadog, GitHub Actions
 
 [Demo Video Link]
 https://youtu.be/... (3 minutes, auto-upload with recording)
@@ -2896,16 +2836,15 @@ Verification: `mvn clean test`, upload form renders, returns jobId, status endpo
 
 ### Day 3: Document Extraction + Chunking
 ```
-Goal: Document AI integration, text extraction, chunk + citation mapping, fallback
+Goal: PDFBox text extraction, chunk + citation mapping
 
 Tasks:
-- [ ] DocumentAiClient wrapper (call Google API, handle quota errors)
-- [ ] Fallback OCR library (PDFBox + Tesseract)
+- [ ] PDFBox text extraction
 - [ ] TextChunker: split text into semantic chunks (paragraphs, max length)
 - [ ] CitationMapper: preserve page numbers + character offsets
 - [ ] document_chunks table (Flyway V2)
 - [ ] Worker job consumer (Pub/Sub subscriber)
-- [ ] Extract step in pipeline (call DocumentAI, fallback if needed)
+- [ ] Extract step in pipeline (PDFBox)
 - [ ] Store chunks in DB
 - [ ] Datadog instrumentation: extraction span, token usage, latency
 - [ ] Integration tests with sample PDF
@@ -3007,7 +2946,7 @@ Verification: Demo runs smoothly, all docs complete, deployment ready, evaluator
 |-----|-------|-------------|--------------|
 | **1** | Infrastructure | GCP projects, Postgres, Docker Compose, Flyway V1 | Services connect, local env works |
 | **2** | API + UI Foundation | Upload endpoint, Thymeleaf templates, htmx polling | File upload → jobId → status tracking |
-| **3** | Extraction | Document AI, chunking, citations, fallback OCR | Chunks in DB, Datadog spans visible |
+| **3** | Extraction | PDFBox extraction, chunking, citations | Chunks in DB, Datadog spans visible |
 | **4** | Analysis | Classification, risk scanning, summarization (grounded) | Report JSON with 5 sections, all cited |
 | **5** | Q&A + Export | Grounded Q&A, PDF export, share links | Full end-to-end flow works |
 | **6** | Observability + CI/CD | Datadog dashboards, monitors, GitHub Actions | Traces in Datadog, CD deploys to Cloud Run, incident created |

@@ -5,7 +5,8 @@ This plan is a PowerShell-first, execution-ready runbook for deploying PolicyIns
 ## Decisions locked for Milestone 3
 - Deploy from source using `gcloud run deploy --source .`
 - Storage integration: GCS only (`APP_STORAGE_MODE=gcp`)
-- Optional add-ons (not required): Pub/Sub push + OIDC, Vertex AI (Gemini), Document AI OCR
+- Optional add-ons (not required): Pub/Sub push + OIDC, Vertex AI (Gemini)
+- Document AI is out of scope; extraction uses PDFBox with Gemini-only processing
 
 ## Operator Runbook (Cursor execution)
 
@@ -425,24 +426,6 @@ Evidence to paste:
 Stop conditions:
 - If any command fails, STOP and fix before continuing.
 
-### 16) Optional: Document AI OCR (disabled by default)
-Only enable if explicitly required for this milestone.
-
-Commands:
-```powershell
-gcloud services enable documentai.googleapis.com --project $PROJECT
-gcloud projects add-iam-policy-binding $PROJECT --member "serviceAccount:$RUNTIME_SA" --role roles/documentai.apiUser
-$DOCUMENT_AI_PROCESSOR = (gcloud documentai processors list --location us --project $PROJECT --format="value(name)" | Select-Object -First 1).Trim()
-$DOCUMENT_AI_PROCESSOR_ID = ($DOCUMENT_AI_PROCESSOR -split "/") | Select-Object -Last 1
-gcloud run services update $SERVICE --region $REGION --project $PROJECT --update-env-vars "DOCUMENT_AI_ENABLED=true,DOCUMENT_AI_LOCATION=us,DOCUMENT_AI_PROCESSOR_ID=$DOCUMENT_AI_PROCESSOR_ID"
-```
-Expected output / verification:
-- API enabled, IAM binding added, processor ID resolved, env vars updated
-Evidence to paste:
-- Output of each command
-Stop conditions:
-- If any command fails or `DOCUMENT_AI_PROCESSOR_ID` is empty, STOP and create a processor, then re-run this step.
-
 ## Production environment variables (explicit list)
 
 | Env var | Description | Secret Manager? |
@@ -480,9 +463,6 @@ Stop conditions:
 | `VERTEX_AI_ENABLED` | Enable Gemini via Vertex AI (optional). | No |
 | `VERTEX_AI_LOCATION` | Vertex AI location (optional). | No |
 | `VERTEX_AI_MODEL` | Gemini model name (optional). | No |
-| `DOCUMENT_AI_ENABLED` | Enable Document AI OCR (optional). | No |
-| `DOCUMENT_AI_LOCATION` | Document AI location (optional). | No |
-| `DOCUMENT_AI_PROCESSOR_ID` | Document AI processor ID (optional). | No |
 
 ## Worker execution decision (Milestone 3)
 Decision: run the background worker inside the Cloud Run service (no separate worker service).

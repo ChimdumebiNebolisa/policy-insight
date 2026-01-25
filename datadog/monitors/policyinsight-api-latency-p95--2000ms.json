@@ -3,7 +3,7 @@
   "org_id": 1300825116,
   "type": "metric alert",
   "name": "[PolicyInsight] API Latency P95 > 2000ms",
-  "message": "API latency P95 has exceeded 2000ms for the last 5 minutes.\n\nThis may indicate:\n- Slow database queries\n- External API delays (Gemini, Document AI)\n- Resource constraints\n\n@on-call-engineering",
+  "message": "API latency P95 has exceeded 2000ms for the last 5 minutes.\n\nThis may indicate:\n- Slow database queries\n- External API delays (Gemini)\n- Resource constraints\n\n@on-call-engineering",
   "tags": [
     "service:policy-insight",
     "alert_type:latency",

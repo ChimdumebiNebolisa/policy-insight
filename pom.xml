@@ -169,12 +169,6 @@
             <version>1.32.0</version>
         </dependency>
 
-        <!-- Google Cloud Document AI -->
-        <!-- Note: Document AI is optional - if not available, fallback OCR will be used -->
-        <!-- For local development, Document AI can be disabled via documentai.enabled=false -->
-        <!-- The DocumentAiService uses @ConditionalOnProperty and won't load if disabled -->
-        <!-- In production, add the Document AI dependency manually or use a different artifact -->
-
         <!-- PDF Processing (Fallback) -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>

@@ -145,14 +145,6 @@ pubsub:
     expected-email: ${PUBSUB_PUSH_EXPECTED_EMAIL:}
     expected-audience: ${PUBSUB_PUSH_EXPECTED_AUDIENCE:}
 
-# Google Cloud Document AI configuration
-documentai:
-  enabled: ${DOCUMENT_AI_ENABLED:false}
-  project-id: ${GOOGLE_CLOUD_PROJECT:local-project}
-  location: ${DOCUMENT_AI_LOCATION:us}
-  processor-id: ${DOCUMENT_AI_PROCESSOR_ID:}
-  # For local development without Document AI, set enabled=false to use fallback
-
 # Document Processing Worker configuration
 worker:
   enabled: ${WORKER_ENABLED:false}

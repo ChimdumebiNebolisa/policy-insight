@@ -108,7 +108,7 @@ curl -X POST http://localhost:8080/api/documents/upload \
 1. Upload creates a job with status `PENDING`
 2. Background worker polls for `PENDING` jobs (local) or Pub/Sub message triggers (GCP)
 3. Worker performs extraction using:
-   - Document AI (if enabled) or PDFBox fallback
+   - PDFBox text extraction (Gemini-only pipeline)
    - Text chunking into `document_chunks` table
    - Gemini/Vertex AI for classification and analysis
 4. Results stored in:
@@ -240,24 +240,15 @@ curl -X POST http://localhost:8080/api/questions \
 
 ### OCR Pipeline or Scanned PDF Handling
 
-**Yes** - OCR support exists but is conditional:
+**Yes** - extraction uses PDFBox text extraction only (no OCR):
 
-**Document AI (GCP):**
-- Primary method if `DOCUMENT_AI_ENABLED=true`
-- Configured via `documentai.enabled` property
-- Uses Google Cloud Document AI processor
-
-**Fallback OCR:**
-- If Document AI not available: `FallbackOcrService` uses PDFBox (text extraction only, no OCR)
+- Document AI is out of scope for this milestone (Gemini-only pipeline)
+- `FallbackOcrService` uses PDFBox text extraction only
 - For actual OCR: Tess4j library is available (dependency in `pom.xml` line 188-190) but **UNKNOWN** if actively used in code path
-- Confidence scores: Document AI provides confidence, fallback uses fixed 0.5 confidence
+- Confidence scores are fixed at 0.5 for PDFBox extraction
 
 **Location:**
-- `src/main/java/com/policyinsight/processing/DocumentAiService.java`
 - `src/main/java/com/policyinsight/processing/FallbackOcrService.java`
-- `src/main/resources/application.yml` lines 148-154
-
-**Note:** For production OCR on scanned PDFs, Document AI should be enabled. Fallback uses PDFBox which only extracts text from text-based PDFs.
 
 ---
 
