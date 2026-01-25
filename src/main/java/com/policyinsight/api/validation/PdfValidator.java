@@ -47,13 +47,10 @@ public class PdfValidator {
             return false;
         }
 
-        // Mark the stream so we can reset it after reading
-        if (!inputStream.markSupported()) {
-            logger.warn("PDF validation: input stream does not support mark/reset, cannot validate magic bytes");
-            return false; // Conservative: fail if we can't reset
+        boolean canReset = inputStream.markSupported();
+        if (canReset) {
+            inputStream.mark(MAGIC_BYTES_LENGTH + 1);
         }
-
-        inputStream.mark(MAGIC_BYTES_LENGTH + 1); // Mark position
 
         try {
             byte[] header = new byte[MAGIC_BYTES_LENGTH];
@@ -77,12 +74,13 @@ public class PdfValidator {
             return true;
 
         } finally {
-            // Reset stream to beginning for actual processing
-            try {
-                inputStream.reset();
-            } catch (IOException e) {
-                logger.error("Failed to reset input stream after PDF validation", e);
-                throw new IOException("Failed to reset input stream after validation", e);
+            if (canReset) {
+                try {
+                    inputStream.reset();
+                } catch (IOException e) {
+                    logger.error("Failed to reset input stream after PDF validation", e);
+                    throw new IOException("Failed to reset input stream after validation", e);
+                }
             }
         }
     }
