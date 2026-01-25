@@ -1346,7 +1346,7 @@ public class MetricsRegistry {
 
     // Extraction metrics
     meterRegistry.timer("policyinsight.extraction.latency_ms",
-      "service", "document_ai");
+      "service", "pdfbox");
     meterRegistry.gauge("policyinsight.extraction.confidence",
       "document_id", "doc-123");
 
@@ -1388,7 +1388,7 @@ public class MetricsRegistry {
 | `policyinsight.api.errors` | Counter | endpoint, status_code | Error count by status |
 | `policyinsight.document.processing_latency_ms` | Histogram | document_type, stage | End-to-end processing time |
 | `policyinsight.document.count` | Counter | status (pending/completed/failed) | Document completion rate |
-| `policyinsight.extraction.latency_ms` | Histogram | service (document_ai/fallback) | OCR latency |
+| `policyinsight.extraction.latency_ms` | Histogram | service (pdfbox) | Text extraction latency |
 | `policyinsight.extraction.confidence` | Gauge | document_id | OCR confidence score |
 | `policyinsight.analysis.citation_coverage_rate` | Gauge | document_id | % claims with citations |
 | `policyinsight.analysis.risks_detected_count` | Gauge | risk_category | Risk count per category |

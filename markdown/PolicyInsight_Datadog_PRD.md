@@ -70,7 +70,7 @@ Upload a PDF legal document → Get a structured risk report with every claim ci
 - Advanced negotiation suggestions
 - Document types beyond 3
 - Browser extensions
-- Document AI OCR integration
+- External OCR services (Document AI)
 - Voice input
 
 ---
@@ -468,7 +468,7 @@ Kubernetes / Cloud Run health check.
   "checks": {
     "db": "UP",
     "gcs": "UP",
-    "documentAI": "UP",
+    "extractionPipeline": "UP",
     "vertexAI": "UP",
     "pubsub": "UP"
   }
