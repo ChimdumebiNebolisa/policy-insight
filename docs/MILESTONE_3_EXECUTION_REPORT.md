@@ -1171,23 +1171,23 @@ $REGION
 
 Result (failure):
 ```
-gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
 Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
 At line:1 char:1
 + gcloud --version
 + ~~~~~~
     + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
     + FullyQualifiedErrorId : CommandNotFoundException
- 
-gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
 Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
 At line:2 char:13
 + $PROJECT = (gcloud config get-value project).Trim()
 +             ~~~~~~
     + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
     + FullyQualifiedErrorId : CommandNotFoundException
- 
-gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
 Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
 At line:3 char:12
 + $REGION = (gcloud config get-value run/region).Trim()
@@ -1273,22 +1273,22 @@ $REGION = (gcloud config get-value run/region).Trim()
 
 Result (failure):
 ```
-gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
 Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
 At line:1 char:13
 + $PROJECT = (gcloud config get-value project).Trim()
 +             ~~~~~~
     + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
     + FullyQualifiedErrorId : CommandNotFoundException
- 
-gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
 Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
 At line:2 char:12
 + $REGION = (gcloud config get-value run/region).Trim()
 +            ~~~~~~
     + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
     + FullyQualifiedErrorId : CommandNotFoundException
- 
+
 PROJECT=
 REGION=
 SERVICE=policy-insight
@@ -1564,7 +1564,7 @@ Creating Revision...............................................................
 Deployment failed
 ERROR: (gcloud.run.deploy) The user-provided container failed to start and listen on the port defined provided by the PORT=8080 environment variable within the allocated timeout. This can happen when the container port is misconfigured or if the timeout is too short. The health check timeout can be extended. Logs for this revision might contain more information.
 
-Logs URL: https://console.cloud.google.com/logs/viewer?project=policy-insight&resource=cloud_run_revision/service_name/policy-insight/revision_name/policy-insight-00015-887&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22policy-insight%22%0Aresource.labels.revision_name%3D%22policy-insight-00015-887%22 
+Logs URL: https://console.cloud.google.com/logs/viewer?project=policy-insight&resource=cloud_run_revision/service_name/policy-insight/revision_name/policy-insight-00015-887&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22policy-insight%22%0Aresource.labels.revision_name%3D%22policy-insight-00015-887%22
 ```
 
 Diagnosis:
