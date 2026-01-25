@@ -1698,3 +1698,37 @@ Final status JSON:
 ## Command failure log
 
 - 2026-01-25T10:47:12Z: `git status && git branch --show-current && git log -1 --oneline` failed in PowerShell (`&&` not a valid separator). Fixed by re-running with `;` separators and reissued only the failed command.
+- 2026-01-25T10:52:02Z: `git switch -c milestone-3-cloudrun-execution` failed because the branch already exists. Fixed by switching with `git switch milestone-3-cloudrun-execution`.
+- 2026-01-25T10:53:14Z: `git switch milestone-3-cloudrun-execution` failed because `docs/MILESTONE_3_EXECUTION_REPORT.md` would be overwritten. Fixed by committing the report on `main` before switching branches.
+- 2026-01-25T10:55:22Z: `gcloud --version` failed because `gcloud` was not on PATH. Fixed by prepending `$env:LOCALAPPDATA\Google\Cloud SDK\google-cloud-sdk\bin` to `PATH` and re-running the command.
+- 2026-01-25T10:56:44Z: `gcloud config get-value project` failed because `gcloud` was not on PATH in the new shell invocation. Fixed by prepending the Cloud SDK bin to `PATH` and re-running the command.
+
+## Step 1: gcloud pre-checks (rerun)
+
+`gcloud --version`:
+```
+Google Cloud SDK 553.0.0
+bq 2.1.27
+core 2026.01.16
+gcloud-crc32c 1.0.0
+gsutil 5.35
+```
+
+`gcloud config get-value project`:
+```
+Your active configuration is: [policy-insight]
+policy-insight
+```
+
+`gcloud config get-value run/region`:
+```
+Your active configuration is: [policy-insight]
+us-central1
+```
+
+## Step 2: Enable APIs (rerun)
+
+`gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com storage.googleapis.com pubsub.googleapis.com`:
+```
+Operation "operations/acat.p2-828177954618-b16a7b8b-bdb9-4f8a-9737-1c09350f8de0" finished successfully.
+```
