@@ -3131,3 +3131,46 @@ Done.
 Service [policy-insight] revision [policy-insight-00022-8cb] has been deployed and is serving 100 percent of traffic.
 Service URL: https://policy-insight-828177954618.us-central1.run.app
 ```
+
+### Phase 3.6: Smoke tests
+
+Commands:
+```powershell
+$SERVICE_URL = (gcloud run services describe $SERVICE --region $REGION --project $PROJECT --format="value(status.url)").Trim()
+$SERVICE_URL
+curl.exe -i "$SERVICE_URL/health"
+$UPLOAD_RESPONSE = curl.exe -s -X POST "$SERVICE_URL/api/documents/upload" -H "Accept: application/json" -F "file=@valid.pdf;type=application/pdf"
+$JOB_ID = ($UPLOAD_RESPONSE | ConvertFrom-Json).jobId
+$JOB_TOKEN = ($UPLOAD_RESPONSE | ConvertFrom-Json).token
+$UPLOAD_RESPONSE
+for ($i = 0; $i -lt 30; $i++) {
+  $STATUS = (curl.exe -s "$SERVICE_URL/api/documents/$JOB_ID/status" -H "Accept: application/json" -H "X-Job-Token: $JOB_TOKEN" | ConvertFrom-Json).status
+  "$i`t$STATUS"
+  if ($STATUS -eq "SUCCESS" -or $STATUS -eq "FAILED") { break }
+  Start-Sleep -Seconds 5
+}
+curl.exe -s "$SERVICE_URL/api/documents/$JOB_ID/status" -H "Accept: application/json" -H "X-Job-Token: $JOB_TOKEN"
+```
+
+Output (token redacted):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+https://policy-insight-icifdit4lq-uc.a.run.app
+HTTP/1.1 200 OK
+x-request-id: 9ffd55b4-8bb5-47be-a380-42d14343c4c0
+content-type: application/json
+date: Sun, 25 Jan 2026 12:19:19 GMT
+server: Google Frontend
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+Transfer-Encoding: chunked
+
+{"checks":{"db":"UP"},"status":"UP","timestamp":"2026-01-25T12:19:19.536768568Z"}
+{"jobId":"d609c5eb-26fc-4a73-be04-68b819bdc3d9","statusUrl":"/api/documents/d609c5eb-26fc-4a73-be04-68b819bdc3d9/status","message":"Document uploaded successfully. Processing will begin shortly.","token":"DrV_E-…DG8","status":"PENDING"}
+0	PENDING
+1	PROCESSING
+2	PROCESSING
+3	PROCESSING
+4	SUCCESS
+{"jobId":"d609c5eb-26fc-4a73-be04-68b819bdc3d9","reportUrl":"/documents/d609c5eb-26fc-4a73-be04-68b819bdc3d9/report","message":"Analysis completed successfully","status":"SUCCESS"}
+```
