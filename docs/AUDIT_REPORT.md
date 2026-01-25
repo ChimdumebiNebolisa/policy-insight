@@ -286,3 +286,8 @@ Milestone 0 (preflight):
 Milestone 1 (job-token enforcement):
 - `.\mvnw.cmd test` passed. Surefire summary: `Tests run: 70, Failures: 0, Errors: 0, Skipped: 0`.
 - Verified unauthorized revoke is blocked: `POST /api/documents/{id}/share/revoke` returns 401 without `X-Job-Token` (covered by `ShareLinkRevocationTest`).
+
+Milestone A3 (repo hygiene verification):
+- Commands run: `.\mvnw.cmd test`, `powershell -ExecutionPolicy Bypass -File scripts/verify-local.ps1 -PdfPath "src/test/resources/valid.pdf"`.
+- Surefire summary: `Tests run: 71, Failures: 0, Errors: 0, Skipped: 0`.
+- verify-local highlights: `Postgres is healthy after 6 attempt(s).` `App is healthy after 1 attempt(s).` `App is ready after 1 attempt(s).` `Migrations are ready after 1 attempt(s).` `Status: SUCCESS`.
