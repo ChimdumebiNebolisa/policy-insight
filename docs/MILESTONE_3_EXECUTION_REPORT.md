@@ -1694,3 +1694,7 @@ Final status JSON:
 ```
 {"jobId":"a2c4e012-c097-4450-9ac4-4d05a1028b93","reportUrl":"/documents/a2c4e012-c097-4450-9ac4-4d05a1028b93/report","message":"Analysis completed successfully","status":"SUCCESS"}
 ```
+
+## Command failure log
+
+- 2026-01-25T10:47:12Z: `git status && git branch --show-current && git log -1 --oneline` failed in PowerShell (`&&` not a valid separator). Fixed by re-running with `;` separators and reissued only the failed command.
