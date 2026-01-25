@@ -764,3 +764,360 @@ Uploading sources......................done
 
 Note:
 - Deployment command aborted again during upload; requires uninterrupted run to finish.
+
+## Phase 3 Execution (2026-01-25T03:08:39.2526005-06:00)
+
+### Step 1: Preflight gcloud + project + region
+
+Command (initial attempt):
+```
+gcloud --version
+gcloud config get-value project
+gcloud config get-value run/region
+gcloud config set run/region us-central1
+```
+
+Result (failure):
+```
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program.
+```
+
+Fix:
+- Use absolute `gcloud.ps1` path for this session.
+
+Command (re-run):
+```
+$GCLOUD = "C:\Users\Chimdumebi\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.ps1"
+& $GCLOUD --version
+& $GCLOUD config get-value project
+& $GCLOUD config get-value run/region
+& $GCLOUD config set run/region us-central1
+```
+
+Output:
+```
+Google Cloud SDK 553.0.0
+bq 2.1.27
+core 2026.01.16
+gcloud-crc32c 1.0.0
+gsutil 5.35
+Your active configuration is: [policy-insight]
+policy-insight
+Your active configuration is: [policy-insight]
+us-central1
+Updated property [run/region].
+```
+
+### Step 2: Define names and constants
+
+Command:
+```
+$PROJECT_ID = (& $GCLOUD config get-value project).Trim()
+$REGION = "us-central1"
+$SERVICE = "policy-insight"
+$SQL_INSTANCE = "policy-insight-db"
+$DB_NAME = "policyinsight"
+$DB_USER = "policyinsight"
+$BUCKET = "$PROJECT_ID-policyinsight"
+$RUNTIME_SA_NAME = "policy-insight-runner"
+$RUNTIME_SA = "$RUNTIME_SA_NAME@$PROJECT_ID.iam.gserviceaccount.com"
+$SECRET_DB_PASSWORD = "db-password"
+$SECRET_APP_TOKEN = "app-token-secret"
+$AR_REPO_SOURCE = "cloud-run-source-deploy"
+$AR_REPO_CONTAINER = "policy-insight-app"
+```
+
+Output:
+```
+REGION=us-central1
+SERVICE=policy-insight
+SQL_INSTANCE=policy-insight-db
+DB_NAME=policyinsight
+DB_USER=policyinsight
+BUCKET=policy-insight-policyinsight
+RUNTIME_SA_NAME=policy-insight-runner
+RUNTIME_SA=policy-insight-runner@policy-insight.iam.gserviceaccount.com
+SECRET_DB_PASSWORD=db-password
+SECRET_APP_TOKEN=app-token-secret
+AR_REPO_SOURCE=cloud-run-source-deploy
+AR_REPO_CONTAINER=policy-insight-app
+```
+
+### Step 3: Enable required APIs
+
+Command:
+```
+& $GCLOUD services enable run.googleapis.com cloudbuild.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com storage.googleapis.com artifactregistry.googleapis.com --project $PROJECT_ID
+```
+
+Output:
+```
+Operation "operations/acat.p2-828177954618-115515cf-0ab2-490a-be8b-57af66990924" finished successfully.
+```
+
+### Step 4: Ensure Artifact Registry repo for source deploy exists
+
+Command:
+```
+& $GCLOUD artifacts repositories create $AR_REPO_SOURCE --repository-format=docker --location $REGION --project $PROJECT_ID
+```
+
+Output (acceptable):
+```
+ERROR: (gcloud.artifacts.repositories.create) ALREADY_EXISTS: the repository already exists
+```
+
+### Step 5: Cloud SQL instance, database, user, connection name
+
+Command (initial attempt):
+```
+& $GCLOUD sql instances create $SQL_INSTANCE --database-version=POSTGRES_15 --tier=db-custom-1-3840 --region $REGION --project $PROJECT_ID
+```
+
+Output (failure, already exists):
+```
+ERROR: (gcloud.sql.instances.create) Resource in projects [policy-insight] is the subject of a conflict: The Cloud SQL instance already exists.
+```
+
+Fix:
+- Describe existing instance and capture details.
+
+Command:
+```
+& $GCLOUD sql instances describe $SQL_INSTANCE --project $PROJECT_ID
+```
+
+Output:
+```
+backendType: SECOND_GEN
+connectionName: policy-insight:us-central1:policy-insight-db
+createTime: '2026-01-25T07:16:31.821Z'
+databaseInstalledVersion: POSTGRES_15_15
+databaseVersion: POSTGRES_15
+gceZone: us-central1-c
+ipAddresses:
+- ipAddress: 34.9.56.204
+  type: PRIMARY
+- ipAddress: 34.56.39.104
+  type: OUTGOING
+name: policy-insight-db
+project: policy-insight
+region: us-central1
+state: RUNNABLE
+settings:
+  tier: db-custom-1-3840
+```
+
+Command (initial attempt):
+```
+& $GCLOUD sql databases create $DB_NAME --instance $SQL_INSTANCE --project $PROJECT_ID
+```
+
+Output (failure, already exists):
+```
+ERROR: (gcloud.sql.databases.create) HTTPError 400: Invalid request: failed to create database policyinsight. Detail: pq: database "policyinsight" already exists.
+```
+
+Fix:
+- Describe existing database.
+
+Command:
+```
+& $GCLOUD sql databases describe $DB_NAME --instance $SQL_INSTANCE --project $PROJECT_ID
+```
+
+Output:
+```
+charset: UTF8
+collation: en_US.UTF8
+instance: policy-insight-db
+name: policyinsight
+project: policy-insight
+```
+
+Command (create user):
+```
+$DB_PASSWORD = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+& $GCLOUD sql users create $DB_USER --instance $SQL_INSTANCE --password $DB_PASSWORD --project $PROJECT_ID
+```
+
+Output:
+```
+Creating Cloud SQL user...
+.done.
+Created user [policyinsight].
+```
+
+Command (connection name evidence):
+```
+& $GCLOUD sql instances describe $SQL_INSTANCE --project $PROJECT_ID --format="value(connectionName)"
+```
+
+Output:
+```
+policy-insight:us-central1:policy-insight-db
+```
+
+### Step 6: Create GCS bucket
+
+Command:
+```
+& $GCLOUD storage buckets create "gs://$BUCKET" --location $REGION --project $PROJECT_ID --uniform-bucket-level-access
+```
+
+Output (acceptable):
+```
+Creating gs://policy-insight-policyinsight/...
+ERROR: (gcloud.storage.buckets.create) HTTPError 409: Your previous request to create the named bucket succeeded and you already own it.
+```
+
+### Step 7: Create runtime service account
+
+Command:
+```
+& $GCLOUD iam service-accounts create $RUNTIME_SA_NAME --project $PROJECT_ID
+```
+
+Output (acceptable):
+```
+ERROR: (gcloud.iam.service-accounts.create) Resource in projects [policy-insight] is the subject of a conflict: Service account policy-insight-runner already exists within project projects/policy-insight.
+```
+
+### Step 8: Grant IAM roles
+
+Command:
+```
+& $GCLOUD projects add-iam-policy-binding $PROJECT_ID --member "serviceAccount:$RUNTIME_SA" --role roles/cloudsql.client
+& $GCLOUD projects add-iam-policy-binding $PROJECT_ID --member "serviceAccount:$RUNTIME_SA" --role roles/secretmanager.secretAccessor
+& $GCLOUD storage buckets add-iam-policy-binding "gs://$BUCKET" --member "serviceAccount:$RUNTIME_SA" --role roles/storage.objectAdmin
+```
+
+Output (truncated to binding summaries):
+```
+Updated IAM policy for project [policy-insight].
+... roles/cloudsql.client ...
+Updated IAM policy for project [policy-insight].
+... roles/secretmanager.secretAccessor ...
+... roles/storage.objectAdmin ...
+```
+
+### Step 9: Create secrets in Secret Manager
+
+Command (db-password create):
+```
+& $GCLOUD secrets create $SECRET_DB_PASSWORD --replication-policy=automatic --project $PROJECT_ID
+```
+
+Output (acceptable):
+```
+ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subject of a conflict: Secret [projects/828177954618/secrets/db-password] already exists.
+```
+
+Command (reset DB password + add secret version):
+```
+$DB_PASSWORD = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+& $GCLOUD sql users set-password $DB_USER --instance $SQL_INSTANCE --password $DB_PASSWORD --project $PROJECT_ID
+$tmp = New-TemporaryFile
+Set-Content -Path $tmp -Value $DB_PASSWORD -NoNewline
+& $GCLOUD secrets versions add $SECRET_DB_PASSWORD --data-file=$tmp --project $PROJECT_ID
+Remove-Item $tmp
+```
+
+Output:
+```
+Updating Cloud SQL user...
+.done.
+Created version [4] of the secret [db-password].
+```
+
+Command (app-token-secret create + version):
+```
+& $GCLOUD secrets create $SECRET_APP_TOKEN --replication-policy=automatic --project $PROJECT_ID
+$APP_TOKEN_SECRET = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+$tmp = New-TemporaryFile
+Set-Content -Path $tmp -Value $APP_TOKEN_SECRET -NoNewline
+& $GCLOUD secrets versions add $SECRET_APP_TOKEN --data-file=$tmp --project $PROJECT_ID
+Remove-Item $tmp
+```
+
+Output:
+```
+ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subject of a conflict: Secret [projects/828177954618/secrets/app-token-secret] already exists.
+Created version [2] of the secret [app-token-secret].
+```
+
+### Step 10: Deploy Cloud Run (source)
+
+Command:
+```
+$CONNECTION_NAME = (& $GCLOUD sql instances describe $SQL_INSTANCE --project $PROJECT_ID --format="value(connectionName)").Trim()
+$SPRING_DATASOURCE_URL = "jdbc:postgresql:///${DB_NAME}?cloudSqlInstance=${CONNECTION_NAME}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+& $GCLOUD run deploy $SERVICE --source . --region $REGION --project $PROJECT_ID --service-account $RUNTIME_SA --add-cloudsql-instances $CONNECTION_NAME --min-instances 0 --allow-unauthenticated --set-env-vars "SPRING_PROFILES_ACTIVE=cloudrun,SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL,DB_HOST=/cloudsql/$CONNECTION_NAME,DB_PORT=5432,DB_NAME=$DB_NAME,DB_USER=$DB_USER,APP_STORAGE_MODE=gcp,GCS_BUCKET_NAME=$BUCKET,APP_MESSAGING_MODE=local,APP_PROCESSING_MODE=local,POLICYINSIGHT_WORKER_ENABLED=true,APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR=10,APP_RATE_LIMIT_QA_MAX_PER_HOUR=20,APP_RATE_LIMIT_QA_MAX_PER_JOB=3,APP_PROCESSING_MAX_TEXT_LENGTH=1000000,APP_PROCESSING_STAGE_TIMEOUT_SECONDS=300,APP_VALIDATION_PDF_MAX_PAGES=100,APP_VALIDATION_PDF_MAX_TEXT_LENGTH=1048576,APP_RETENTION_DAYS=30,APP_LOCAL_WORKER_POLL_MS=2000,APP_LOCAL_WORKER_BATCH_SIZE=5,APP_JOB_LEASE_DURATION_MINUTES=30,APP_JOB_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_BASE_DELAY_MS=1000" --set-secrets "DB_PASSWORD=db-password:latest,APP_TOKEN_SECRET=app-token-secret:latest"
+```
+
+Output:
+```
+Building using Dockerfile and deploying container to Cloud Run service [policy-insight] in project [policy-insight] region [us-central1]
+Building and deploying...
+Validating configuration................done
+Uploading sources.................................................................................................................................................................................................................................................done
+Building Container................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................done
+Setting IAM Policy............done
+Creating Revision.....................................................................................................................................................................................................................................................................................................done
+Routing traffic.....done
+Done.
+Service [policy-insight] revision [policy-insight-00013-wxs] has been deployed and is serving 100 percent of traffic.
+Service URL: https://policy-insight-828177954618.us-central1.run.app
+```
+
+### Step 11: Set base URL and allowed origins (safe update)
+
+Command:
+```
+$SERVICE_URL = (& $GCLOUD run services describe $SERVICE --region $REGION --project $PROJECT_ID --format="value(status.url)").Trim()
+& $GCLOUD run services update $SERVICE --region $REGION --project $PROJECT_ID --update-env-vars "APP_BASE_URL=$SERVICE_URL,APP_ALLOWED_ORIGINS=$SERVICE_URL"
+```
+
+Output:
+```
+Deploying...
+Creating Revision.............................................................................................................................................................................................................................................................................done
+Routing traffic.....done
+Done.
+Service [policy-insight] revision [policy-insight-00014-q2w] has been deployed and is serving 100 percent of traffic.
+Service URL: https://policy-insight-828177954618.us-central1.run.app
+```
+
+### Step 13: Smoke tests
+
+Health check:
+```
+curl.exe -i "https://policy-insight-828177954618.us-central1.run.app/health"
+```
+
+Output:
+```
+HTTP/1.1 200 OK
+content-type: application/json
+{"checks":{"db":"UP"},"status":"UP","timestamp":"2026-01-25T09:06:28.591053576Z"}
+```
+
+Upload response:
+```
+{"jobId":"afa5384e-4d14-4f2c-9f98-bfdf2b0a7cab","statusUrl":"/api/documents/afa5384e-4d14-4f2c-9f98-bfdf2b0a7cab/status","message":"Document uploaded successfully. Processing will begin shortly.","token":"aEYz6poegdtsvhVSkKBm4XNX0dQYEbgowLLiV-g5zxs","status":"PENDING"}
+```
+
+Status polling:
+```
+0	PROCESSING
+1	PROCESSING
+2	PROCESSING
+3	PROCESSING
+4	PROCESSING
+5	SUCCESS
+```
+
+Final status JSON:
+```
+{"jobId":"afa5384e-4d14-4f2c-9f98-bfdf2b0a7cab","reportUrl":"/documents/afa5384e-4d14-4f2c-9f98-bfdf2b0a7cab/report","message":"Analysis completed successfully","status":"SUCCESS"}
+```
