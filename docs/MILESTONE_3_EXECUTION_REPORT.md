@@ -2686,3 +2686,70 @@ ACTIVE  ACCOUNT
 To set the active account, run:
     $ gcloud config set account `ACCOUNT`
 ```
+
+### Phase 3 start (local session)
+
+Date/time (local): Sunday, January 25, 2026 6:03:05 AM  
+Current branch: milestone-3-cloudrun-execution  
+Phase 3 start
+
+```
+Sunday, January 25, 2026 6:03:05 AM
+milestone-3-cloudrun-execution
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:38
++ Get-Date; git branch --show-current; gcloud config get-value project; ...
++                                      ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:71
++ ... ranch --show-current; gcloud config get-value project; gcloud config  ...
++                                                            ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+gcloud : The term 'gcloud' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:107
+
+
++ ... get-value project; gcloud config get-value run/region; gcloud auth li ...
++                                                            ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (gcloud:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+```
+
+### Phase 3 start (gcloud config/auth after PATH fix)
+
+```
+Sunday, January 25, 2026 6:03:14 AM
+milestone-3-cloudrun-execution
+Your active configuration is: [policy-insight]
+policy-insight
+Your active configuration is: [policy-insight]
+us-central1
+       Credentialed Accounts
+ACTIVE  ACCOUNT
+*       chimdumebinebolisa@gmail.com
+
+To set the active account, run:
+    $ gcloud config set account `ACCOUNT`
+
+```
+
+### Phase 3.2: Enable APIs
+
+Command:
+```powershell
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com storage.googleapis.com pubsub.googleapis.com
+```
+
+Output:
+```
+Operation "operations/acat.p2-828177954618-ebf30ea7-bd4c-46f6-a3a2-3bd885b1b473" finished successfully.
+```
