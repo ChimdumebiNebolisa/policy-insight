@@ -1088,6 +1088,50 @@ Service [policy-insight] revision [policy-insight-00013-wxs] has been deployed a
 Service URL: https://policy-insight-828177954618.us-central1.run.app
 ```
 
+## Step 13: Smoke tests (current run)
+
+### /health
+
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+HTTP/1.1 200 OK
+x-request-id: a7998b7b-88b4-4afe-b839-8087bed0e47f
+content-type: application/json
+date: Sun, 25 Jan 2026 11:53:35 GMT
+server: Google Frontend
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+Transfer-Encoding: chunked
+
+{"checks":{"db":"UP"},"status":"UP","timestamp":"2026-01-25T11:53:35.525519023Z"}
+```
+
+### Upload response (token redacted)
+
+```
+{"jobId":"b348b81c-7957-4f13-8d55-006ae5e48150","statusUrl":"/api/documents/b348b81c-7957-4f13-8d55-006ae5e48150/status","message":"Document uploaded successfully. Processing will begin shortly.","token":"N1w0WK6w5jro...NPmKi4","status":"PENDING"}
+```
+
+### Polling output
+
+```
+0	PROCESSING
+1	PROCESSING
+2	PROCESSING
+3	PROCESSING
+4	PROCESSING
+5	SUCCESS
+```
+
+### Final status JSON
+
+```
+{"jobId":"b348b81c-7957-4f13-8d55-006ae5e48150","reportUrl":"/documents/b348b81c-7957-4f13-8d55-006ae5e48150/report","message":"Analysis completed successfully","status":"SUCCESS"}
+```
+
 ### Step 11: Set base URL and allowed origins (safe update)
 
 Command:
