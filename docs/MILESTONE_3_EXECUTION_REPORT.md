@@ -2544,6 +2544,24 @@ ERROR: (gcloud.secrets.create) Resource in projects [policy-insight] is the subj
 Created version [5] of the secret [app-token-secret].
 ```
 
+## Phase 3.4: IAM confirmation (runtime service account)
+
+```
+Your active configuration is: [policy-insight]
+ROLE
+roles/cloudsql.client
+roles/secretmanager.secretAccessor
+ERROR: (gcloud.storage.buckets.get-iam-policy) unrecognized arguments: --filter=bindings.members:serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com (did you mean '--flatten'?) 
+
+To search the help text of gcloud commands, run:
+  gcloud help -- SEARCH_TERMS
+```
+
+```
+Your active configuration is: [policy-insight]
+roles/storage.objectAdmin
+```
+
 ## Phase 3 start (2026-01-25T05:38:24-06:00)
 
 Current branch: `milestone-3-cloudrun-execution`
