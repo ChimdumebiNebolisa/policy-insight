@@ -2753,3 +2753,97 @@ Output:
 ```
 Operation "operations/acat.p2-828177954618-ebf30ea7-bd4c-46f6-a3a2-3bd885b1b473" finished successfully.
 ```
+
+### Phase 3.3: Cloud SQL setup (preflight + network + instance)
+
+Preflight and variable definitions:
+```powershell
+gcloud --version
+$PROJECT = (gcloud config get-value project).Trim()
+$REGION = (gcloud config get-value run/region).Trim()
+$PROJECT
+$REGION
+$SERVICE = "policy-insight"
+$SQL_INSTANCE = "policy-insight-db"
+$DB_NAME = "policyinsight"
+$DB_USER = "policyinsight"
+$BUCKET = "$PROJECT-policyinsight"
+$RUNTIME_SA_NAME = "policy-insight-runner"
+$RUNTIME_SA = "$RUNTIME_SA_NAME@$PROJECT.iam.gserviceaccount.com"
+$SECRET_DB_PASSWORD = "db-password"
+$SECRET_APP_TOKEN = "app-token-secret"
+$VPC_CONNECTOR = "policy-insight-connector"
+$PRIVATE_SERVICE_RANGE = "policy-insight-psa"
+$PUBSUB_TOPIC = "policy-insight-topic"
+$PUBSUB_SUB = "policy-insight-push"
+"PROJECT=$PROJECT"
+"REGION=$REGION"
+"SERVICE=$SERVICE"
+"SQL_INSTANCE=$SQL_INSTANCE"
+"DB_NAME=$DB_NAME"
+"DB_USER=$DB_USER"
+"BUCKET=$BUCKET"
+"RUNTIME_SA=$RUNTIME_SA"
+"VPC_CONNECTOR=$VPC_CONNECTOR"
+```
+
+Output:
+```
+Google Cloud SDK 553.0.0
+bq 2.1.27
+core 2026.01.16
+gcloud-crc32c 1.0.0
+gsutil 5.35
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+policy-insight
+us-central1
+PROJECT=policy-insight
+REGION=us-central1
+SERVICE=policy-insight
+SQL_INSTANCE=policy-insight-db
+DB_NAME=policyinsight
+DB_USER=policyinsight
+BUCKET=policy-insight-policyinsight
+RUNTIME_SA=policy-insight-runner@policy-insight.iam.gserviceaccount.com
+VPC_CONNECTOR=policy-insight-connector
+```
+
+Private services access + VPC connector:
+```powershell
+gcloud compute addresses create $PRIVATE_SERVICE_RANGE --global --purpose=VPC_PEERING --prefix-length=16 --network=default --project $PROJECT
+gcloud services vpc-peerings connect --service=servicenetworking.googleapis.com --ranges=$PRIVATE_SERVICE_RANGE --network=default --project $PROJECT
+gcloud compute networks vpc-access connectors create $VPC_CONNECTOR --region $REGION --network default --range 10.8.0.0/28 --project $PROJECT
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.compute.addresses.create) Could not fetch resource:
+ - The resource 'projects/policy-insight/global/addresses/policy-insight-psa' already exists
+
+Operation "operations/pssn.p24-828177954618-ed74da95-ee53-4b3e-8ed1-c15c9395fc82" finished successfully.
+ERROR: (gcloud.compute.networks.vpc-access.connectors.create) ALREADY_EXISTS: Requested entity already exists
+```
+
+Cloud SQL instance, database, user, and connection name:
+```powershell
+gcloud sql instances create $SQL_INSTANCE --database-version=POSTGRES_15 --tier=db-custom-1-3840 --region $REGION --network=default --no-assign-ip --project $PROJECT
+gcloud sql databases create $DB_NAME --instance $SQL_INSTANCE --project $PROJECT
+$DB_PASSWORD = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+gcloud sql users create $DB_USER --instance $SQL_INSTANCE --password $DB_PASSWORD --project $PROJECT
+gcloud sql instances describe $SQL_INSTANCE --project $PROJECT --format="value(connectionName)"
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.sql.instances.create) Resource in projects [policy-insight] is the subject of a conflict: The Cloud SQL instance already exists.
+ERROR: (gcloud.sql.databases.create) HTTPError 400: Invalid request: failed to create database policyinsight. Detail: pq: database "policyinsight" already exists.
+Creating Cloud SQL user...
+.done.
+Created user [policyinsight].
+policy-insight:us-central1:policy-insight-db
+```
