@@ -3051,3 +3051,83 @@ Updating Cloud SQL user...
 .done.
 Created version [9] of the secret [db-password].
 ```
+
+### Phase 3.5: Cloud Run deploy
+
+Deploy command (initial attempt):
+```powershell
+gcloud run deploy $SERVICE --source . --region $REGION --project $PROJECT --service-account $RUNTIME_SA --add-cloudsql-instances $CONNECTION_NAME --vpc-connector $VPC_CONNECTOR --vpc-egress=private-ranges-only --min-instances 0 --allow-unauthenticated --set-env-vars "SPRING_PROFILES_ACTIVE=cloudrun,SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL,DB_HOST=/cloudsql/$CONNECTION_NAME,DB_PORT=5432,DB_NAME=$DB_NAME,DB_USER=$DB_USER,APP_STORAGE_MODE=gcp,GCS_BUCKET_NAME=$BUCKET,APP_MESSAGING_MODE=local,APP_PROCESSING_MODE=local,POLICYINSIGHT_WORKER_ENABLED=true,APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR=10,APP_RATE_LIMIT_QA_MAX_PER_HOUR=20,APP_RATE_LIMIT_QA_MAX_PER_JOB=3,APP_PROCESSING_MAX_TEXT_LENGTH=1000000,APP_PROCESSING_STAGE_TIMEOUT_SECONDS=300,APP_VALIDATION_PDF_MAX_PAGES=100,APP_VALIDATION_PDF_MAX_TEXT_LENGTH=1048576,APP_RETENTION_DAYS=30,APP_LOCAL_WORKER_POLL_MS=2000,APP_LOCAL_WORKER_BATCH_SIZE=5,APP_JOB_LEASE_DURATION_MINUTES=30,APP_JOB_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_BASE_DELAY_MS=1000" --set-secrets "DB_PASSWORD=$SECRET_DB_PASSWORD:latest,APP_TOKEN_SECRET=$SECRET_APP_TOKEN:latest"
+```
+
+Output (failed):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.run.deploy) No secret version specified for DB_PASSWORD. Use DB_PASSWORD:latest to reference the latest version.
+```
+
+Retry with explicit secret refs (failed):
+```powershell
+gcloud run deploy $SERVICE --source . --region $REGION --project $PROJECT --service-account $RUNTIME_SA --add-cloudsql-instances $CONNECTION_NAME --vpc-connector $VPC_CONNECTOR --vpc-egress=private-ranges-only --min-instances 0 --allow-unauthenticated --set-env-vars "SPRING_PROFILES_ACTIVE=cloudrun,SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL,DB_HOST=/cloudsql/$CONNECTION_NAME,DB_PORT=5432,DB_NAME=$DB_NAME,DB_USER=$DB_USER,APP_STORAGE_MODE=gcp,GCS_BUCKET_NAME=$BUCKET,APP_MESSAGING_MODE=local,APP_PROCESSING_MODE=local,POLICYINSIGHT_WORKER_ENABLED=true,APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR=10,APP_RATE_LIMIT_QA_MAX_PER_HOUR=20,APP_RATE_LIMIT_QA_MAX_PER_JOB=3,APP_PROCESSING_MAX_TEXT_LENGTH=1000000,APP_PROCESSING_STAGE_TIMEOUT_SECONDS=300,APP_VALIDATION_PDF_MAX_PAGES=100,APP_VALIDATION_PDF_MAX_TEXT_LENGTH=1048576,APP_RETENTION_DAYS=30,APP_LOCAL_WORKER_POLL_MS=2000,APP_LOCAL_WORKER_BATCH_SIZE=5,APP_JOB_LEASE_DURATION_MINUTES=30,APP_JOB_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_BASE_DELAY_MS=1000" --set-secrets "DB_PASSWORD=projects/$PROJECT/secrets/$SECRET_DB_PASSWORD:latest,APP_TOKEN_SECRET=projects/$PROJECT/secrets/$SECRET_APP_TOKEN:latest"
+```
+
+Output (failed):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.run.deploy) No secret version specified for DB_PASSWORD. Use DB_PASSWORD:latest to reference the latest version.
+```
+
+Retry with project-scoped secret refs (failed):
+```powershell
+gcloud run deploy $SERVICE --source . --region $REGION --project $PROJECT --service-account $RUNTIME_SA --add-cloudsql-instances $CONNECTION_NAME --vpc-connector $VPC_CONNECTOR --vpc-egress=private-ranges-only --min-instances 0 --allow-unauthenticated --set-env-vars "SPRING_PROFILES_ACTIVE=cloudrun,SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL,DB_HOST=/cloudsql/$CONNECTION_NAME,DB_PORT=5432,DB_NAME=$DB_NAME,DB_USER=$DB_USER,APP_STORAGE_MODE=gcp,GCS_BUCKET_NAME=$BUCKET,APP_MESSAGING_MODE=local,APP_PROCESSING_MODE=local,POLICYINSIGHT_WORKER_ENABLED=true,APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR=10,APP_RATE_LIMIT_QA_MAX_PER_HOUR=20,APP_RATE_LIMIT_QA_MAX_PER_JOB=3,APP_PROCESSING_MAX_TEXT_LENGTH=1000000,APP_PROCESSING_STAGE_TIMEOUT_SECONDS=300,APP_VALIDATION_PDF_MAX_PAGES=100,APP_VALIDATION_PDF_MAX_TEXT_LENGTH=1048576,APP_RETENTION_DAYS=30,APP_LOCAL_WORKER_POLL_MS=2000,APP_LOCAL_WORKER_BATCH_SIZE=5,APP_JOB_LEASE_DURATION_MINUTES=30,APP_JOB_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_BASE_DELAY_MS=1000" --set-secrets "DB_PASSWORD=projects/$PROJECT/secrets/$SECRET_DB_PASSWORD:latest,APP_TOKEN_SECRET=projects/$PROJECT/secrets/$SECRET_APP_TOKEN:latest"
+```
+
+Output (failed):
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+ERROR: (gcloud.run.deploy) 'projects/policy-insight/secrets/db-password' is not a valid secret name.
+```
+
+Retry with correct PowerShell interpolation (success):
+```powershell
+gcloud run deploy $SERVICE --source . --region $REGION --project $PROJECT --service-account $RUNTIME_SA --add-cloudsql-instances $CONNECTION_NAME --vpc-connector $VPC_CONNECTOR --vpc-egress=private-ranges-only --min-instances 0 --allow-unauthenticated --set-env-vars "SPRING_PROFILES_ACTIVE=cloudrun,SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL,DB_HOST=/cloudsql/$CONNECTION_NAME,DB_PORT=5432,DB_NAME=$DB_NAME,DB_USER=$DB_USER,APP_STORAGE_MODE=gcp,GCS_BUCKET_NAME=$BUCKET,APP_MESSAGING_MODE=local,APP_PROCESSING_MODE=local,POLICYINSIGHT_WORKER_ENABLED=true,APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR=10,APP_RATE_LIMIT_QA_MAX_PER_HOUR=20,APP_RATE_LIMIT_QA_MAX_PER_JOB=3,APP_PROCESSING_MAX_TEXT_LENGTH=1000000,APP_PROCESSING_STAGE_TIMEOUT_SECONDS=300,APP_VALIDATION_PDF_MAX_PAGES=100,APP_VALIDATION_PDF_MAX_TEXT_LENGTH=1048576,APP_RETENTION_DAYS=30,APP_LOCAL_WORKER_POLL_MS=2000,APP_LOCAL_WORKER_BATCH_SIZE=5,APP_JOB_LEASE_DURATION_MINUTES=30,APP_JOB_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_MAX_ATTEMPTS=3,APP_GEMINI_RETRY_BASE_DELAY_MS=1000" --set-secrets "DB_PASSWORD=${SECRET_DB_PASSWORD}:latest,APP_TOKEN_SECRET=${SECRET_APP_TOKEN}:latest"
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Building using Dockerfile and deploying container to Cloud Run service [policy-insight] in project [policy-insight] region [us-central1]
+Building and deploying...
+Validating configuration.......done
+Uploading sources..................................done
+Building Container......................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................done
+Setting IAM Policy............done
+Creating Revision........................................................................................................................................................................................................................................................................................................................................................................................done
+Routing traffic.....done
+Done.
+Service [policy-insight] revision [policy-insight-00021-8j7] has been deployed and is serving 100 percent of traffic.
+Service URL: https://policy-insight-828177954618.us-central1.run.app
+```
+
+Safe env var update (base URL + allowed origins):
+```powershell
+$SERVICE_URL = (gcloud run services describe $SERVICE --region $REGION --project $PROJECT --format="value(status.url)").Trim()
+$SERVICE_URL
+gcloud run services update $SERVICE --region $REGION --project $PROJECT --update-env-vars "APP_BASE_URL=$SERVICE_URL,APP_ALLOWED_ORIGINS=$SERVICE_URL"
+```
+
+Output:
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+https://policy-insight-icifdit4lq-uc.a.run.app
+Deploying...
+Creating Revision........................................................................................................................................................................................................................................................done
+Routing traffic.....done
+Done.
+Service [policy-insight] revision [policy-insight-00022-8cb] has been deployed and is serving 100 percent of traffic.
+Service URL: https://policy-insight-828177954618.us-central1.run.app
+```
