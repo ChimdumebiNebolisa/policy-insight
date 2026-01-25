@@ -2551,7 +2551,7 @@ Your active configuration is: [policy-insight]
 ROLE
 roles/cloudsql.client
 roles/secretmanager.secretAccessor
-ERROR: (gcloud.storage.buckets.get-iam-policy) unrecognized arguments: --filter=bindings.members:serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com (did you mean '--flatten'?) 
+ERROR: (gcloud.storage.buckets.get-iam-policy) unrecognized arguments: --filter=bindings.members:serviceAccount:policy-insight-runner@policy-insight.iam.gserviceaccount.com (did you mean '--flatten'?)
 
 To search the help text of gcloud commands, run:
   gcloud help -- SEARCH_TERMS
@@ -2560,6 +2560,38 @@ To search the help text of gcloud commands, run:
 ```
 Your active configuration is: [policy-insight]
 roles/storage.objectAdmin
+```
+
+## Step 11: Cloud Run deploy (current run)
+
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+Building using Dockerfile and deploying container to Cloud Run service [policy-insight] in project [policy-insight] region [us-central1]
+Building and deploying...
+Validating configuration......done
+Uploading sources..........................done
+Building Container.............................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................done
+Setting IAM Policy..........done
+Creating Revision..........................................................................................................................................................................................................................................................................................................done
+Routing traffic.....done
+Done.
+Service [policy-insight] revision [policy-insight-00019-hzn] has been deployed and is serving 100 percent of traffic.
+Service URL: https://policy-insight-828177954618.us-central1.run.app
+```
+
+## Step 12: Safe env var update (current run)
+
+```
+Your active configuration is: [policy-insight]
+Your active configuration is: [policy-insight]
+https://policy-insight-icifdit4lq-uc.a.run.app
+Deploying...
+Creating Revision...........................................................................................................................................................................................................................................................................done
+Routing traffic.....done
+Done.
+Service [policy-insight] revision [policy-insight-00020-d47] has been deployed and is serving 100 percent of traffic.
+Service URL: https://policy-insight-828177954618.us-central1.run.app
 ```
 
 ## Phase 3 start (2026-01-25T05:38:24-06:00)
