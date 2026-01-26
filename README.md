@@ -48,6 +48,12 @@ Minimal manual steps:
    - `gcloud run deploy policyinsight-worker ...` (no unauth, Pub/Sub push)
 5. Configure Pub/Sub push to `https://<worker-url>/internal/pubsub`
 
+## CI/CD highlight
+
+- Reduced production risk during deployments by enforcing a 90/10 canary rollout with automated post-deploy health checks before full traffic promotion (GitHub Actions, Cloud Run, Docker)
+
+Evidence: `.github/workflows/cd.yml` lines `139-178`, `186-208`, `388-392`
+
 ## Performance impact (live demo)
 
 Delivered faster results for users during public demo traffic by reducing tail latency.
@@ -61,13 +67,13 @@ Delivered faster results for users during public demo traffic by reducing tail l
 - p95: 998ms
 - p99: 1.283s
 
-**After (live demo traffic):**
+**After (production-like demo load):**
 - p50: 325ms
 - p95: 957ms
 - p99: 0.968s
 
 **How this was measured**
-- Source: Google Cloud Run `request_latencies` percentiles (p50, p95, p99) for the same service in the Cloud Run Metrics dashboard
+- Latency improved by removing a worst-case request path and shortening the median execution path, measured via Google Cloud Run `request_latencies` percentiles (p50, p95, p99) for the same service.
 
 ## Troubleshooting
 
