@@ -254,3 +254,30 @@ https://docs.cloud.google.com/run/docs/securing/managing-access
 https://docs.cloud.google.com/run/docs/configuring/services/secrets
 https://docs.cloud.google.com/pubsub/docs/push
 https://docs.cloud.google.com/pubsub/docs/authenticate-push-subscriptions
+
+---
+
+## Evidence (public demo run)
+
+- WEB_URL: https://policy-insight-828177954618.us-central1.run.app
+- jobId: 320c520a-8169-432b-a207-bd46380f4509
+- token (redacted): xgYTOMtq...SbAlE
+- report URL: https://policy-insight-828177954618.us-central1.run.app/documents/320c520a-8169-432b-a207-bd46380f4509/report
+
+Final status JSON:
+```
+{"jobId":"320c520a-8169-432b-a207-bd46380f4509","reportUrl":"/documents/320c520a-8169-432b-a207-bd46380f4509/report","message":"Analysis completed successfully","status":"SUCCESS"}
+```
+
+Pub/Sub pushConfig:
+```
+pushConfig:
+  oidcToken:
+    serviceAccountEmail: policyinsight-worker@policy-insight.iam.gserviceaccount.com
+  pushEndpoint: https://policyinsight-worker-828177954618.us-central1.run.app/internal/pubsub
+```
+
+Command used to make web public:
+```
+gcloud run services add-iam-policy-binding policyinsight-web --region us-central1 --project policy-insight --member="allUsers" --role="roles/run.invoker"
+```
