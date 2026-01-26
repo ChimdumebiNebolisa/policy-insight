@@ -39,9 +39,9 @@
                 <ul th:if="${reportData.summaryBullets.bullets}" style="list-style-type: disc; padding-left: 2rem;">
                     <li th:each="bullet : ${reportData.summaryBullets.bullets}" style="margin-bottom: 0.5rem;">
                         <span th:text="${bullet.text}">Summary bullet</span>
-                        <span th:if="${bullet.chunk_ids}" style="color: #3498db; font-size: 0.9rem;">
+                        <span th:if="${bullet.chunk_ids != null && #lists.size(bullet.chunk_ids) > 0}" style="color: #3498db; font-size: 0.9rem;">
                             [<a th:href="'#chunk-' + ${bullet.chunk_ids[0]}"
-                                th:text="'Page ' + ${bullet.page_refs ? bullet.page_refs[0] : 'N/A'}"
+                                th:text="'Page ' + ${(bullet.page_refs != null && #lists.size(bullet.page_refs) > 0) ? bullet.page_refs[0] : 'N/A'}"
                                 style="color: #3498db; text-decoration: none;">Citation</a>]
                         </span>
                     </li>
@@ -58,7 +58,7 @@
                 <ul th:if="${reportData.obligations.items}" style="list-style-type: disc; padding-left: 2rem;">
                     <li th:each="item : ${reportData.obligations.items}" style="margin-bottom: 0.5rem;">
                         <span th:text="${item.text}">Obligation</span>
-                        <span th:if="${item.citations}" style="color: #3498db; font-size: 0.9rem;">
+                        <span th:if="${item.citations != null && #lists.size(item.citations) > 0}" style="color: #3498db; font-size: 0.9rem;">
                             [<a th:href="'#chunk-' + ${item.citations[0].chunk_id}"
                                 th:text="'Page ' + ${item.citations[0].page_number}"
                                 style="color: #3498db; text-decoration: none;">Citation</a>]
@@ -71,7 +71,7 @@
                 <ul th:if="${reportData.restrictions.items}" style="list-style-type: disc; padding-left: 2rem;">
                     <li th:each="item : ${reportData.restrictions.items}" style="margin-bottom: 0.5rem;">
                         <span th:text="${item.text}">Restriction</span>
-                        <span th:if="${item.citations}" style="color: #3498db; font-size: 0.9rem;">
+                        <span th:if="${item.citations != null && #lists.size(item.citations) > 0}" style="color: #3498db; font-size: 0.9rem;">
                             [<a th:href="'#chunk-' + ${item.citations[0].chunk_id}"
                                 th:text="'Page ' + ${item.citations[0].page_number}"
                                 style="color: #3498db; text-decoration: none;">Citation</a>]
@@ -84,7 +84,7 @@
                 <ul th:if="${reportData.terminationTriggers.items}" style="list-style-type: disc; padding-left: 2rem;">
                     <li th:each="item : ${reportData.terminationTriggers.items}" style="margin-bottom: 0.5rem;">
                         <span th:text="${item.text}">Termination trigger</span>
-                        <span th:if="${item.citations}" style="color: #3498db; font-size: 0.9rem;">
+                        <span th:if="${item.citations != null && #lists.size(item.citations) > 0}" style="color: #3498db; font-size: 0.9rem;">
                             [<a th:href="'#chunk-' + ${item.citations[0].chunk_id}"
                                 th:text="'Page ' + ${item.citations[0].page_number}"
                                 style="color: #3498db; text-decoration: none;">Citation</a>]
@@ -98,14 +98,14 @@
         <section id="risks">
             <h2>Risk Taxonomy</h2>
             <div th:if="${reportData.riskTaxonomy}">
-                <div th:each="category : ${reportData.riskTaxonomy}" style="margin-bottom: 1.5rem;">
-                    <h3 th:text="${category.name}">Risk Category</h3>
-                    <div th:if="${category.detected && category.detected.size() > 0}">
+                <div th:each="entry : ${reportData.riskTaxonomy}" style="margin-bottom: 1.5rem;">
+                    <h3 th:text="${entry.key}">Risk Category</h3>
+                    <div th:if="${entry.value.items != null && #lists.size(entry.value.items) > 0}">
                         <p><strong>Detected Risks:</strong></p>
                         <ul style="list-style-type: disc; padding-left: 2rem;">
-                            <li th:each="risk : ${category.detected}" style="margin-bottom: 0.5rem;">
+                            <li th:each="risk : ${entry.value.items}" style="margin-bottom: 0.5rem;">
                                 <span th:text="${risk.text}">Risk description</span>
-                                <span th:if="${risk.citations}" style="color: #3498db; font-size: 0.9rem;">
+                                <span th:if="${risk.citations != null && #lists.size(risk.citations) > 0}" style="color: #3498db; font-size: 0.9rem;">
                                     [<a th:href="'#chunk-' + ${risk.citations[0].chunk_id}"
                                         th:text="'Page ' + ${risk.citations[0].page_number}"
                                         style="color: #3498db; text-decoration: none;">Citation</a>]
@@ -113,8 +113,11 @@
                             </li>
                         </ul>
                     </div>
-                    <div th:if="${!category.detected || category.detected.size() == 0}">
-                        <p style="color: #27ae60;"><strong>✓ Not detected</strong> – No risks found in this category.</p>
+                    <div th:if="${entry.value.items == null || #lists.size(entry.value.items) == 0}">
+                        <p style="color: #27ae60;">
+                            <strong>✓ Not detected</strong>
+                            – <span th:text="${entry.value.message != null ? entry.value.message : 'No risks found in this category.'}">No risks found in this category.</span>
+                        </p>
                     </div>
                 </div>
             </div>

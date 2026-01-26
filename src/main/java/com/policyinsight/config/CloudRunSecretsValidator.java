@@ -22,7 +22,7 @@ public class CloudRunSecretsValidator {
 
     @PostConstruct
     public void validateSecrets() {
-        String tokenSecret = environment.getProperty("security.token-secret");
+        String tokenSecret = environment.getProperty("app.security.token-secret");
         String dbPassword = environment.getProperty("spring.datasource.password");
 
         if (dbPassword == null || dbPassword.trim().isEmpty()) {
