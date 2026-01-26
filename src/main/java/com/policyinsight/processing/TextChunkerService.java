@@ -20,7 +20,7 @@ import com.policyinsight.processing.model.TextChunk;
 public class TextChunkerService {
 
     private static final Logger logger = LoggerFactory.getLogger(TextChunkerService.class);
-    private static final int MAX_CHUNK_SIZE_CHARS = 1000; // From markdown/tasks.md
+    private static final int MAX_CHUNK_SIZE_CHARS = 1000; // Demo-optimized chunk size
     private static final int MIN_CHUNK_SIZE_CHARS = 200; // Minimum to avoid tiny chunks
     private static final Pattern PARAGRAPH_BREAK = Pattern.compile("\\n\\s*\\n");
 
