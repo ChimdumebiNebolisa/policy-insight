@@ -70,7 +70,7 @@ Upload a PDF legal document → Get a structured risk report with every claim ci
 - Advanced negotiation suggestions
 - Document types beyond 3
 - Browser extensions
-- External OCR services (Document AI)
+- External OCR services (out of scope)
 - Voice input
 
 ---
