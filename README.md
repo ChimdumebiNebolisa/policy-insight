@@ -1,262 +1,84 @@
 # PolicyInsight
 
-Production-grade legal document analysis service with Datadog observability.
+PolicyInsight is a production-ready legal document analysis service that ingests PDFs, extracts grounded evidence, and delivers plain-English risk reports with citations, optimized for fast demo-grade UX and operational observability.
 
-## Overview
+## Live demo
 
-PolicyInsight analyzes legal documents (PDFs) and outputs plain-English risk reports with mandatory source citations. Every claim references extracted text with page numbers, ensuring grounded AI safety.
+**URL:** https://policy-insight-828177954618.us-central1.run.app
 
-## Tech Stack
+**Try it in 3 steps:**
+1. Open the live demo URL in a browser.
+2. Upload a PDF policy/contract (<= 50 MB).
+3. Wait for processing, then view the report and shareable link.
 
-- **Backend**: Java 21 + Spring Boot 3.3
-- **UI**: Spring MVC + Thymeleaf (server-rendered)
-- **Database**: PostgreSQL 15 + Flyway
-- **Observability**: Datadog APM + logs + metrics
-- **Cloud**: Google Cloud Run + Cloud SQL + GCS + Pub/Sub + Vertex AI
+## Architecture
 
-## Local Development
+- Browser/UI -> Cloud Run web service (Spring Boot + Thymeleaf)
+- Cloud SQL (PostgreSQL) for jobs, reports, and capability tokens
+- GCS for PDF storage
+- Pub/Sub for async processing
+- Cloud Run worker -> Vertex AI (Gemini) for analysis
+- Datadog for logs, traces, and metrics
 
-### Prerequisites
+## Core endpoints
 
-- Java 21 JDK
-- Maven 3.8+ (or use Maven wrapper)
-- Docker Desktop (for PostgreSQL)
+- `POST /api/documents/upload` Upload a PDF and receive a job token
+- `GET /api/documents/{id}/status` Processing status (token required)
+- `GET /documents/{id}/report` Rendered report with citations (token required)
+- `POST /api/questions` Grounded Q&A for a document (token required)
+- `POST /api/documents/{id}/share` Create a share link
+- `GET /documents/{id}/share/{token}` Public shared report
 
-### Quick Start
+## Local dev
 
-1. **Start PostgreSQL using Docker Compose:**
-   ```bash
-   docker compose up -d
-   ```
+1. Start Postgres: `docker compose up -d`
+2. Run the app: `.\mvnw.cmd spring-boot:run` (Windows) or `./mvnw spring-boot:run`
+3. Open: `http://localhost:8080`
 
-2. **Run the application:**
+## Deployment
 
-   On Windows:
-   ```bash
-   .\mvnw.cmd spring-boot:run
-   ```
+Preferred: push to `main` and let `.github/workflows/cd.yml` deploy the web and worker services.
 
-   On Linux/Mac:
-   ```bash
-   ./mvnw spring-boot:run
-   ```
+Minimal manual steps:
+1. Enable APIs: `run`, `sqladmin`, `storage`, `pubsub`, `artifactregistry`, `secretmanager`
+2. Create Cloud SQL, GCS bucket, and Pub/Sub topic
+3. Store DB/app secrets in Secret Manager
+4. Deploy:
+   - `gcloud run deploy policyinsight-web ...`
+   - `gcloud run deploy policyinsight-worker ...` (no unauth, Pub/Sub push)
+5. Configure Pub/Sub push to `https://<worker-url>/internal/pubsub`
 
-   Or if you have Maven installed:
-   ```bash
-   mvn spring-boot:run
-   ```
-
-3. **Access the application:**
-   - Web UI: http://localhost:8080
-   - Health endpoint: http://localhost:8080/health
-   - Readiness endpoint: http://localhost:8080/actuator/readiness
-   - Swagger UI: http://localhost:8080/swagger-ui.html
-   - OpenAPI docs: http://localhost:8080/v3/api-docs
+## Performance impact (live demo)
 
-### Database Setup
+Delivered faster results for users during public demo traffic by reducing tail latency.
 
-Flyway migrations run automatically on application startup. The baseline schema includes:
+- Tail latency improved: p99 reduced by 25% (1.28s → 0.97s)
+- Typical latency improved: p50 reduced by 30% (467ms → 325ms)
+- p95 improved: 998ms → 957ms (4%)
 
-- `policy_jobs` - Job tracking and metadata
-- `document_chunks` - Extracted text chunks with citations
-- `reports` - Generated risk reports (JSONB)
-- `qa_interactions` - Q&A interactions with grounding
-- `share_links` - Shareable report links
+**Before (baseline):**
+- p50: 467ms
+- p95: 998ms
+- p99: 1.283s
 
-To manually run migrations:
-```bash
-# Windows
-.\mvnw.cmd flyway:migrate
+**After (live demo traffic):**
+- p50: 325ms
+- p95: 957ms
+- p99: 0.968s
 
-# Linux/Mac
-./mvnw flyway:migrate
+**How this was measured**
+- Source: Google Cloud Run `request_latencies` percentiles (p50, p95, p99) for the same service in the Cloud Run Metrics dashboard
 
-# Or with Maven installed
-mvn flyway:migrate
-```
+## Troubleshooting
 
-### Configuration
+- **App fails to start**: Check `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` and Cloud SQL connectivity.
+- **Uploads fail**: Ensure the file is a PDF, <= 50 MB, and the request is `multipart/form-data`.
+- **401/403 on report or status**: Supply the job token via `X-Job-Token` or `pi_job_token_{id}` cookie.
+- **Pub/Sub push failures**: Verify the worker service account has `roles/run.invoker` and Pub/Sub OIDC config uses the worker URL as audience.
+- **Slow processing**: Inspect worker logs and Vertex AI quota/rate limits.
 
-Application configuration is in `src/main/resources/application.yml`. For local overrides, use `application-local.yml`.
+## Roadmap
 
-Key configuration:
-- Database connection (defaults to localhost:5432)
-- Server port (defaults to 8080)
-- File upload limits (50 MB max)
-
-## API Endpoints
-
-### Health & Status
-
-- `GET /health` - Basic health check
-- `GET /actuator/readiness` - Readiness check (validates DB connection)
-
-### Documents
-
-- `POST /api/documents/upload` - Upload a PDF document
-  - Requires: multipart/form-data with PDF file (max 50 MB)
-  - Validates: PDF magic bytes (%PDF-), MIME type, file size
-  - Returns: Job ID and capability token (JSON) or HTMX fragment
-  - Rate limit: 10 uploads/hour per IP
-- `GET /api/documents/{id}/status` - Get document processing status
-  - Requires: Job capability token (X-Job-Token header or pi_job_token_{id} cookie)
-  - Returns: Current status (PENDING, PROCESSING, SUCCESS, FAILED) with progress info
-- `GET /documents/{id}/report` - View analysis report (HTML)
-  - Requires: Job capability token
-  - Returns: Rendered report with citations
-- `GET /api/documents/{id}/export/pdf` - Export report as PDF
-  - Requires: Job capability token
-  - Returns: PDF file with inline citations
-
-### Q&A
-
-- `POST /api/questions` - Submit a grounded question
-  - Requires: Job capability token, document_id, question (max 500 chars)
-  - Rate limit: 20 Q&A requests/hour per IP, max 3 questions per job
-  - Returns: Citation-backed answer or abstention
-- `GET /api/questions/{document_id}` - Get Q&A history for a document
-  - Requires: Job capability token
-  - Returns: List of Q&A interactions
-
-### Sharing
-
-- `POST /api/documents/{id}/share` - Generate shareable link
-  - Requires: Job capability token
-  - Returns: Share token and expiration (7 days)
-- `GET /documents/{id}/share/{token}` - View shared report (public, no token required)
-
-### API Documentation
-
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- OpenAPI JSON: http://localhost:8080/v3/api-docs
-
-## Project Structure
-
-```
-policy-insight/
-├── src/main/java/com/policyinsight/
-│   ├── PolicyInsightApplication.java
-│   ├── api/              # REST API controllers
-│   ├── web/              # Web controllers (Thymeleaf)
-│   ├── config/           # Configuration classes
-│   └── util/             # Utility classes
-├── src/main/resources/
-│   ├── application.yml   # Application configuration
-│   ├── db/migration/     # Flyway migrations
-│   ├── templates/        # Thymeleaf templates
-│   └── static/           # Static assets (CSS, JS)
-├── docker-compose.yml    # Local PostgreSQL setup
-└── pom.xml               # Maven dependencies
-```
-
-## Development
-
-### Running Tests
-
-```bash
-# Windows
-.\mvnw.cmd test
-
-# Linux/Mac
-./mvnw test
-
-# Or with Maven installed
-mvn test
-```
-
-### Building
-
-```bash
-# Windows
-.\mvnw.cmd clean package
-
-# Linux/Mac
-./mvnw clean package
-
-# Or with Maven installed
-mvn clean package
-```
-
-### Code Quality
-
-The project follows Spring Boot best practices:
-- Structured logging with correlation IDs
-- Global exception handling
-- Input validation
-- OpenAPI documentation
-
-## CI/CD
-
-GitHub Actions workflow (`.github/workflows/ci.yml`) runs on:
-- Pull requests to `main` or `develop`
-- Pushes to `main` or `develop`
-
-The CI workflow:
-1. Sets up PostgreSQL service
-2. Runs Flyway migrations
-3. Builds the application
-4. Runs tests
-5. Packages the JAR
-
-## Security Model
-
-PolicyInsight uses **capability tokens** for access control:
-
-- **Token Generation**: Each uploaded document receives a unique capability token (32 random bytes, base64url encoded)
-- **Token Storage**: Only HMAC-SHA256 hash is stored in database (never raw tokens)
-- **Token Delivery**:
-  - JSON API clients: Token returned in response body (one-time)
-  - HTMX/browser clients: Token set as HttpOnly cookie (`pi_job_token_{jobId}`)
-- **Token Validation**: Required for all protected endpoints (status, report, export, Q&A, share generation)
-- **CSRF Protection**: State-changing endpoints (POST/PUT/PATCH/DELETE) validate Origin/Referer headers
-
-### Public Endpoints (No Token Required)
-
-- `GET /` - Landing page
-- `POST /api/documents/upload` - Upload endpoint
-- `GET /documents/{id}/share/{token}` - Share link viewing
-- `POST /internal/pubsub` - Internal Pub/Sub webhook
-- `GET /health` - Health check
-- Swagger/OpenAPI endpoints
-
-## Rate Limiting
-
-- **Upload**: 10 requests/hour per IP (configurable)
-- **Q&A**: 20 requests/hour per IP, max 3 questions per job (configurable)
-- **Implementation**: DB-backed counters with atomic upserts (Cloud Run compatible)
-
-## Job Processing
-
-- **Lease Model**: Jobs use database-backed leases to prevent concurrent processing
-- **Stuck Job Recovery**: Scheduled reaper resets expired PROCESSING jobs to PENDING (if attempts < max) or marks as FAILED
-- **Idempotent Chunks**: Chunk writes are idempotent (UNIQUE constraint + delete-before-insert)
-- **Gemini Retries**: Automatic retries for transient errors (timeouts, 429, 5xx) with exponential backoff + jitter
-
-## File Handling
-
-- **PDF Validation**: Magic bytes (%PDF-) validation in addition to MIME type check
-- **Storage Path**: Deterministic path `jobs/{jobId}/document.pdf` (ignores user filename)
-- **Text Limits**: Hard cap on extracted text length (default 1M characters, configurable)
-- **Processing Timeouts**: Stage-level timeouts enforced (default 300 seconds, configurable)
-
-## Milestones
-
-**Current Status**:
-- ✅ M1: Capability-token security
-- ✅ M2: Rate limiting + quotas
-- ✅ M3: Lease + stuck PROCESSING recovery
-- ✅ M4: Idempotent chunk writes
-- ✅ M5: Gemini-call retries
-- ✅ M6: Safer file handling + limits + tests/docs
-
-## License
-
-Apache 2.0
-
-## Documentation
-
-Additional documentation is available in the `/markdown` directory.
-
-## Contributing
-
-For questions or issues, please refer to the documentation in the `/markdown` directory.
+- Add a minimal React front end for faster UX iteration.
+- Support batch uploads and templated report exports.
+- Expand policy-specific heuristics and citation ranking.
