@@ -15,8 +15,7 @@ import java.util.List;
 import com.policyinsight.processing.model.ExtractedText;
 
 /**
- * Fallback service for extracting text from PDFs using PDFBox.
- * Used when Document AI is unavailable or disabled.
+ * Service for extracting text from PDFs using PDFBox.
  */
 @Service
 public class FallbackOcrService {

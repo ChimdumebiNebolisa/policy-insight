@@ -6,8 +6,6 @@ Production-grade legal document analysis service with Datadog observability.
 
 PolicyInsight analyzes legal documents (PDFs) and outputs plain-English risk reports with mandatory source citations. Every claim references extracted text with page numbers, ensuring grounded AI safety.
 
-![PolicyInsight Upload Interface](Screenshot%202026-01-03%20083034.png)
-
 ## Tech Stack
 
 - **Backend**: Java 21 + Spring Boot 3.3
@@ -28,7 +26,7 @@ PolicyInsight analyzes legal documents (PDFs) and outputs plain-English risk rep
 
 1. **Start PostgreSQL using Docker Compose:**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 2. **Run the application:**

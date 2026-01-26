@@ -132,7 +132,7 @@ Once runs are completed, this section will include:
 
 ## Disclaimer
 
-These metrics are measured in controlled load tests with sample data. They do not represent production traffic patterns or real-world performance under variable load conditions. External service dependencies (GCP Document AI, Vertex AI, Pub/Sub) may introduce additional latency and variability.
+These metrics are measured in controlled load tests with sample data. They do not represent production traffic patterns or real-world performance under variable load conditions. External service dependencies (Vertex AI, Pub/Sub) may introduce additional latency and variability.
 
 ---
 

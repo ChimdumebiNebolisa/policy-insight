@@ -48,9 +48,6 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(LocalDocumentProcessingWorker.class);
 
-    @Autowired(required = false)
-    private DocumentAiService documentAiService;
-
     @Autowired
     private FallbackOcrService fallbackOcrService;
 
@@ -258,7 +255,7 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
 
         InputStream pdfStream = new ByteArrayInputStream(pdfBytes);
 
-        // Extract text (try Document AI first, fallback to PDFBox) - with span
+        // Extract text using PDFBox - with span
         ExtractedText extractedText;
         String jobIdStr = Strings.safe(jobId.toString());
         Span extractSpan = null;
@@ -271,30 +268,10 @@ public class LocalDocumentProcessingWorker implements DocumentJobProcessor {
         }
 
         try (io.opentelemetry.context.Scope extractScope = extractSpan != null ? extractSpan.makeCurrent() : null) {
-            if (documentAiService != null) {
-                try {
-                    extractedText = documentAiService.extractText(pdfStream, "application/pdf");
-                    logger.info("Document AI extraction successful");
-                    if (extractSpan != null) {
-                        extractSpan.setAttribute("provider", "document_ai");
-                        extractSpan.setAttribute("fallback_used", false);
-                    }
-                } catch (Exception e) {
-                    logger.warn("Document AI extraction failed, using fallback: {}", e.getMessage());
-                    pdfStream = new ByteArrayInputStream(pdfBytes); // Reset stream
-                    extractedText = fallbackOcrService.extractText(pdfStream);
-                    if (extractSpan != null) {
-                        extractSpan.setAttribute("provider", "fallback");
-                        extractSpan.setAttribute("fallback_used", true);
-                    }
-                }
-            } else {
-                logger.info("Document AI not available, using fallback");
-                extractedText = fallbackOcrService.extractText(pdfStream);
-                if (extractSpan != null) {
-                    extractSpan.setAttribute("provider", "fallback");
-                    extractSpan.setAttribute("fallback_used", true);
-                }
+            extractedText = fallbackOcrService.extractText(pdfStream);
+            if (extractSpan != null) {
+                extractSpan.setAttribute("provider", "pdfbox");
+                extractSpan.setAttribute("fallback_used", false);
             }
         } finally {
             if (extractSpan != null) {

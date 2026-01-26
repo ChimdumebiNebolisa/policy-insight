@@ -52,6 +52,27 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
 
+      - name: Grant Secret Manager Access to Runtime SAs
+        run: |
+          WEB_SA=policyinsight-web@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+          WORKER_SA=policyinsight-worker@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+          SECRETS=(
+            cloudsql-host
+            cloudsql-port
+            cloudsql-database
+            cloudsql-username
+            cloudsql-password
+            app-token-secret
+          )
+          for sa in "$WEB_SA" "$WORKER_SA"; do
+            for secret in "${SECRETS[@]}"; do
+              gcloud secrets add-iam-policy-binding "$secret" \
+                --member="serviceAccount:$sa" \
+                --role="roles/secretmanager.secretAccessor" \
+                --project "${{ env.PROJECT_ID }}"
+            done
+          done
+
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
 
@@ -79,7 +100,7 @@ jobs:
             --allow-unauthenticated \
             --service-account policyinsight-web@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --set-env-vars DD_SERVICE=policyinsight-web,DD_ENV=prod,DD_VERSION=${{ steps.version.outputs.version }},SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GCS_BUCKET_NAME=${{ env.GCS_BUCKET_NAME }},PUBSUB_TOPIC_NAME=${{ env.PUBSUB_TOPIC_NAME }},PUBSUB_SUBSCRIPTION_NAME=${{ env.PUBSUB_SUBSCRIPTION_NAME }},DD_AGENT_HOST=${{ env.DD_AGENT_HOST }},DATADOG_ENABLED=true \
-            --update-secrets DB_HOST=cloudsql-host:latest,DB_PORT=cloudsql-port:latest,DB_NAME=cloudsql-database:latest,DB_USER=cloudsql-username:latest,DB_PASSWORD=cloudsql-password:latest \
+            --update-secrets DB_HOST=cloudsql-host:latest,DB_PORT=cloudsql-port:latest,DB_NAME=cloudsql-database:latest,DB_USER=cloudsql-username:latest,DB_PASSWORD=cloudsql-password:latest,APP_TOKEN_SECRET=app-token-secret:latest \
             --add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.CLOUDSQL_INSTANCE }} \
             --tag web-${{ steps.version.outputs.version }} \
             --no-traffic
@@ -98,7 +119,7 @@ jobs:
             --timeout=600 \
             --service-account $WORKER_SA \
             --set-env-vars DD_SERVICE=policyinsight-worker,DD_ENV=prod,DD_VERSION=${{ steps.version.outputs.version }},POLICYINSIGHT_WORKER_ENABLED=true,SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GCS_BUCKET_NAME=${{ env.GCS_BUCKET_NAME }},PUBSUB_TOPIC_NAME=${{ env.PUBSUB_TOPIC_NAME }},PUBSUB_SUBSCRIPTION_NAME=${{ env.PUBSUB_SUBSCRIPTION_NAME }},DD_AGENT_HOST=${{ env.DD_AGENT_HOST }},DATADOG_ENABLED=true,PUBSUB_PUSH_VERIFICATION_ENABLED=true,PUBSUB_PUSH_EXPECTED_EMAIL=$WORKER_SA,APP_MESSAGING_MODE=gcp,PUBSUB_PUSH_MODE=true \
-            --update-secrets DB_HOST=cloudsql-host:latest,DB_PORT=cloudsql-port:latest,DB_NAME=cloudsql-database:latest,DB_USER=cloudsql-username:latest,DB_PASSWORD=cloudsql-password:latest \
+            --update-secrets DB_HOST=cloudsql-host:latest,DB_PORT=cloudsql-port:latest,DB_NAME=cloudsql-database:latest,DB_USER=cloudsql-username:latest,DB_PASSWORD=cloudsql-password:latest,APP_TOKEN_SECRET=app-token-secret:latest \
             --add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.CLOUDSQL_INSTANCE }} \
             --tag worker-${{ steps.version.outputs.version }} \
             --no-traffic
@@ -109,6 +130,11 @@ jobs:
           gcloud run services update policyinsight-worker \
             --region=${{ env.REGION }} \
             --update-env-vars PUBSUB_PUSH_EXPECTED_AUDIENCE=$WORKER_URL
+
+      - name: Capture Cloud Run Env (Evidence)
+        run: |
+          gcloud run services describe policyinsight-web --region ${{ env.REGION }} --format='yaml(spec.template.spec.containers[0].env)'
+          gcloud run services describe policyinsight-worker --region ${{ env.REGION }} --format='yaml(spec.template.spec.containers[0].env)'
 
       - name: Smoke Test Web Service
         run: |
@@ -302,6 +328,62 @@ jobs:
           fi
 
           echo "✓ Pub/Sub push subscription configuration verified"
+
+      - name: Verify Pub/Sub Push Auth (Direct Calls)
+        if: success()
+        run: |
+          WORKER_URL=${{ steps.deploy-worker.outputs.worker_url }}/internal/pubsub
+          WORKER_SA=policyinsight-worker@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+          AUDIENCE=${{ steps.deploy-worker.outputs.worker_url }}
+
+          # Negative test: missing Authorization header
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$WORKER_URL" -d '{}' || echo "000")
+          if [ "$HTTP_CODE" != "401" ]; then
+            echo "ERROR: Expected 401 for missing Authorization header, got $HTTP_CODE"
+            exit 1
+          fi
+          echo "✓ Missing auth rejected (HTTP $HTTP_CODE)"
+
+          # Negative test: invalid token
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$WORKER_URL" \
+            -H "Authorization: Bearer invalid" -d '{}' || echo "000")
+          if [ "$HTTP_CODE" != "401" ]; then
+            echo "ERROR: Expected 401 for invalid token, got $HTTP_CODE"
+            exit 1
+          fi
+          echo "✓ Invalid token rejected (HTTP $HTTP_CODE)"
+
+          # Positive test: valid token (impersonate worker SA)
+          TOKEN=$(gcloud auth print-identity-token \
+            --impersonate-service-account="$WORKER_SA" \
+            --audiences="$AUDIENCE")
+          export PUBSUB_DATA=$(python - <<'PY'
+import base64, json, uuid
+payload = json.dumps({"job_id": str(uuid.uuid4())}).encode("utf-8")
+print(base64.b64encode(payload).decode("utf-8"))
+PY
+          )
+          BODY=$(python - <<'PY'
+import json, os
+data = os.environ["PUBSUB_DATA"]
+print(json.dumps({
+  "message": {
+    "data": data,
+    "messageId": "ci-test"
+  },
+  "subscription": "projects/ci-test/subscriptions/ci-test"
+}))
+PY
+          )
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$WORKER_URL" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$BODY" || echo "000")
+          if [ "$HTTP_CODE" != "204" ]; then
+            echo "ERROR: Expected 204 for valid push request, got $HTTP_CODE"
+            exit 1
+          fi
+          echo "✓ Valid push request acknowledged (HTTP $HTTP_CODE)"
 
       - name: Final Health Check
         run: |

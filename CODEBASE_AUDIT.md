@@ -172,8 +172,7 @@ policy-insight/
 │  │                                                           │  │
 │  │  STAGE 1: Text Extraction                                │  │
 │  │    ├─ Download PDF from storage                          │  │
-│  │    ├─ Try DocumentAiService.extractText() [optional]     │  │
-│  │    └─ Fallback: FallbackOcrService.extractText()         │  │
+│  │    └─ FallbackOcrService.extractText() (PDFBox)          │  │
 │  │                                                           │  │
 │  │  STAGE 2: Chunking                                        │  │
 │  │    ├─ TextChunkerService.chunkText()                     │  │
@@ -255,7 +254,6 @@ policy-insight/
 | Messaging (Local) | `NoopJobPublisher` | `src/main/java/com/policyinsight/api/messaging/NoopJobPublisher.java` | No-op implementation |
 | Worker | `LocalDocumentProcessingWorker` | `src/main/java/com/policyinsight/processing/LocalDocumentProcessingWorker.java:100-137` | `pollAndProcessJobs()`, `processDocument()` |
 | Extraction | `FallbackOcrService` | `src/main/java/com/policyinsight/processing/FallbackOcrService.java` | `extractText()` |
-| Extraction (optional) | `DocumentAiService` | `src/main/java/com/policyinsight/processing/DocumentAiService.java` | `extractText()` (stub) |
 | Chunking | `TextChunkerService` | `src/main/java/com/policyinsight/processing/TextChunkerService.java:33-96` | `chunkText()` |
 | Classification | `DocumentClassifierService` | `src/main/java/com/policyinsight/processing/DocumentClassifierService.java` | `classify()` |
 | Risk Analysis | `RiskAnalysisService` | `src/main/java/com/policyinsight/processing/RiskAnalysisService.java` | `analyzeRisks()` |
@@ -757,7 +755,6 @@ JPA cascade (if configured via `@OneToMany(cascade = CascadeType.ALL)`) operates
 - Configuration: `application.yml:146-149`, `application-cloudrun.yml`
 
 **Other Stub Implementations:**
-- `DocumentAiService` is a stub that throws exceptions (forces fallback to PDFBox) (`DocumentAiService.java:54-58`)
 - `DatadogMetricsServiceStub` and `TracingServiceStub` when Datadog is disabled
 
 ### F.2) Grounding Limitations
@@ -1019,7 +1016,7 @@ JPA cascade (if configured via `@OneToMany(cascade = CascadeType.ALL)`) operates
 
 **PDF Parsing Safety:**
 - **Library:** Apache PDFBox 3.0.1 (`pom.xml:175-178`)
-- **Fallback:** Used when Document AI is unavailable (`LocalDocumentProcessingWorker.java:292-298`)
+- **Extraction:** PDFBox text extraction in the worker pipeline (`LocalDocumentProcessingWorker.java`)
 - **Error Handling:** Invalid PDFs result in FAILED status with error message (`LocalDocumentProcessingWorker.java:229-234`)
 
 **Virus Scanning:** Not implemented (mentioned as optional in PRD, not found in code)

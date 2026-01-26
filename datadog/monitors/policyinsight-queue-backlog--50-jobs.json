@@ -3,7 +3,7 @@
   "org_id": 1300825116,
   "type": "metric alert",
   "name": "[PolicyInsight] Queue Backlog > 50 Jobs",
-  "message": "Queue backlog has exceeded 50 pending jobs for the last 5 minutes.\n\nThis may indicate:\n- Worker instances are slow or crashed\n- Document AI quota/throttling\n- Gemini API quota/throttling\n- Database connection issues\n\nCheck:\n- Worker pod logs (Cloud Run)\n- Document AI quota status\n- Gemini API quota status\n- Worker crash logs\n\n@on-call-engineering",
+  "message": "Queue backlog has exceeded 50 pending jobs for the last 5 minutes.\n\nThis may indicate:\n- Worker instances are slow or crashed\n- Gemini API quota/throttling\n- Database connection issues\n\nCheck:\n- Worker pod logs (Cloud Run)\n- Gemini API quota status\n- Worker crash logs\n\n@on-call-engineering",
   "tags": [
     "service:policy-insight",
     "alert_type:backlog",

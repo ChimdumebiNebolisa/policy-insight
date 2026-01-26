@@ -74,7 +74,6 @@ Defined via config and code:
 - Pub/Sub push auth: `PUBSUB_PUSH_VERIFICATION_ENABLED`, `PUBSUB_PUSH_EXPECTED_EMAIL`, `PUBSUB_PUSH_EXPECTED_AUDIENCE` (`application.yml`, `PubSubTokenVerifier`)
 - GCP project: `GOOGLE_CLOUD_PROJECT` (`application.yml`, `GeminiService`, `PubSubService`)
 - Vertex AI: `VERTEX_AI_ENABLED`, `VERTEX_AI_LOCATION`, `VERTEX_AI_MODEL` (`application.yml`, `GeminiService`)
-- Document AI: `DOCUMENT_AI_ENABLED`, `DOCUMENT_AI_LOCATION`, `DOCUMENT_AI_PROCESSOR_ID` (`application.yml`, `DocumentAiService`)
 - Worker: `POLICYINSIGHT_WORKER_ENABLED` (`application.yml`, `application-local.yml`)
 - Datadog: `DATADOG_ENABLED`, `DD_AGENT_HOST`, `DD_DOGSTATSD_PORT`, `DD_SERVICE`, `DD_ENV`, `DD_VERSION`, `DD_LOGS_INJECTION` (`application.yml`, `DatadogMetricsConfig`, `logback-spring.xml`)
 - Datadog agent container: `DD_API_KEY`, `DD_SITE` (`docker-compose.datadog.yml`)
@@ -88,7 +87,6 @@ Defined via config and code:
 - Docker not running → tests and DB startup fail (Testcontainers + Docker Compose).
 - DB auth mismatch → Flyway fails to connect (`application.yml` defaults vs actual DB credentials).
 - If `APP_TOKEN_SECRET` left default → warning logged (`TokenService`).
-- Document AI enabled → currently a stub that throws (falls back to PDFBox) (`DocumentAiService`).
 
 ## 3) What works vs what is broken (verified)
 
@@ -121,7 +119,7 @@ Request flow (main upload path):
    - Cloud: Pub/Sub push hits `/internal/pubsub` (`PubSubController` + `DocumentProcessingWorker`).
 3. Worker pipeline:
    - Download PDF → validate page count and text length (`StorageService`, `PdfValidator`).
-   - Extract text (Document AI optional; fallback PDFBox) (`DocumentAiService`, `FallbackOcrService`).
+   - Extract text (PDFBox text extraction) (`FallbackOcrService`).
    - Chunk text (`TextChunkerService`).
    - Classify document (`DocumentClassifierService`).
    - Risk analysis and summary via Gemini (`RiskAnalysisService`, `ReportGenerationService`, `GeminiService`).
@@ -216,7 +214,6 @@ Connection config (local defaults):
 | Google Pub/Sub | `application.yml`, `PubSubService`, `DocumentProcessingWorker` | ADC + Pub/Sub topic/subscription | Publisher/subscriber init fails | No‑op publisher (`NoopJobPublisher`) |
 | Pub/Sub Push Auth | `PubSubTokenVerifier` | `PUBSUB_PUSH_EXPECTED_EMAIL`, `PUBSUB_PUSH_EXPECTED_AUDIENCE` | Rejects push if missing/invalid | Can disable verification with `PUBSUB_PUSH_VERIFICATION_ENABLED=false` |
 | Vertex AI Gemini | `GeminiService` | ADC + `VERTEX_AI_ENABLED=true` + project/location | Throws if client init fails | Stub mode when `VERTEX_AI_ENABLED=false` |
-| Document AI | `DocumentAiService` | `DOCUMENT_AI_ENABLED=true` + processor id | **Stub implementation always throws** | Fallback PDFBox extraction |
 | Datadog | `DatadogMetricsConfig`, `logback-spring.xml`, `docker-compose.datadog.yml` | `DD_*` + `DD_API_KEY` for agent | Metrics/logs not exported | Disabled by default |
 
 ## 8) Observability and ops readiness
@@ -242,7 +239,6 @@ Implemented controls (evidence):
 Findings / risks:
 - **Share revoke endpoint is not protected by job token.**
   `POST /api/documents/{id}/share/revoke` does not match any protected pattern, so it bypasses `JobTokenInterceptor`. Any caller can revoke a share link if they know the job ID (`JobTokenInterceptor`, `ShareController`).
-- **Document AI is a stub.** Enabling `DOCUMENT_AI_ENABLED=true` will still throw and fallback. In production, this is misleading and likely to fail SLA expectations (`DocumentAiService`).
 - **Token secret default** (`APP_TOKEN_SECRET=change-me-in-production`) is logged as a warning; if not overridden, tokens are weak (`TokenService`).
 - **CSRF allow‑origin logic is unusual.** `origin.startsWith(allowed.replace("localhost",""))` can match more than intended if `allowed` is not strict (`JobTokenInterceptor`).
 - **DebugConfig writes DB connection metadata to disk** under `.cursor\debug.log`. Not a secret leak of passwords but can expose infrastructure details (`DebugConfig`).
@@ -251,10 +247,9 @@ Findings / risks:
 ## 10) Deployability assessment
 
 **Can it be deployed as-is?**
-Yes, if a PostgreSQL instance is available, Docker is running (for local), and required env vars are set. However, Document AI integration is a stub and some security gaps exist.
+Yes, if a PostgreSQL instance is available, Docker is running (for local), and required env vars are set. Some security gaps still exist.
 
 **What’s missing for a real deploy:**
-- Real Document AI client (currently a stub).
 - Verified DB credentials / secrets management.
 - Fix for share‑revoke endpoint protection.
 - Clear production env documentation for Google ADC and Datadog.
@@ -263,8 +258,7 @@ Yes, if a PostgreSQL instance is available, Docker is running (for local), and r
 
 P0 (blockers):
 1. Protect `POST /api/documents/{id}/share/revoke` with job token (security bug) (`JobTokenInterceptor` patterns).
-2. Document AI implementation is stubbed; enabling it will not work (`DocumentAiService`).
-3. Local run requires correct DB credentials; Docker/DB must be running (startup failure observed).
+2. Local run requires correct DB credentials; Docker/DB must be running (startup failure observed).
 
 P1 (should fix):
 1. Tighten CSRF origin matching logic (avoid broad `startsWith` match) (`JobTokenInterceptor`).
@@ -286,3 +280,8 @@ Milestone 0 (preflight):
 Milestone 1 (job-token enforcement):
 - `.\mvnw.cmd test` passed. Surefire summary: `Tests run: 70, Failures: 0, Errors: 0, Skipped: 0`.
 - Verified unauthorized revoke is blocked: `POST /api/documents/{id}/share/revoke` returns 401 without `X-Job-Token` (covered by `ShareLinkRevocationTest`).
+
+Milestone A3 (repo hygiene verification):
+- Commands run: `.\mvnw.cmd test`, `powershell -ExecutionPolicy Bypass -File scripts/verify-local.ps1 -PdfPath "src/test/resources/valid.pdf"`.
+- Surefire summary: `Tests run: 71, Failures: 0, Errors: 0, Skipped: 0`.
+- verify-local highlights: `Postgres is healthy after 6 attempt(s).` `App is healthy after 1 attempt(s).` `App is ready after 1 attempt(s).` `Migrations are ready after 1 attempt(s).` `Status: SUCCESS`.

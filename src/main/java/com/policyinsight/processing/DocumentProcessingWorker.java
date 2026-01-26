@@ -52,9 +52,6 @@ public class DocumentProcessingWorker implements DocumentJobProcessor {
     private final String subscriptionName;
     private Subscriber subscriber;
 
-    @Autowired(required = false)
-    private DocumentAiService documentAiService;
-
     @Autowired
     private FallbackOcrService fallbackOcrService;
 
@@ -94,10 +91,6 @@ public class DocumentProcessingWorker implements DocumentJobProcessor {
 
     @PostConstruct
     public void initialize() {
-        if (documentAiService == null) {
-            logger.info("Document AI service not available, will use fallback OCR");
-        }
-
         // Check if we should start the subscriber (only for pull mode, not push mode)
         // In push mode, Pub/Sub sends messages to /internal/pubsub endpoint, so we don't need a subscriber
         String pushMode = System.getenv("PUBSUB_PUSH_MODE");
@@ -197,22 +190,8 @@ public class DocumentProcessingWorker implements DocumentJobProcessor {
             byte[] pdfBytes = storageService.downloadFile(storagePath);
             InputStream pdfStream = new ByteArrayInputStream(pdfBytes);
 
-            // Extract text (try Document AI first, fallback to PDFBox)
-            ExtractedText extractedText;
-
-            if (documentAiService != null) {
-                try {
-                    extractedText = documentAiService.extractText(pdfStream, "application/pdf");
-                    logger.info("Document AI extraction successful");
-                } catch (Exception e) {
-                    logger.warn("Document AI extraction failed, using fallback: {}", e.getMessage());
-                    pdfStream = new ByteArrayInputStream(pdfBytes); // Reset stream
-                    extractedText = fallbackOcrService.extractText(pdfStream);
-                }
-            } else {
-                logger.info("Document AI not available, using fallback");
-                extractedText = fallbackOcrService.extractText(pdfStream);
-            }
+            // Extract text using PDFBox (Gemini-only pipeline)
+            ExtractedText extractedText = fallbackOcrService.extractText(pdfStream);
 
             // Chunk text
             List<TextChunk> chunks = textChunkerService.chunkText(extractedText);

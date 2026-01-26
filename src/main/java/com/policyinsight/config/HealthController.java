@@ -28,7 +28,7 @@ public class HealthController {
         response.put("timestamp", Instant.now().toString());
 
         // For Milestone 1, we only have database check
-        // In later milestones, add GCS, DocumentAI, VertexAI, Pub/Sub checks
+        // In later milestones, add GCS, VertexAI, Pub/Sub checks
         Map<String, Object> checks = new HashMap<>();
         if (dbHealth.getDetails().containsKey("database")) {
             checks.put("db", dbHealth.getDetails().get("database"));
