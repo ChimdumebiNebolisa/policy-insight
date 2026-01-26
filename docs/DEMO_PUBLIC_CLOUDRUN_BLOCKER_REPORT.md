@@ -58,6 +58,32 @@ gcloud run services add-iam-policy-binding policyinsight-web --region $REGION --
 ```
 Org policy may block `allUsers`; fallback: keep it private and rely on share-token flow, or disable Invoker IAM checks at the org level (if allowed).
 
+#### Make web service public for demo
+## Public demo: make policyinsight-web unauthenticated
+
+### Option A (preferred): allow unauthenticated at deploy time
+gcloud run deploy policyinsight-web \
+  --allow-unauthenticated \
+  --region us-central1 \
+  --project $PROJECT
+
+### Option B: make an existing service public via IAM binding
+gcloud run services add-iam-policy-binding policyinsight-web \
+  --member="allUsers" \
+  --role="roles/run.invoker" \
+  --region us-central1 \
+  --project $PROJECT
+
+### If org policy blocks allUsers (Domain Restricted Sharing)
+Use Cloud Run “disable invoker IAM check” instead of allUsers:
+- New service:
+  gcloud run deploy policyinsight-web --no-invoker-iam-check --region us-central1 --project $PROJECT
+- Existing service:
+  gcloud run services update policyinsight-web --no-invoker-iam-check --region us-central1 --project $PROJECT
+
+### Verify public access
+gcloud run services describe policyinsight-web --region us-central1 --project $PROJECT
+
 2) Confirm Pub/Sub push acknowledgement and auth expectations
 - Ack only on: **102 / 200 / 201 / 202 / 204** (any other code triggers redelivery).
 - Pub/Sub push can use authenticated push with a JWT in the `Authorization` header.
