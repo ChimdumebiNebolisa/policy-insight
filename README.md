@@ -1,6 +1,6 @@
 # PolicyInsight
 
-PolicyInsight is a document analysis service that ingests PDFs, extracts grounded evidence, and delivers plain-English risk reports with citations, optimized for fast demo-grade UX and operational observability.
+PolicyInsight is a document analysis service that ingests PDFs, extracts grounded evidence, and delivers plain-English risk reports with citations, optimized for fast response time and operational observability.
 
 ## Live demo
 
