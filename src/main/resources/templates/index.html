@@ -46,12 +46,11 @@
                 </form>
                 <div id="status"></div>
 
-                <!-- Sample PDF demo – visible in both normal and sleep mode -->
+                <!-- Sample demo – works without DB/upload (both normal and sleep mode) -->
                 <div class="sample-demo-links">
                     <p>Try without uploading:</p>
-                    <a th:href="@{/sample-report}">Try with sample PDF</a>
-                    <span style="color: #999;"> · </span>
-                    <a th:href="@{/sample-pdf}" download="sample.pdf">Download sample PDF</a>
+                    <a th:href="@{/sample-report}" class="btn-secondary">Try sample report</a>
+                    <a th:href="@{/sample-pdf}" download="sample.pdf" class="btn-secondary">Download sample PDF</a>
                 </div>
             </div>
         </section>
