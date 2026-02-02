@@ -35,6 +35,23 @@ PolicyInsight is a document analysis service that ingests PDFs, extracts grounde
 2. Run the app: `.\mvnw.cmd spring-boot:run` (Windows) or `./mvnw spring-boot:run`
 3. Open: `http://localhost:8080`
 
+### Demo sleep mode (no DB required)
+
+When `DEMO_SLEEP=true` and profile `demSleep` is active (`SPRING_PROFILES_ACTIVE=cloudrun,demSleep`), the web service starts without requiring Cloud SQL. The revision becomes Ready and `GET /` returns 200 with a sleep landing page.
+
+**Quick verification (local):**
+
+- Windows: `$env:DEMO_SLEEP="true"; $env:SPRING_PROFILES_ACTIVE="demSleep"; .\mvnw.cmd spring-boot:run`
+- Linux/macOS: `DEMO_SLEEP=true SPRING_PROFILES_ACTIVE=demSleep ./mvnw spring-boot:run`
+
+Then in another terminal (or after startup):
+
+- `GET /` → 200, sleep landing page
+- `GET /health` → 200, status UP
+- `GET /readiness` → 200, status UP
+
+**Note:** Stopping Cloud SQL should not affect `GET /` returning 200 when the web service is in sleep mode.
+
 ## Deployment
 
 Preferred: push to `main` and let `.github/workflows/cd.yml` deploy the web and worker services.

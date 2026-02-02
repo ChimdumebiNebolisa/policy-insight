@@ -1,6 +1,7 @@
 package com.policyinsight.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +13,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 
 @Configuration
+@ConditionalOnProperty(name = "app.demo-sleep", havingValue = "false", matchIfMissing = true)
 public class DebugConfig implements ApplicationListener<ApplicationReadyEvent> {
 
     @Value("${spring.datasource.url}")
