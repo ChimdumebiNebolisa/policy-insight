@@ -3,103 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PolicyInsight – Upload Document</title>
+    <title>PolicyInsight – Document Analysis</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
-    <!-- Sleep mode banner – when app.demo-sleep=true -->
-    <div th:if="${demoSleep}" class="sleep-banner" role="alert">
-        Live demo may be paused to reduce costs. If upload fails, refresh later or <a th:href="@{/sample-report}">view sample report</a>.
-    </div>
-    <!-- Subtle info banner – when app.demo-sleep=false -->
-    <div th:unless="${demoSleep}" class="info-banner" role="status">
-        Upload a PDF to get a plain-English risk report with citations.
+    <!-- Sleep mode banner – sticky alert when app.demo-sleep=true -->
+    <div th:if="${demoSleep}" class="alert-banner alert-warning" role="alert">
+        <span class="alert-icon">&#9888;</span>
+        <span class="alert-text">
+            <strong>Demo paused</strong> – Live demo may be paused to reduce costs.
+            If upload fails, refresh later or <a th:href="@{/sample-report}">view sample report</a>.
+        </span>
     </div>
 
-    <header>
-        <h1>PolicyInsight</h1>
-        <p>Analyze legal documents. Understand what you're agreeing to.</p>
+    <header class="site-header">
+        <div class="header-content">
+            <h1>PolicyInsight</h1>
+            <p class="tagline">Analyze legal documents. Understand what you're agreeing to.</p>
+        </div>
     </header>
 
-    <main>
-        <!-- Sleep mode: Sample demo is primary, shown first -->
-        <section th:if="${demoSleep}" id="sample-section">
-            <h2>Try the Demo</h2>
-            <div class="upload-card">
-                <p style="margin-bottom: 1rem; color: #555;">Explore a pre-analyzed sample document to see how PolicyInsight works.</p>
-                <div class="sample-demo-primary">
-                    <a th:href="@{/sample-report}" class="btn-primary btn-large">Try sample report</a>
-                    <a th:href="@{/sample-pdf}" download="sample.pdf" class="btn-secondary">Download sample PDF</a>
+    <main class="container">
+        <!-- Two-card layout -->
+        <div class="card-grid">
+            <!-- Card 1: Try the Demo (always shown, primary in sleep mode) -->
+            <section class="card card-demo" th:classappend="${demoSleep} ? 'card-primary' : ''">
+                <div class="card-header">
+                    <h2>Try the Demo</h2>
                 </div>
-            </div>
-        </section>
-
-        <section id="upload-section">
-            <h2>Upload Document</h2>
-            <div class="upload-card">
-                <!-- Sleep mode: upload disabled -->
-                <div th:if="${demoSleep}" class="upload-disabled-notice">
-                    <p>Uploads are disabled in sleep mode.</p>
-                </div>
-                <form id="upload-form"
-                      hx-post="/api/documents/upload"
-                      hx-target="#status"
-                      hx-swap="innerHTML"
-                      hx-encoding="multipart/form-data"
-                      hx-indicator="#upload-spinner">
-                    <div class="form-group">
-                        <label for="file-input">Select PDF:</label>
-                        <input type="file"
-                               id="file-input"
-                               name="file"
-                               accept=".pdf"
-                               required
-                               th:disabled="${demoSleep}">
-                        <small th:unless="${demoSleep}">Max 50 MB</small>
-                        <small th:if="${demoSleep}" class="disabled-hint">Upload unavailable – demo is sleeping.</small>
+                <div class="card-body">
+                    <p class="card-description">Explore a pre-analyzed sample document to see how PolicyInsight extracts risks, obligations, and citations.</p>
+                    <div class="button-group">
+                        <a th:href="@{/sample-report}" class="btn btn-primary">Try sample report</a>
+                        <a th:href="@{/sample-pdf}" download="sample.pdf" class="btn btn-outline">Download sample PDF</a>
                     </div>
-                    <button type="submit" class="btn-primary" th:disabled="${demoSleep}">Analyze Document</button>
-                    <span id="upload-spinner" class="htmx-indicator" style="margin-left: 1rem;">Uploading...</span>
-                </form>
-                <div id="status"></div>
+                </div>
+            </section>
 
-                <!-- Normal mode: Sample demo links below upload -->
-                <div th:unless="${demoSleep}" class="sample-demo-links">
-                    <p>Try without uploading:</p>
-                    <a th:href="@{/sample-report}" class="btn-secondary">Try sample report</a>
-                    <a th:href="@{/sample-pdf}" download="sample.pdf" class="btn-secondary">Download sample PDF</a>
+            <!-- Card 2: Upload Document -->
+            <section class="card card-upload" th:classappend="${demoSleep} ? 'card-disabled' : ''">
+                <div class="card-header">
+                    <h2>Upload Document</h2>
+                    <span th:if="${demoSleep}" class="badge badge-warning">Disabled</span>
+                </div>
+                <div class="card-body">
+                    <!-- Sleep mode notice -->
+                    <div th:if="${demoSleep}" class="notice notice-warning">
+                        <span class="notice-icon">&#128274;</span>
+                        <span>Uploads are disabled while demo is sleeping. Use the sample report to explore features.</span>
+                    </div>
+
+                    <form id="upload-form"
+                          hx-post="/api/documents/upload"
+                          hx-target="#status"
+                          hx-swap="innerHTML"
+                          hx-encoding="multipart/form-data"
+                          hx-indicator="#upload-spinner">
+                        <div class="form-group">
+                            <label for="file-input" class="form-label">Select PDF</label>
+                            <div class="file-input-wrapper">
+                                <input type="file"
+                                       id="file-input"
+                                       name="file"
+                                       accept=".pdf"
+                                       required
+                                       th:disabled="${demoSleep}">
+                            </div>
+                            <span th:unless="${demoSleep}" class="form-hint">PDF files up to 50 MB</span>
+                            <span th:if="${demoSleep}" class="form-hint form-hint-disabled">Upload unavailable in sleep mode</span>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" th:disabled="${demoSleep}">
+                                <span class="btn-text">Analyze Document</span>
+                            </button>
+                            <span id="upload-spinner" class="htmx-indicator spinner">Analyzing...</span>
+                        </div>
+                    </form>
+                    <div id="status"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- How it works – 3-column cards -->
+        <section class="how-it-works">
+            <h2 class="section-title">How it works</h2>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">Upload</h3>
+                    <p class="step-description">Upload a PDF policy or terms document (up to 50 MB).</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">Analyze</h3>
+                    <p class="step-description">We extract text, classify the document, and run risk and obligation analysis.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title">Review</h3>
+                    <p class="step-description">View a plain-English summary, obligations, restrictions, and risk taxonomy with citations.</p>
                 </div>
             </div>
         </section>
 
-        <section class="how-it-works">
-            <h2>How it works</h2>
-            <ol>
-                <li>
-                    <strong>Upload</strong>
-                    <span>Upload a PDF policy or terms document (up to 50 MB).</span>
-                </li>
-                <li>
-                    <strong>Analyze</strong>
-                    <span>We extract text, classify the document, and run risk and obligation analysis.</span>
-                </li>
-                <li>
-                    <strong>Review</strong>
-                    <span>View a plain-English summary, obligations, restrictions, and risk taxonomy with citations.</span>
-                </li>
-            </ol>
-        </section>
-
-        <p class="privacy-line">Files are processed for analysis and may be retained per retention settings.</p>
-
-        <section id="disclaimer" class="warning-box">
-            <strong>⚠️ Not Legal Advice</strong>
-            <p>PolicyInsight provides clarity and risk surfacing. It is not a substitute for legal counsel.</p>
+        <!-- Disclaimer card -->
+        <section class="disclaimer-card">
+            <div class="disclaimer-icon">&#9888;</div>
+            <div class="disclaimer-content">
+                <strong>Not Legal Advice</strong>
+                <p>PolicyInsight provides clarity and risk surfacing. It is not a substitute for legal counsel. Outputs include citations to source pages.</p>
+            </div>
         </section>
     </main>
 
-    <footer>
+    <footer class="site-footer">
         <p>Built with Spring Boot, Vertex AI, and Datadog.</p>
     </footer>
 </body>
