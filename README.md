@@ -29,6 +29,15 @@ PolicyInsight is a document analysis service that ingests PDFs, extracts grounde
 - `POST /api/documents/{id}/share` Create a share link
 - `GET /documents/{id}/share/{token}` Public shared report
 
+### Sample demo (offline, no DB)
+
+These endpoints work without Cloud SQL, Pub/Sub, Vertex AI, or any external calls. Use them to try the app when the live pipeline is unavailable or in sleep mode.
+
+- `GET /sample-report` Renders a static sample report (citations, sections, risk bullets). No DB or upload required.
+- `GET /sample-pdf` Serves a bundled sample PDF with correct `Content-Type: application/pdf`.
+
+The homepage includes **Try sample report** and **Download sample PDF** buttons that use these routes.
+
 ## Local dev
 
 1. Start Postgres: `docker compose up -d`
@@ -38,6 +47,8 @@ PolicyInsight is a document analysis service that ingests PDFs, extracts grounde
 ### Demo sleep mode (no DB required)
 
 When `DEMO_SLEEP=true` and profile `demSleep` is active (`SPRING_PROFILES_ACTIVE=cloudrun,demSleep`), the web service starts without requiring Cloud SQL. The revision becomes Ready and `GET /` returns 200 with a sleep landing page.
+
+**Sleep mode disclaimer:** When in sleep mode, the homepage shows a red banner: *"Live demo may be paused to reduce costs. If upload fails, refresh later or view sample report."* Use **Try sample report** and **Download sample PDF** on the homepage to try the app without upload or DB.
 
 **Quick verification (local):**
 
@@ -49,6 +60,8 @@ Then in another terminal (or after startup):
 - `GET /` → 200, sleep landing page
 - `GET /health` → 200, status UP
 - `GET /readiness` → 200, status UP
+- `GET /sample-report` → 200 (offline sample report)
+- `GET /sample-pdf` → 200 (bundled PDF)
 
 **Note:** Stopping Cloud SQL should not affect `GET /` returning 200 when the web service is in sleep mode.
 
