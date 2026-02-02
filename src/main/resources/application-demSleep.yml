@@ -1,6 +1,5 @@
 # Demo sleep profile: start web container without requiring Cloud SQL.
-# Activate with SPRING_PROFILES_ACTIVE=cloudrun,demSleep and DEMO_SLEEP=true.
-# Container becomes Ready and GET / returns 200 with a sleep landing page.
+# Activate with SPRING_PROFILES_ACTIVE=cloudrun and SPRING_PROFILES_INCLUDE=demSleep.
 
 app:
   demo-sleep: true
@@ -8,20 +7,11 @@ app:
 spring:
   flyway:
     enabled: false
+
   jpa:
     hibernate:
       ddl-auto: none
-  datasource:
-    hikari:
-      initialization-fail-timeout: -1
-      connection-timeout: 3000
 
-management:
-  health:
-    db:
-      enabled: false
-
-spring:
   datasource:
     hikari:
       minimum-idle: 0
@@ -31,4 +21,9 @@ spring:
 
   task:
     scheduling:
+      enabled: false
+
+management:
+  health:
+    db:
       enabled: false
