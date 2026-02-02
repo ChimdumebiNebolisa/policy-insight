@@ -29,6 +29,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 0.75rem;
     padding: 0.875rem 1.5rem;
     font-size: 0.9rem;
@@ -56,12 +57,17 @@ body {
 
 .alert-banner a {
     color: white;
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
 }
 
 .alert-banner a:hover {
-    text-decoration: none;
+    background: rgba(255, 255, 255, 0.3);
 }
 
 /* ========================================
@@ -97,7 +103,7 @@ body {
    ======================================== */
 .container {
     width: 100%;
-    max-width: 960px;
+    max-width: 980px;
     margin: 0 auto;
     padding: 2.5rem 1.5rem;
     flex: 1;
@@ -111,6 +117,9 @@ body {
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
     margin-bottom: 3rem;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* ========================================
@@ -399,38 +408,28 @@ body {
     margin-bottom: 1.5rem;
 }
 
-.steps-grid {
+.steps-list {
+    list-style: decimal;
+    list-style-position: inside;
+    margin: 0;
+    padding: 0;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
 }
 
-.step-card {
+.steps-list li {
     background: white;
     border-radius: 12px;
-    padding: 1.5rem;
-    text-align: center;
+    padding: 1.5rem 1.5rem 1.5rem 2.5rem;
+    text-align: left;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
     transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.step-card:hover {
+.steps-list li:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
-}
-
-.step-number {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-    color: white;
-    font-size: 1.1rem;
-    font-weight: 700;
-    border-radius: 50%;
-    margin-bottom: 1rem;
 }
 
 .step-title {
@@ -620,26 +619,13 @@ footer:not(.site-footer) {
         gap: 1.25rem;
     }
 
-    .steps-grid {
+    .steps-list {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
 
-    .step-card {
-        display: flex;
-        align-items: center;
-        text-align: left;
-        gap: 1rem;
-        padding: 1.25rem;
-    }
-
-    .step-number {
-        margin-bottom: 0;
-        flex-shrink: 0;
-    }
-
-    .step-card > div:last-child {
-        flex: 1;
+    .steps-list li {
+        padding: 1.25rem 1.25rem 1.25rem 2rem;
     }
 
     .card-header {
