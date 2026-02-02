@@ -2,11 +2,12 @@ package com.policyinsight.web;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
  * Controller for the root landing page.
- * Returns the upload form template, or the sleep landing page when app.demo-sleep=true.
+ * Always returns the upload form template; when app.demo-sleep=true, the template shows a sleep banner.
  */
 @Controller
 public class HomeController {
@@ -15,8 +16,9 @@ public class HomeController {
     private boolean demoSleep;
 
     @GetMapping("/")
-    public String index() {
-        return demoSleep ? "landing-sleep" : "index";
+    public String index(Model model) {
+        model.addAttribute("demoSleep", demoSleep);
+        return "index";
     }
 }
 

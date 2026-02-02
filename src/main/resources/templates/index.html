@@ -8,6 +8,11 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
+    <!-- Sleep mode banner – only when app.demo-sleep=true -->
+    <div th:if="${demoSleep}" class="sleep-banner" role="alert">
+        Live demo may be paused to reduce costs. If upload fails, refresh later or <a th:href="@{/sample-report}">view sample report</a>.
+    </div>
+
     <header>
         <h1>PolicyInsight</h1>
         <p>Analyze legal documents. Understand what you're agreeing to.</p>
@@ -16,26 +21,56 @@
     <main>
         <section id="upload-section">
             <h2>Upload Document</h2>
-            <form id="upload-form"
-                  hx-post="/api/documents/upload"
-                  hx-target="#status"
-                  hx-swap="innerHTML"
-                  hx-encoding="multipart/form-data"
-                  hx-indicator="#upload-spinner">
-                <div class="form-group">
-                    <label for="file-input">Select PDF:</label>
-                    <input type="file"
-                           id="file-input"
-                           name="file"
-                           accept=".pdf"
-                           required>
-                    <small>Max 50 MB</small>
+            <div class="upload-card">
+                <form id="upload-form"
+                      hx-post="/api/documents/upload"
+                      hx-target="#status"
+                      hx-swap="innerHTML"
+                      hx-encoding="multipart/form-data"
+                      hx-indicator="#upload-spinner">
+                    <div class="form-group">
+                        <label for="file-input">Select PDF:</label>
+                        <input type="file"
+                               id="file-input"
+                               name="file"
+                               accept=".pdf"
+                               required>
+                        <small>Max 50 MB</small>
+                    </div>
+                    <button type="submit" class="btn-primary">Analyze Document</button>
+                    <span id="upload-spinner" class="htmx-indicator" style="margin-left: 1rem;">Uploading...</span>
+                </form>
+                <div id="status"></div>
+
+                <!-- Sample PDF demo – visible in both normal and sleep mode -->
+                <div class="sample-demo-links">
+                    <p>Try without uploading:</p>
+                    <a th:href="@{/sample-report}">Try with sample PDF</a>
+                    <span style="color: #999;"> · </span>
+                    <a th:href="@{/sample-pdf}" download="sample.pdf">Download sample PDF</a>
                 </div>
-                <button type="submit" class="btn-primary">Analyze Document</button>
-                <span id="upload-spinner" class="htmx-indicator" style="margin-left: 1rem;">Uploading...</span>
-            </form>
-            <div id="status"></div>
+            </div>
         </section>
+
+        <section class="how-it-works">
+            <h2>How it works</h2>
+            <ol>
+                <li>
+                    <strong>Upload</strong>
+                    <span>Upload a PDF policy or terms document (up to 50 MB).</span>
+                </li>
+                <li>
+                    <strong>Analyze</strong>
+                    <span>We extract text, classify the document, and run risk and obligation analysis.</span>
+                </li>
+                <li>
+                    <strong>Review</strong>
+                    <span>View a plain-English summary, obligations, restrictions, and risk taxonomy with citations.</span>
+                </li>
+            </ol>
+        </section>
+
+        <p class="privacy-line">Files are processed for analysis and may be retained per retention settings.</p>
 
         <section id="disclaimer" class="warning-box">
             <strong>⚠️ Not Legal Advice</strong>
@@ -48,4 +83,3 @@
     </footer>
 </body>
 </html>
-

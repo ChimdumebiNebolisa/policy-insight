@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolicyInsight – Sample Report</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <header>
+        <h1>PolicyInsight</h1>
+        <p>Document Analysis Report (Sample)</p>
+    </header>
+
+    <main>
+        <div style="margin-bottom: 2rem;">
+            <a href="/" style="color: #3498db; text-decoration: none;">← Back to Home</a>
+        </div>
+
+        <p style="margin-bottom: 1rem; padding: 0.75rem; background-color: #e8f4fc; border-radius: 6px; font-size: 0.95rem;">
+            <strong>Sample report.</strong> This is a deterministic demo with no database or external services. <a href="/sample-pdf" style="color: #3498db;">Download sample PDF</a>.
+        </p>
+
+        <!-- Document Overview Section -->
+        <section id="overview">
+            <h2>Document Overview</h2>
+            <p><strong>File:</strong> sample.pdf</p>
+            <p><strong>Type:</strong> Terms of Service</p>
+            <p><strong>Confidence:</strong> 0.95</p>
+            <p><strong>Analyzed:</strong> Sample report (static)</p>
+        </section>
+
+        <!-- Plain-English Summary Section -->
+        <section id="summary">
+            <h2>Plain-English Summary</h2>
+            <ul style="list-style-type: disc; padding-left: 2rem;">
+                <li style="margin-bottom: 0.5rem;">The document sets out terms for use of the service. [<a href="#chunk-1" style="color: #3498db; text-decoration: none;">Page 1</a>]</li>
+                <li style="margin-bottom: 0.5rem;">Users must accept the terms to access the platform. [<a href="#chunk-1" style="color: #3498db; text-decoration: none;">Page 1</a>]</li>
+                <li style="margin-bottom: 0.5rem;">Data may be processed and retained per the privacy section. [<a href="#chunk-2" style="color: #3498db; text-decoration: none;">Page 2</a>]</li>
+            </ul>
+        </section>
+
+        <!-- Obligations & Restrictions Section -->
+        <section id="obligations">
+            <h2>Obligations & Restrictions</h2>
+            <h3>Obligations</h3>
+            <ul style="list-style-type: disc; padding-left: 2rem;">
+                <li style="margin-bottom: 0.5rem;">You must provide accurate account information. [<a href="#chunk-1" style="color: #3498db; text-decoration: none;">Page 1</a>]</li>
+                <li style="margin-bottom: 0.5rem;">You must comply with acceptable use policies. [<a href="#chunk-1" style="color: #3498db; text-decoration: none;">Page 1</a>]</li>
+            </ul>
+            <h3>Restrictions</h3>
+            <ul style="list-style-type: disc; padding-left: 2rem;">
+                <li style="margin-bottom: 0.5rem;">You may not resell or sublicense the service without permission. [<a href="#chunk-2" style="color: #3498db; text-decoration: none;">Page 2</a>]</li>
+                <li style="margin-bottom: 0.5rem;">You may not reverse engineer or extract source code. [<a href="#chunk-2" style="color: #3498db; text-decoration: none;">Page 2</a>]</li>
+            </ul>
+            <h3>Termination Triggers</h3>
+            <ul style="list-style-type: disc; padding-left: 2rem;">
+                <li style="margin-bottom: 0.5rem;">Breach of terms may result in account suspension. [<a href="#chunk-2" style="color: #3498db; text-decoration: none;">Page 2</a>]</li>
+            </ul>
+        </section>
+
+        <!-- Risk Taxonomy Section -->
+        <section id="risks">
+            <h2>Risk Taxonomy</h2>
+            <div style="margin-bottom: 1.5rem;">
+                <h3>Liability Cap</h3>
+                <p><strong>Detected Risks:</strong></p>
+                <ul style="list-style-type: disc; padding-left: 2rem;">
+                    <li style="margin-bottom: 0.5rem;">Liability may be limited to fees paid in the past 12 months. [<a href="#chunk-2" style="color: #3498db; text-decoration: none;">Page 2</a>]</li>
+                </ul>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <h3>Data Processing</h3>
+                <p><strong>Detected Risks:</strong></p>
+                <ul style="list-style-type: disc; padding-left: 2rem;">
+                    <li style="margin-bottom: 0.5rem;">Personal data may be processed in designated regions. [<a href="#chunk-2" style="color: #3498db; text-decoration: none;">Page 2</a>]</li>
+                </ul>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <h3>Dispute Resolution</h3>
+                <p style="color: #27ae60;"><strong>✓ Not detected</strong> – No mandatory arbitration clause in sample.</p>
+            </div>
+        </section>
+
+        <!-- Chunks Section (for citation links) -->
+        <section id="chunks" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee;">
+            <h2>Document Chunks (Sample)</h2>
+            <div id="chunk-1" style="margin-bottom: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+                <p><strong>Chunk ID:</strong> 1</p>
+                <p><strong>Page:</strong> 1</p>
+                <p>Sample text: Terms of Service. By using this service you agree to the following terms. You must provide accurate information and comply with acceptable use.</p>
+            </div>
+            <div id="chunk-2" style="margin-bottom: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+                <p><strong>Chunk ID:</strong> 2</p>
+                <p><strong>Page:</strong> 2</p>
+                <p>Sample text: Restrictions and termination. You may not resell the service. Liability is limited to fees paid. Data may be processed per privacy policy.</p>
+            </div>
+        </section>
+
+        <section id="disclaimer" class="warning-box">
+            <strong>⚠️ Not Legal Advice</strong>
+            <p>PolicyInsight provides clarity and risk surfacing. It is not a substitute for legal counsel.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>Built with Spring Boot, Vertex AI, and Datadog.</p>
+    </footer>
+</body>
+</html>

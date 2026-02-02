@@ -91,6 +91,7 @@ coverage/
 *_body.txt
 *.pdf
 !src/test/resources/**/*.pdf
+!src/main/resources/static/sample/*.pdf
 perf/
 
 

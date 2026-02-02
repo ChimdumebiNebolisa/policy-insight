@@ -11,21 +11,44 @@ body {
     background-color: #f5f5f5;
 }
 
+/* Sleep mode banner – shown when app.demo-sleep=true */
+.sleep-banner {
+    background-color: #e74c3c;
+    color: white;
+    padding: 0.75rem 1.25rem;
+    text-align: center;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.sleep-banner a {
+    color: white;
+    text-decoration: underline;
+}
+
+.sleep-banner a:hover {
+    text-decoration: none;
+}
+
 header {
     background-color: #2c3e50;
     color: white;
-    padding: 2rem;
+    padding: 2.5rem 2rem;
     text-align: center;
 }
 
 header h1 {
-    font-size: 2.5rem;
+    font-size: 2.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
     margin-bottom: 0.5rem;
 }
 
 header p {
-    font-size: 1.1rem;
-    opacity: 0.9;
+    font-size: 1.05rem;
+    opacity: 0.92;
+    max-width: 36em;
+    margin: 0 auto;
 }
 
 main {
@@ -43,7 +66,17 @@ section {
 
 h2 {
     color: #2c3e50;
+    font-size: 1.35rem;
+    font-weight: 600;
     margin-bottom: 1rem;
+}
+
+/* Upload card – modern padding and spacing */
+.upload-card {
+    padding: 1.75rem;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    background-color: #fafafa;
 }
 
 .form-group {
@@ -54,36 +87,146 @@ h2 {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 500;
+    color: #2c3e50;
 }
 
 .form-group input[type="file"] {
     width: 100%;
-    padding: 0.5rem;
+    padding: 0.65rem 0.75rem;
     border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background-color: white;
+    cursor: pointer;
+}
+
+.form-group input[type="file"]:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
 .form-group small {
     display: block;
-    margin-top: 0.25rem;
+    margin-top: 0.35rem;
     color: #666;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
 }
 
+/* Buttons – consistent sizing */
 .btn-primary {
     background-color: #3498db;
     color: white;
-    padding: 0.75rem 1.5rem;
+    padding: 0.65rem 1.5rem;
+    min-height: 2.5rem;
     border: none;
-    border-radius: 4px;
-    font-size: 1rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: background-color 0.2s;
 }
 
 .btn-primary:hover {
     background-color: #2980b9;
+}
+
+.btn-secondary {
+    background-color: #34495e;
+    color: white;
+    padding: 0.65rem 1.5rem;
+    min-height: 2.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background-color: #2c3e50;
+}
+
+/* How it works – 3 steps */
+.how-it-works {
+    margin-top: 2rem;
+}
+
+.how-it-works h2 {
+    margin-bottom: 1.25rem;
+}
+
+.how-it-works ol {
+    list-style: none;
+    counter-reset: step;
+    padding-left: 0;
+}
+
+.how-it-works li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 3rem;
+    margin-bottom: 1.25rem;
+}
+
+.how-it-works li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    background-color: #3498db;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.how-it-works li strong {
+    display: block;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+}
+
+.how-it-works li span {
+    color: #555;
+    font-size: 0.95rem;
+}
+
+/* Privacy line */
+.privacy-line {
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+    color: #666;
+}
+
+/* Sample demo links block */
+.sample-demo-links {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #e8e8e8;
+}
+
+.sample-demo-links p {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.sample-demo-links a {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sample-demo-links a:hover {
+    text-decoration: underline;
 }
 
 .warning-box {
@@ -169,11 +312,32 @@ section h3 {
 @media (max-width: 768px) {
     main {
         margin: 1rem;
-        padding: 1rem;
+        padding: 1.25rem;
+    }
+
+    header {
+        padding: 1.75rem 1rem;
     }
 
     header h1 {
-        font-size: 2rem;
+        font-size: 1.85rem;
+    }
+
+    header p {
+        font-size: 0.95rem;
+    }
+
+    .upload-card {
+        padding: 1.25rem;
+    }
+
+    .how-it-works li {
+        padding-left: 2.75rem;
+    }
+
+    .sleep-banner {
+        padding: 0.65rem 1rem;
+        font-size: 0.9rem;
     }
 }
 
