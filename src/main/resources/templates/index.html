@@ -8,9 +8,13 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
-    <!-- Sleep mode banner – only when app.demo-sleep=true -->
+    <!-- Sleep mode banner – when app.demo-sleep=true -->
     <div th:if="${demoSleep}" class="sleep-banner" role="alert">
         Live demo may be paused to reduce costs. If upload fails, refresh later or <a th:href="@{/sample-report}">view sample report</a>.
+    </div>
+    <!-- Subtle info banner – when app.demo-sleep=false -->
+    <div th:unless="${demoSleep}" class="info-banner" role="status">
+        Upload a PDF to get a plain-English risk report with citations.
     </div>
 
     <header>
