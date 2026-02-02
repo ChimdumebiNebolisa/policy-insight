@@ -60,6 +60,7 @@ application-local.properties
 application-*.yml
 !application-local.yml
 !application-cloudrun.yml
+!application-demSleep.yml
 
 # Database
 *.db
