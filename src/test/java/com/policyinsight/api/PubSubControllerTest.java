@@ -21,11 +21,14 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.test.context.TestPropertySource;
+
 /**
  * Web slice test for Pub/Sub push endpoint.
  * Tests token verification, message parsing, and processing dispatch using @WebMvcTest.
  */
 @WebMvcTest(PubSubController.class)
+@TestPropertySource(properties = "policyinsight.worker.enabled=true")
 class PubSubControllerTest {
 
     @Autowired

@@ -57,6 +57,8 @@ class PubSubControllerContractTest {
         registry.add("app.messaging.mode", () -> "local");
         // Disable OIDC verification in test profile
         registry.add("pubsub.push.verification.enabled", () -> "false");
+        // Enable PubSubController for this test
+        registry.add("policyinsight.worker.enabled", () -> "true");
     }
 
     @Autowired

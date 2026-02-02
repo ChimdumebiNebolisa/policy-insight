@@ -2,7 +2,6 @@ package com.policyinsight.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.policyinsight.api.PubSubTokenVerifier;
 import com.policyinsight.processing.DocumentJobProcessor;
 import com.policyinsight.shared.repository.PolicyJobRepository;
 import org.slf4j.Logger;
@@ -10,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,9 +24,13 @@ import java.util.UUID;
  *
  * Implements Pub/Sub OIDC/JWT token verification per official Pub/Sub push authentication docs:
  * https://cloud.google.com/pubsub/docs/push#authenticating_push_requests
+ *
+ * Only created when policyinsight.worker.enabled=true (worker mode).
+ * In sleep mode (demSleep profile) or web-only deployments, this controller is not instantiated.
  */
 @RestController
 @RequestMapping("/internal")
+@ConditionalOnProperty(prefix = "policyinsight.worker", name = "enabled", havingValue = "true")
 public class PubSubController {
 
     private static final Logger logger = LoggerFactory.getLogger(PubSubController.class);
