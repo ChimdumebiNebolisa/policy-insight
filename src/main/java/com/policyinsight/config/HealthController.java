@@ -1,5 +1,6 @@
 package com.policyinsight.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,12 +15,22 @@ public class HealthController {
 
     private final ReadinessHealthIndicator readinessHealthIndicator;
 
+    @Value("${app.demo-sleep:false}")
+    private boolean demoSleep;
+
     public HealthController(ReadinessHealthIndicator readinessHealthIndicator) {
         this.readinessHealthIndicator = readinessHealthIndicator;
     }
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
+        if (demoSleep) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "UP");
+            response.put("mode", "sleep");
+            return ResponseEntity.ok(response);
+        }
+
         // Get database health from readiness indicator
         Health dbHealth = readinessHealthIndicator.health();
 

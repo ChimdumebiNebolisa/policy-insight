@@ -18,6 +18,7 @@ spring:
       maximum-pool-size: 1
       initialization-fail-timeout: -1
       connection-timeout: 1000
+      validation-timeout: 1000
 
   task:
     scheduling:
