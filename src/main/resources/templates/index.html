@@ -23,9 +23,25 @@
     </header>
 
     <main>
+        <!-- Sleep mode: Sample demo is primary, shown first -->
+        <section th:if="${demoSleep}" id="sample-section">
+            <h2>Try the Demo</h2>
+            <div class="upload-card">
+                <p style="margin-bottom: 1rem; color: #555;">Explore a pre-analyzed sample document to see how PolicyInsight works.</p>
+                <div class="sample-demo-primary">
+                    <a th:href="@{/sample-report}" class="btn-primary btn-large">Try sample report</a>
+                    <a th:href="@{/sample-pdf}" download="sample.pdf" class="btn-secondary">Download sample PDF</a>
+                </div>
+            </div>
+        </section>
+
         <section id="upload-section">
             <h2>Upload Document</h2>
             <div class="upload-card">
+                <!-- Sleep mode: upload disabled -->
+                <div th:if="${demoSleep}" class="upload-disabled-notice">
+                    <p>Uploads are disabled in sleep mode.</p>
+                </div>
                 <form id="upload-form"
                       hx-post="/api/documents/upload"
                       hx-target="#status"
@@ -38,16 +54,18 @@
                                id="file-input"
                                name="file"
                                accept=".pdf"
-                               required>
-                        <small>Max 50 MB</small>
+                               required
+                               th:disabled="${demoSleep}">
+                        <small th:unless="${demoSleep}">Max 50 MB</small>
+                        <small th:if="${demoSleep}" class="disabled-hint">Upload unavailable – demo is sleeping.</small>
                     </div>
-                    <button type="submit" class="btn-primary">Analyze Document</button>
+                    <button type="submit" class="btn-primary" th:disabled="${demoSleep}">Analyze Document</button>
                     <span id="upload-spinner" class="htmx-indicator" style="margin-left: 1rem;">Uploading...</span>
                 </form>
                 <div id="status"></div>
 
-                <!-- Sample demo – works without DB/upload (both normal and sleep mode) -->
-                <div class="sample-demo-links">
+                <!-- Normal mode: Sample demo links below upload -->
+                <div th:unless="${demoSleep}" class="sample-demo-links">
                     <p>Try without uploading:</p>
                     <a th:href="@{/sample-report}" class="btn-secondary">Try sample report</a>
                     <a th:href="@{/sample-pdf}" download="sample.pdf" class="btn-secondary">Download sample PDF</a>
