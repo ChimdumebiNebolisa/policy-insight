@@ -1,0 +1,31 @@
+doc_id,title,source_url,local_pdf_path,tier,issuer,topic_tags,page_count,notes
+memo_001,Grant Compliance and Reporting Guidance,,,,A,Office of Grant Management,"grants, reporting, compliance",8,deadline-heavy grant compliance memo
+memo_002,Procurement Thresholds and Prior Approval Requirements,,,,A,State Budget Office,"procurement, budget oversight",6,clear threshold and approval rules
+memo_003,Quarterly Expenditure and Progress Reporting,,,,B,Department of Health,"grants, reporting, public health",12,multiple report types and due dates
+memo_004,Subrecipient Monitoring and Audit Standards,,,,A,Inspector General,"grants, compliance, audit",10,monitoring and audit obligations
+memo_005,Records Retention and Document Production,,,,B,Office of General Counsel,"records retention, compliance",5,retention periods and production requests
+memo_006,Budget Reallocation and Prior Approval,,,,A,Office of Grant Management,"grants, budget oversight",7,category-level reallocation rules
+memo_007,Education Program Reporting and Deadlines,,,,B,State Education Office,"education policy, reporting",9,program-specific reporting
+memo_008,Transportation Safety and Reporting Obligations,,,,A,Department of Transportation,"transportation safety, reporting",6,safety incident and reporting
+memo_009,Labor Standards and Wage Certification,,,,B,Labor Standards Office,"labor standards, compliance",8,wage and hour certification
+memo_010,Housing Assistance Eligibility and Recertification,,,,B,Housing Authority,"housing, compliance",11,eligibility and recertification deadlines
+memo_011,Environmental Review and Documentation Requirements,,,,C,Environmental Quality Office,"environmental, compliance",14,layout-heavy NEPA-style guidance
+memo_012,Cost Allocation and Indirect Cost Caps,,,,A,State Budget Office,"budget oversight, grants",5,indirect cost and allocation
+memo_013,Conflict of Interest and Disclosure,,,,B,Ethics Commission,"compliance, procurement",6,disclosure and recusal
+memo_014,Termination and Suspension Procedures,,,,A,Office of Grant Management,"grants, compliance",7,termination triggers and appeal
+memo_015,Public Health Data Reporting and Privacy,,,,B,Department of Health,"public health guidance, reporting",10,data and privacy obligations
+memo_016,Contractor Performance and Withholding,,,,B,Procurement Office,"procurement, compliance",8,performance and payment withholding
+memo_017,Subcontracting and Pass-Through Requirements,,,,A,Office of Grant Management,"grants, procurement",6,subcontract approval and limits
+memo_018,Equipment and Property Management,,,,B,State Property Office,"grants, compliance",9,equipment tracking and disposition
+memo_019,Time and Effort Reporting for Federal Awards,,,,A,Office of Grant Management,"grants, reporting",7,time-and-effort certification
+memo_020,Accessibility and Accommodation Obligations,,,,B,Civil Rights Office,"compliance, accessibility",6,reasonable accommodation and notice
+memo_021,Closeout and Final Reporting,,,,A,Office of Grant Management,"grants, reporting",5,closeout deadlines and final report
+memo_022,Whistleblower and Non-Retaliation,,,,C,Inspector General,"compliance",4,brief policy statement
+memo_023,Construction Bid and Bond Requirements,,,,B,Procurement Office,"procurement, compliance",11,bid and bonding rules
+memo_024,Medicaid Reporting and Corrective Action,,,,B,Department of Health,"public health guidance, reporting",13,corrective action and deadlines
+memo_025,Travel and Per Diem Limits,,,,A,State Budget Office,"budget oversight, compliance",5,travel policy caps
+memo_026,Program Income and Revenue Use,,,,B,Office of Grant Management,"grants, budget oversight",8,program income treatment
+memo_027,Monitoring Visit and Desk Review Procedures,,,,A,Inspector General,"grants, compliance",7,monitoring and review triggers
+memo_028,Minority and Small Business Participation,,,,C,Procurement Office,"procurement",9,goals and reporting; some OCR issues
+memo_029,Continuation Funding and Non-Supplanting,,,,B,Office of Grant Management,"grants, budget oversight",6,supplanting and continuation
+memo_030,Data Security and Breach Notification,,,,A,Office of Information Security,"compliance, records retention",8,breach notification timelines
