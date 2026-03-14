@@ -113,6 +113,37 @@ Delivered faster results for users during public demo traffic by reducing tail l
 - **Pub/Sub push failures**: Verify the worker service account has `roles/run.invoker` and Pub/Sub OIDC config uses the worker URL as audience.
 - **Slow processing**: Inspect worker logs and Vertex AI quota/rate limits.
 
+## Evaluation
+
+PolicyInsight is evaluated as an evidence-grounded analytical system over public policy memos. The evaluation focuses on structural reliability (schema compliance, self-consistency), citation grounding (supported/contradicted rates, citation precision), and extraction accuracy (precision, recall, date and spurious extraction).
+
+**Headline metrics (evaluation set):**
+
+| Metric | Result |
+|--------|--------|
+| Schema pass rate | 96% |
+| Self-consistency | 84% |
+| Strict supported rate | 68% |
+| Relaxed supported rate | 81% |
+| Citation precision | 79% |
+| Contradicted rate | 4% |
+| Extraction precision | 72% |
+| Extraction recall | 58% |
+| Date exact-match rate | 83% |
+| Spurious extraction rate | 11% |
+
+PolicyInsight produced stable structured outputs and generally useful evidence-linked claims. Performance is stronger on precision than recall, with the main remaining weaknesses being incomplete extraction coverage and occasional spurious or weakly supported outputs.
+
+**What was evaluated:** 30 public policy memo PDFs; 300 claim-level grounding judgments; 10 fully annotated documents for extraction; citation-span audit over 400 spans.
+
+**Where to look next:**
+- [eval/docs/TECHNICAL_REPORT.md](eval/docs/TECHNICAL_REPORT.md) – full results and method
+- [eval/docs/ANNOTATION_GUIDELINES.md](eval/docs/ANNOTATION_GUIDELINES.md) – annotation manual
+- [eval/docs/DATASET.md](eval/docs/DATASET.md) – dataset card
+- [eval/outputs/README.md](eval/outputs/README.md) – outputs and artifacts
+
+Evaluation artifacts and results are version-controlled in this repo for auditability.
+
 ## Roadmap
 
 - Add a minimal React front end for faster UX iteration.
