@@ -141,6 +141,7 @@ PolicyInsight produced stable structured outputs and generally useful evidence-l
 - [eval/docs/ANNOTATION_GUIDELINES.md](eval/docs/ANNOTATION_GUIDELINES.md) – annotation manual
 - [eval/docs/DATASET.md](eval/docs/DATASET.md) – dataset card
 - [eval/outputs/README.md](eval/outputs/README.md) – outputs and artifacts
+- **Result files (CSV):** [extraction_health_results.csv](eval/outputs/extraction_health_results.csv), [grounding_results.csv](eval/outputs/grounding_results.csv), [extraction_accuracy_results.csv](eval/outputs/extraction_accuracy_results.csv)
 
 Evaluation artifacts and results are version-controlled in this repo for auditability.
 

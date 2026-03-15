@@ -1,12 +1,8 @@
 # PolicyInsight evaluation: technical report
 
-## Title
-
-Evaluation of PolicyInsight on a Public Policy Memo Corpus: Schema Compliance, Citation Grounding, and Extraction Accuracy.
-
 ## Abstract
 
-We evaluate PolicyInsight as an evidence-grounded analytical system over 30 public policy memo PDFs. Metrics cover structural reliability (schema pass rate, self-consistency), citation grounding (strict/relaxed supported rate, citation precision, contradicted rate), and extraction accuracy (precision, recall, date exact-match, spurious extraction). The report is scoped as a student-scale evaluation artifact: no external benchmark comparison is claimed, and limitations are stated explicitly.
+Evaluation of PolicyInsight on a Public Policy Memo Corpus: Schema Compliance, Citation Grounding, and Extraction Accuracy. We evaluate PolicyInsight as an evidence-grounded analytical system over 30 public policy memo PDFs. Metrics cover structural reliability (schema pass rate, self-consistency), citation grounding (strict/relaxed supported rate, citation precision, contradicted rate), and extraction accuracy (precision, recall, date exact-match, spurious extraction). The report is scoped as a student-scale evaluation artifact: no external benchmark comparison is claimed, and limitations are stated explicitly.
 
 ## 1. Research question
 
@@ -18,13 +14,13 @@ PolicyInsight ingests PDFs, chunks and optionally runs OCR, calls an LLM to gene
 
 ## 3. Evaluation setup
 
-- **Document set:** 30 public policy memo PDFs (see eval/docs/DATASET.md).
+- **Document set:** 30 public policy memo PDFs (see [eval/docs/DATASET.md](eval/docs/DATASET.md)).
 - **Schema pass rate:** All 30 documents.
 - **Self-consistency:** 10 sampled documents, each run 3 times; 300 normalized field comparisons.
 - **Citation grounding:** 300 claim-level judgments sampled from generated reports; 400 citation spans for precision.
 - **Extraction accuracy:** 10 documents with full gold field sheets; 124 gold items (obligations, restrictions, triggers, deadlines); 30 gold date fields.
 
-Annotation followed eval/docs/ANNOTATION_GUIDELINES.md. No baseline system comparison was run; results are absolute rates only.
+Annotation followed [eval/docs/ANNOTATION_GUIDELINES.md](eval/docs/ANNOTATION_GUIDELINES.md). No baseline system comparison was run; results are absolute rates only.
 
 ## 4. Results
 
@@ -43,7 +39,7 @@ Annotation followed eval/docs/ANNOTATION_GUIDELINES.md. No baseline system compa
 
 ## 5. Failure cases
 
-See eval/outputs/failure_cases.md for the five documented failure cases (overgeneralization, date misbinding, spurious restriction, OCR numeric error, partial grounding).
+See [eval/outputs/failure_cases.md](eval/outputs/failure_cases.md) for the five documented failure cases (overgeneralization, date misbinding, spurious restriction, OCR numeric error, partial grounding).
 
 ## 6. Limitations
 

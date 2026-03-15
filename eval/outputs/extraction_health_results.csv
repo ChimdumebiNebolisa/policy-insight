@@ -1,0 +1,3 @@
+metric,definition,sample,value,source
+Schema pass rate,% of docs with valid top-level report schema,30 docs,96,eval/docs/TECHNICAL_REPORT.md
+Self-consistency,% agreement on normalized core fields across repeated runs,300 field comparisons,84,eval/docs/TECHNICAL_REPORT.md

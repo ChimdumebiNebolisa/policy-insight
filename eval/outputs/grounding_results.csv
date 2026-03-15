@@ -1,0 +1,5 @@
+metric,definition,sample,value,source
+Strict supported rate,% of audited claims fully supported by cited evidence,300 claims,68,eval/docs/TECHNICAL_REPORT.md
+Relaxed supported rate,% of audited claims supported or partially supported,300 claims,81,eval/docs/TECHNICAL_REPORT.md
+Citation precision,% of audited citation spans that were relevant support,400 spans,79,eval/docs/TECHNICAL_REPORT.md
+Contradicted rate,% of audited claims where evidence contradicts the claim,300 claims,4,eval/docs/TECHNICAL_REPORT.md

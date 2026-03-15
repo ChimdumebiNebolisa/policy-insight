@@ -1,0 +1,5 @@
+metric,definition,sample,value,source
+Extraction precision,% of extracted items matching a gold item,100 extracted,72,eval/docs/TECHNICAL_REPORT.md
+Extraction recall,% of gold items successfully extracted,124 gold,58,eval/docs/TECHNICAL_REPORT.md
+Date exact-match rate,% of gold date fields with exact match,30 gold dates,83,eval/docs/TECHNICAL_REPORT.md
+Spurious extraction rate,% of extracted items with no corresponding gold item,100 extracted,11,eval/docs/TECHNICAL_REPORT.md

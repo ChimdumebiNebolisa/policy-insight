@@ -2,17 +2,16 @@
 
 This directory holds evaluation outputs for auditability. The repo is the source of truth; do not commit fake or synthetic outputs.
 
-**Currently present:** `failure_cases.md` (curated failure cases) and this README.
+**Present in this directory:**
 
-**Expected artifacts** (may be added when available):
+- **failure_cases.md** – Curated failure cases (overgeneralization, date misbinding, spurious restriction, OCR numeric error, partial grounding).
+- **extraction_health_results.csv** – Aggregate metrics: schema pass rate, self-consistency (definitions and values from the committed technical report).
+- **grounding_results.csv** – Aggregate metrics: strict/relaxed supported rate, citation precision, contradicted rate (definitions and values from the committed technical report).
+- **extraction_accuracy_results.csv** – Aggregate metrics: extraction precision, recall, date exact-match rate, spurious extraction rate (definitions and values from the committed technical report).
 
-- **raw_reports/** – Per-document, per-run report JSON (or representative subset) for each evaluated document. Filenames should be stable and machine-readable (e.g. by doc_id and run).
-- **extraction_health_results.csv** – Schema pass rate, null rates, self-consistency (or equivalent) from extraction health runs.
-- **grounding_results.csv** – Claim-level grounding labels (supported/partial/unsupported/contradicted) and optionally span-level precision.
-- **extraction_accuracy_results.csv** – Precision, recall, date exact-match, spurious extraction vs gold.
+Each CSV includes a `source` column indicating the committed evaluation document from which the aggregate results are derived (e.g. eval/docs/TECHNICAL_REPORT.md). Values are numeric; interpret percentage metrics as whole numbers (e.g. 96 = 96%).
 
 **Guidelines:**
 
-- Store raw outputs per evaluated document/run where feasible for auditability.
-- Do not commit fabricated outputs; if real outputs are too large, commit a representative subset and document how to reproduce or what was omitted.
+- Do not commit fabricated outputs; if real per-run outputs are added later, document how to reproduce or what was omitted.
 - Keep filenames stable and machine-readable.
