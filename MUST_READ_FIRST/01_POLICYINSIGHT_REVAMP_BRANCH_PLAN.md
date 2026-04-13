@@ -35,7 +35,7 @@ Rules:
 
 | Chunk | Scope | Primary Files | Validation Gate | Rollback Trigger |
 |---|---|---|---|---|
-| 1 | Plan and branch safety setup (completed) | `docs/POLICYINSIGHT_REVAMP_BRANCH_PLAN.md` | Plan committed and pushed | N/A |
+| 1 | Plan and branch safety setup (completed) | `MUST_READ_FIRST/01_POLICYINSIGHT_REVAMP_BRANCH_PLAN.md`, `MUST_READ_FIRST/02_EXECUTION_GUARDRAILS.md` | Plan docs committed and pushed | N/A |
 | 2 | Config decoupling and profile contract | `src/main/resources/application*.yml`, `src/main/java/com/policyinsight/config/` | Local compile + local smoke pass | Default behavior changes under local/cloudrun |
 | 3 | Storage/DB neutrality + migration scaffolding | `src/main/java/com/policyinsight/shared/model/PolicyJob.java`, `src/main/resources/db/migration/`, storage services | Flyway up + route parity pass | Data shape mismatch or route regressions |
 | 4 | Messaging/LLM/metrics provider seams | messaging, processing, observability packages | Provider toggle tests pass | Retry/idempotency regressions |
@@ -50,7 +50,8 @@ Rules:
 
 ### Target Files
 
-- `docs/POLICYINSIGHT_REVAMP_BRANCH_PLAN.md`
+- `MUST_READ_FIRST/01_POLICYINSIGHT_REVAMP_BRANCH_PLAN.md`
+- `MUST_READ_FIRST/02_EXECUTION_GUARDRAILS.md`
 - `README.md`
 
 ### Exit Criteria
@@ -221,9 +222,35 @@ Expected:
 
 - Migration-related tests pass with no schema validation failures.
 
+Fallback if the pattern matches no tests or is not present yet:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Expected:
+
+- Full suite passes for changed scope.
+
 ### Provider Switching
 
-Run profile/provider toggles used by this branch and verify same route contracts.
+Run this explicit provider/profile matrix and verify route contracts remain unchanged.
+
+| Scenario | Setup Command (PowerShell) | Verification |
+|---|---|---|
+| Local baseline | `$env:APP_STORAGE_MODE="local"; $env:APP_MESSAGING_MODE="local"; $env:APP_PROCESSING_MODE="local"` | Start app and run health/readiness/sample endpoints |
+| Cloudrun-parity local boot | `$env:SPRING_PROFILES_ACTIVE="cloudrun"` | App boots and core routes preserve contract |
+| Oracle profile readiness (when added) | `$env:SPRING_PROFILES_ACTIVE="oracle"` | App boot path loads oracle config without profile errors |
+| Metrics provider toggle | `$env:DATADOG_ENABLED="false"` (or profile-specific metrics flag) | `/actuator/metrics` and configured backend endpoint available |
+
+Minimum endpoint checks after each scenario:
+
+```powershell
+Invoke-WebRequest http://localhost:8080/health -UseBasicParsing
+Invoke-WebRequest http://localhost:8080/readiness -UseBasicParsing
+Invoke-WebRequest http://localhost:8080/sample-report -UseBasicParsing
+Invoke-WebRequest http://localhost:8080/sample-pdf -UseBasicParsing
+```
 
 Expected:
 
@@ -234,9 +261,11 @@ Expected:
 
 1. Keep Cloud Run path as primary while Oracle path is validated.
 2. Run Oracle-target smoke deploy with branch-tagged artifacts.
-3. Start with small canary exposure for internal validation.
-4. Promote only after route parity, migration parity, and telemetry stability are confirmed.
-5. If errors spike, revert traffic to Cloud Run baseline and halt cutover.
+3. Canary step 1: 5% traffic for 30 minutes.
+4. Canary step 2: 25% traffic for 2 hours.
+5. Canary step 3: 50% traffic for 4 hours.
+6. Full promotion: 100% traffic only if error rate and latency remain within baseline tolerance.
+7. Rollback trigger: immediately revert to Cloud Run baseline if 5xx rate doubles from baseline for 10 minutes or p95 latency increases by 30% for 15 minutes.
 
 ## Definition of Done
 
