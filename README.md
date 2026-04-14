@@ -145,6 +145,37 @@ PolicyInsight produced stable structured outputs and generally useful evidence-l
 
 Evaluation artifacts and results are version-controlled in this repo for auditability.
 
+## Revamp Chunk 1 Baseline Artifact (2026-04-14)
+
+Baseline safety context:
+
+- Branch: `policyinsight-revamp`
+- Git status at preflight: `## policyinsight-revamp...origin/policyinsight-revamp`
+- Worktrees: `C:/Users/Chimdumebi/policy-insight` (`policyinsight-revamp`), `C:/Users/Chimdumebi/policy-insight-main` (`main`)
+- Local runtime note: a host PostgreSQL service was already bound to `5432`, so baseline smoke capture used `DB_PORT=5433` and `POLICYINSIGHT_WORKER_ENABLED=true`.
+
+Validation commands and outcomes:
+
+- `./mvnw.cmd -q -DskipTests compile`: PASS
+- `./mvnw.cmd test`: PASS (`72` tests, `0` failures, `0` errors)
+- `Invoke-WebRequest http://localhost:8080/health -UseBasicParsing`: `200`
+- `Invoke-WebRequest http://localhost:8080/readiness -UseBasicParsing`: `200`
+- `Invoke-WebRequest http://localhost:8080/sample-report -UseBasicParsing`: `200`
+- `Invoke-WebRequest http://localhost:8080/sample-pdf -UseBasicParsing`: `200`
+
+Core flow smoke (`upload -> status SUCCESS -> report URL available`):
+
+- Command: `./scripts/smoke_test.ps1 src/test/resources/valid.pdf` with `WEB_URL=http://localhost:8080`
+- Result: PASS (status reached `SUCCESS` on polling attempt `2`)
+- Example artifact: `jobId=1428ad11-7ea7-4928-8e91-ca5f374a9a63`, `reportUrl=/documents/1428ad11-7ea7-4928-8e91-ca5f374a9a63/report`
+
+Baseline latency capture (same PDF, three runs):
+
+- Run 1: `5.2610685s`
+- Run 2: `5.2709681s`
+- Run 3: `5.3247559s`
+- Median: `5.2709681s`
+
 ## Roadmap
 
 - Add a minimal React front end for faster UX iteration.
