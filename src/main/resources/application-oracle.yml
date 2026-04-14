@@ -1,0 +1,33 @@
+# Oracle VM profile configuration
+# Activate with SPRING_PROFILES_ACTIVE=oracle
+
+spring:
+  datasource:
+    # Keep Postgres/Flyway behavior; only source values from Oracle-host env wiring.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:policyinsight}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:postgres}}
+    driver-class-name: org.postgresql.Driver
+
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:${PORT:8080}}
+  storage:
+    mode: ${APP_STORAGE_MODE:local}
+  messaging:
+    mode: ${APP_MESSAGING_MODE:local}
+  processing:
+    mode: ${APP_PROCESSING_MODE:local}
+
+policyinsight:
+  worker:
+    enabled: ${POLICYINSIGHT_WORKER_ENABLED:false}
+
+pubsub:
+  enabled: ${PUBSUB_ENABLED:false}
+
+datadog:
+  enabled: ${DATADOG_ENABLED:false}
