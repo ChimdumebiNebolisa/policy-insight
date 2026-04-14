@@ -10,6 +10,7 @@ param(
     [string]$ContainerName = "policyinsight-web",
     [string]$EnvFilePath = "/opt/policyinsight/web.env",
     [int]$AppPort = 8080,
+    [switch]$VerifyRoutes,
     [switch]$DryRun
 )
 
@@ -64,3 +65,22 @@ if ($DryRun) {
 }
 
 ssh -i $SshKeyPath -o StrictHostKeyChecking=accept-new $remote $dockerCmd
+
+if ($VerifyRoutes) {
+  $baseUrl = "http://$Host`:$AppPort"
+  $paths = @("/health", "/readiness", "/sample-report", "/sample-pdf")
+  foreach ($path in $paths) {
+    $url = "$baseUrl$path"
+    try {
+      $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 30
+      if ($response.StatusCode -ne 200) {
+        throw "Route check failed for $url with HTTP $($response.StatusCode)"
+      }
+      Write-Host "Verified $url -> 200"
+    }
+    catch {
+      throw "Route verification failed for $url: $($_.Exception.Message)"
+    }
+  }
+  Write-Host "Post-deploy route verification passed."
+}
