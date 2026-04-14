@@ -9,6 +9,11 @@ Scope rules for this runbook:
 - Keep Postgres as the active datasource.
 - Keep Cloud Run path available as fallback.
 
+Default runtime mode for this first Oracle path:
+
+- Single-node web+worker process on one host (`POLICYINSIGHT_WORKER_ENABLED=true`).
+- Pub/Sub is not required by default for this path.
+
 ## Prerequisites
 
 - Existing Oracle VM host reachable by SSH.
@@ -27,7 +32,8 @@ Scope rules for this runbook:
   -ImageRef ghcr.io/chimdumebinebolisa/policy-insight:latest `
   -ContainerName policyinsight-web `
   -EnvFilePath /opt/policyinsight/web.env `
-  -AppPort 8080
+  -AppPort 8080 `
+  -VerifyRoutes
 ```
 
 Dry-run mode:
@@ -46,7 +52,8 @@ Dry-run mode:
   --image-ref ghcr.io/chimdumebinebolisa/policy-insight:latest \
   --container-name policyinsight-web \
   --env-file /opt/policyinsight/web.env \
-  --app-port 8080
+  --app-port 8080 \
+  --verify-routes
 ```
 
 Dry-run mode:
