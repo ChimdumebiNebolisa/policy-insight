@@ -24,7 +24,7 @@ app:
 
 policyinsight:
   worker:
-    enabled: ${POLICYINSIGHT_WORKER_ENABLED:false}
+    enabled: ${POLICYINSIGHT_WORKER_ENABLED:true}
 
 pubsub:
   enabled: ${PUBSUB_ENABLED:false}
