@@ -1,23 +1,28 @@
 # PolicyInsight Revamp Branch Plan
 
-This document is the execution plan for the `policyinsight-revamp` branch only.
+This document is the execution plan for the policyinsight-revamp branch only.
+
+## Assumptions
+
+- Oracle Cloud is the hosting target for PolicyInsight.
+- Postgres remains the default database unless repository evidence clearly requires otherwise.
+- Cloud Run path stays intact until Oracle path is proven.
+- LLM provider may stay Vertex in phase 1 and can be swapped later behind a narrow seam if needed.
+- Claros remains the GCP proof point.
 
 ## Objective
 
-- Build a production-credible Oracle-targeted deployment path.
-- Make storage, messaging, LLM, and metrics integrations provider-agnostic.
-- Preserve current route behavior and keep the existing GCP path functional during migration.
+Move PolicyInsight to Oracle Cloud free tier quickly and credibly with lower run cost, while preserving current route behavior during transition.
+
+This is a deployment and platform simplification effort, not a broad multi-provider architecture program.
 
 ## Non-Negotiables
 
 - No endpoint regressions for upload, status, report, share, sample-report, and sample-pdf flows.
-- Existing Cloud Run deployment path remains working until Oracle path is validated.
-- Changes are additive and reversible first; removals only after dual-path validation.
-- Work is delivered in 5 scoped commit/push chunks.
-
-## Branch Hygiene Protocol (Mandatory)
-
-Run these before each coding session:
+- Existing Cloud Run deployment path remains functional until Oracle path is validated.
+- Changes are additive and reversible first; removals happen only after Oracle path passes validation.
+- Branch hygiene is mandatory.
+- Run before each coding session:
 
 ```powershell
 git branch --show-current
@@ -25,181 +30,214 @@ git status -sb
 git worktree list
 ```
 
-Rules:
+- Do all feature work in policyinsight-revamp worktree.
+- Never push from main.
+- Local smoke checks are mandatory for backend-affecting changes.
+- Every chunk has falsifiable exit criteria, explicit rollback triggers, and a rollback action.
 
-- Do all feature work in `policyinsight-revamp` worktree.
-- Use separate worktree for `main` review only.
-- Never push from `main` (local pre-push hook blocks this).
+## Operational Definitions
 
-## Five Delivery Chunks
+- Oracle deployment boots:
+  - App process starts and serves HTTP on the configured port.
+  - Flyway completes startup migration without migration error.
+  - Active datasource is Postgres (for example, jdbc:postgresql URL or org.postgresql.Driver).
+  - /health, /readiness, /sample-report, and /sample-pdf return HTTP 200.
+  - One smoke PDF run completes upload -> status SUCCESS -> report render.
+
+- Oracle runtime configuration for hosting differences only:
+  - Changes are limited to deployment manifests, profiles, env vars, secret wiring, ports, and runtime flags.
+  - No Oracle DB adoption work is introduced.
+  - No broad new provider-abstraction track is introduced.
+
+- Oracle path operable:
+  - Oracle-hosted app processes at least one PDF end-to-end without Pub/Sub as a default dependency.
+  - Default Oracle path does not require app.messaging.mode=gcp to complete smoke flow.
+
+- Cost improved:
+  - Default Oracle path has no required paid managed infra except optional LLM usage.
+  - Default Oracle path has no mandatory dependency on Cloud SQL, Pub/Sub, Datadog, or other paid managed services.
+
+- Status-flow parity:
+  - Upload, polling, success/failure states, and report availability remain client-contract compatible with current behavior.
+  - Internal execution model may change, but client-visible state transitions and endpoint contracts do not regress.
+
+- Deterministic output sections:
+  - Report fields or chart-ready data derived from deterministic parsing and business rules rather than LLM generation.
+  - Examples include extracted metadata, document/job ids, normalized timestamps (only where normalization rules already exist), clause counts, category counts, table/chart JSON payloads, and other rule-derived aggregates.
+  - Deterministic output sections must be identical across repeated runs of the same input after excluding documented volatile fields (for example generated ids, raw timestamps, signed URLs, and other explicitly documented non-deterministic fields).
+
+- LLM dependency boundary:
+  - App boot, /health, /readiness, /sample-report, and /sample-pdf must not require live LLM availability.
+  - Default Oracle deployment path may allow optional LLM-backed enrichment for extraction, summary, or explanation.
+  - Repository evidence currently shows a non-live fallback path (Gemini stub mode when vertexai.enabled=false), so default Oracle smoke flow should pass without live LLM dependency.
+  - If upload->status->report smoke flow is configured to require live LLM inference, that must be explicitly documented as a scoped exception; in that case, the "not a hard dependency" rule applies to service boot and minimum route health only.
+
+- Baseline regression threshold:
+  - Any required route returns non-200 where baseline expects 200.
+  - Upload->status->report smoke flow fails once in validation.
+  - Repeatable latency degradation is greater than 30 percent on smoke path compared to captured baseline.
+  - Any newly required paid service appears in default Oracle path.
+
+## Corrected Scope Decisions
+
+- Oracle Cloud means hosting target change first. It does not imply Oracle DB adoption.
+- Postgres remains the default database in this revamp.
+- Do not add broad provider-agnostic abstractions across db, storage, messaging, llm, and metrics in phase 1.
+- Do not preserve Pub/Sub as a default runtime dependency for Oracle path.
+- Oracle path should prefer synchronous or in-process background handling unless evidence forces a queue.
+- Do not require provider-neutral metrics in phase 1.
+- Keep GCP path functional only as rollback safety and regression guard, not as a parallel architecture program.
+- Prefer deterministic logic for chart-ready data. Use LLM only where it clearly adds value.
+
+## What Is Intentionally Not Being Generalized Yet
+
+- No Oracle DB support track.
+- No cross-cloud database abstraction layer.
+- No universal storage abstraction beyond what already exists.
+- No universal messaging abstraction redesign.
+- No provider-neutral observability framework in phase 1.
+- No enterprise canary/process ceremony beyond practical smoke and rollback checks.
+
+## Delivery Chunks (4 Max)
 
 | Chunk | Scope | Primary Files | Validation Gate | Rollback Trigger |
 |---|---|---|---|---|
-| 1 | Plan and branch safety setup (completed) | `MUST_READ_FIRST/01_POLICYINSIGHT_REVAMP_BRANCH_PLAN.md`, `MUST_READ_FIRST/02_EXECUTION_GUARDRAILS.md` | Plan docs committed and pushed | N/A |
-| 2 | Config decoupling and profile contract | `src/main/resources/application*.yml`, `src/main/java/com/policyinsight/config/` | Local compile + local smoke pass | Default behavior changes under local/cloudrun |
-| 3 | Storage/DB neutrality + migration scaffolding | `src/main/java/com/policyinsight/shared/model/PolicyJob.java`, `src/main/resources/db/migration/`, storage services | Flyway up + route parity pass | Data shape mismatch or route regressions |
-| 4 | Messaging/LLM/metrics provider seams | messaging, processing, observability packages | Provider toggle tests pass | Retry/idempotency regressions |
-| 5 | Oracle deployment assets, CI matrix, docs and runbook | `infra/`, `.github/workflows/`, `scripts/`, `README.md`, `docs/` | Dual-path deploy smoke pass | Cloud Run breaks or Oracle smoke fails |
+| 1 | Baseline lock and scope freeze | MUST_READ_FIRST/01_POLICYINSIGHT_REVAMP_BRANCH_PLAN.md, MUST_READ_FIRST/02_EXECUTION_GUARDRAILS.md, README.md | Baseline compile/test/smoke captured, including latency baseline and route contract | Baseline unstable, missing baseline artifact, or baseline checks fail |
+| 2 | First working Oracle deployment path | infra/, scripts/, src/main/resources/application*.yml, docs/ | Oracle deployment boots definition fully passes; hosting-differences-only config rule passes | Any Oracle deployment boots check fails |
+| 3 | Runtime simplification on Oracle path | src/main/java/com/policyinsight/api/messaging/, src/main/java/com/policyinsight/processing/, src/main/resources/application*.yml | Oracle path operable plus status-flow parity passes with Pub/Sub not required by default | Any status-flow parity breach or smoke flow failure |
+| 4 | Cutover readiness and stabilization | infra/, scripts/, README.md, docs/ | Validation matrix passes twice; no baseline regression threshold breach; cost improved definition passes; Cloud Run fallback verified | Any baseline regression threshold breach or cost rule breach |
 
-## Phase 1: Baseline and Guardrails
+## Phased Delivery Plan
 
-### Tasks
+### Chunk 1: Baseline Lock and Scope Freeze
 
-1. Capture baseline branch state, compile/test status, and smoke endpoints.
-2. Record architectural constraints in this plan and keep them stable.
+Tasks:
 
-### Target Files
+1. Capture baseline branch state and local behavior.
+2. Confirm current route contracts and smoke endpoints.
+3. Capture smoke-path latency baseline using the same PDF across three runs and record median.
+4. Freeze migration scope to Oracle hosting-first.
 
-- `MUST_READ_FIRST/01_POLICYINSIGHT_REVAMP_BRANCH_PLAN.md`
-- `MUST_READ_FIRST/02_EXECUTION_GUARDRAILS.md`
-- `README.md`
+Target files:
 
-### Exit Criteria
+- MUST_READ_FIRST/01_POLICYINSIGHT_REVAMP_BRANCH_PLAN.md
+- MUST_READ_FIRST/02_EXECUTION_GUARDRAILS.md
+- README.md
 
-- Baseline commands and outcomes are recorded.
-- Known-good local startup path is confirmed.
-- Required routes return expected HTTP statuses.
+Exit criteria:
 
-### Risk and Rollback
+- Baseline artifact exists with:
+  - required route expectations,
+  - one passing upload->status->report smoke run,
+  - median latency from three smoke runs using one fixed PDF.
+- Scope boundaries are explicit and stable.
 
-- Risk: stale baseline produces false regression alarms.
-- Rollback: recapture baseline immediately and re-run smoke checks.
+Rollback action:
 
-## Phase 2: Configuration Decoupling First
+- Re-run baseline capture and pause implementation until stable.
 
-### Tasks
+### Chunk 2: First Working Oracle Deployment Path
 
-1. Add explicit provider selectors for db, storage, messaging, llm, and metrics.
-2. Preserve current defaults for local and cloudrun profiles.
-3. Centralize provider wiring in config package, avoiding scattered conditionals.
+Tasks:
 
-### Target Files
+1. Add minimal Oracle deployment assets and scripts focused on one working path.
+2. Add Oracle runtime configuration for hosting differences only.
+3. Keep Postgres and Flyway behavior unchanged.
+4. Keep Cloud Run assets untouched except for compatibility fixes.
 
-- `src/main/resources/application.yml`
-- `src/main/resources/application-local.yml`
-- `src/main/resources/application-cloudrun.yml`
-- `src/main/resources/application-demSleep.yml`
-- `src/main/java/com/policyinsight/config/`
+Target files:
 
-### Exit Criteria
+- infra/
+- scripts/
+- src/main/resources/application*.yml
+- docs/
 
-- App boots with current local profile behavior unchanged.
-- App boots with current cloudrun profile behavior unchanged.
-- Provider switches are visible and documented.
+Exit criteria:
 
-### Risk and Rollback
+- Oracle deployment boots definition fully passes.
+- Runtime configuration changes satisfy hosting-differences-only rule.
+- Cloud Run minimum smoke still passes (fallback preserved).
 
-- Risk: implicit defaults break existing environment behavior.
-- Rollback: revert profile/property changes and restore previous defaults.
+Rollback action:
 
-## Phase 3: Data, Storage, and Messaging Abstractions
+- Disable Oracle deployment path and continue Cloud Run as primary.
 
-### Tasks
+### Chunk 3: Oracle Runtime Simplification
 
-1. Introduce provider-neutral artifact metadata for persisted paths.
-2. Add transitional Flyway migration with safe backfill.
-3. Add Oracle-ready db profile wiring while keeping Postgres default.
-4. Add non-Pub/Sub messaging seam without removing Pub/Sub path.
+Tasks:
 
-### Target Files
+1. Make Oracle path run without Pub/Sub dependency by default.
+2. Use in-process background handling for default Oracle path unless evidence forces queue retention.
+3. Preserve status-flow parity even if internal execution model changes.
+4. Keep deterministic report/chart-ready logic deterministic.
+5. Keep LLM scope limited to extraction/summary/explanation tasks where it adds clear value.
 
-- `src/main/java/com/policyinsight/shared/model/PolicyJob.java`
-- `src/main/resources/db/migration/`
-- `src/main/java/com/policyinsight/api/storage/`
-- `src/main/java/com/policyinsight/api/messaging/`
-- `src/main/resources/application*.yml`
+Target files:
 
-### Exit Criteria
+- src/main/java/com/policyinsight/api/messaging/
+- src/main/java/com/policyinsight/processing/
+- src/main/resources/application*.yml
 
-- Existing documents continue processing with no route contract changes.
-- Migration runs successfully on local Postgres baseline snapshot.
-- Oracle profile can start configuration path without compile/runtime config errors.
-- Pub/Sub mode still works in current path.
+Exit criteria:
 
-### Risk and Rollback
+- Oracle path operable definition passes.
+- Status-flow parity definition passes.
+- Required routes remain at baseline contract behavior.
+- Deterministic output sections definition passes after excluding documented volatile fields.
 
-- Risk: schema transitions break existing reads/writes.
-- Rollback: stop rollout, revert migration commit, restore from pre-migration backup.
+Rollback action:
 
-## Phase 4: LLM and Observability Provider Strategy
+- Re-enable prior runtime mode and revert simplification changes that regress flow parity.
 
-### Tasks
+### Chunk 4: Cutover Readiness and Stabilization
 
-1. Keep Vertex provider and add a low-cost alternate provider behind common interface.
-2. Add per-provider telemetry (latency, errors, token usage where available).
-3. Add Prometheus-first profile while preserving Datadog path.
+Tasks:
 
-### Target Files
+1. Run full validation matrix twice on Oracle path.
+2. Compare Oracle smoke latency to captured baseline using the same PDF and script.
+3. Verify cost improved rule by checking default Oracle dependencies.
+4. Keep Cloud Run ready as immediate fallback.
+5. Finalize concise runbook: deploy, verify, rollback.
 
-- `src/main/java/com/policyinsight/processing/`
-- `src/main/java/com/policyinsight/observability/`
-- `src/main/resources/application*.yml`
-- `src/test/java/`
+Target files:
 
-### Exit Criteria
+- infra/
+- scripts/
+- README.md
+- docs/
 
-- LLM provider can be switched by configuration only.
-- Retry/failure behavior remains equivalent across providers.
-- Metrics endpoint and configured backend are active for each target profile.
+Exit criteria:
 
-### Risk and Rollback
+- Oracle validation matrix passes twice consecutively.
+- No baseline regression threshold breach.
+- Cost improved definition passes.
+- Cloud Run fallback path remains validated.
+- Rollback steps are tested and documented.
 
-- Risk: provider mismatch causes output or retry regressions.
-- Rollback: return to single-provider path and keep instrumentation changes isolated.
+Rollback action:
 
-## Phase 5: Deployment, CI, and Cutover Readiness
+- Return traffic to Cloud Run immediately if any rollback trigger is breached.
 
-### Tasks
-
-1. Add Oracle-target deployment assets and scripts in parallel with Cloud Run assets.
-2. Add CI validation matrix for local-postgres and oracle profile boot/tests.
-3. Add migration and rollback runbook and finalize acceptance checks.
-
-### Target Files
-
-- `.github/workflows/cd.yml`
-- `infra/cloudrun/web.yaml`
-- `infra/cloudrun/worker.yaml`
-- `infra/`
-- `scripts/`
-- `README.md`
-- `docs/`
-
-### Exit Criteria
-
-- Existing Cloud Run path remains green.
-- Oracle-target smoke deployment passes.
-- CI gates cover both baseline and Oracle-ready profiles.
-- Cutover and rollback steps are documented and reviewed.
-
-### Risk and Rollback
-
-- Risk: deployment path divergence creates release instability.
-- Rollback: keep Cloud Run as primary and disable Oracle path until fixes land.
-
-## Executable Verification Matrix
+## Validation Matrix
 
 Run from repo root in PowerShell.
 
-### Baseline and Local Behavior
+### Branch and Baseline Safety
 
 ```powershell
 git branch --show-current
 git status -sb
-docker compose up -d
+git worktree list
 .\mvnw.cmd -q -DskipTests compile
 .\mvnw.cmd test
 ```
 
-Expected:
+Pass criteria:
 
-- Current branch is `policyinsight-revamp`.
-- Working tree is clean before new edits.
-- Compile and tests succeed.
+- Current branch is policyinsight-revamp.
+- Compile and tests pass for changed scope.
 
-### Local Smoke Endpoints
-
-Start app locally in a separate terminal, then run:
+### Route Contract Smoke (Local and Oracle)
 
 ```powershell
 Invoke-WebRequest http://localhost:8080/health -UseBasicParsing
@@ -208,91 +246,95 @@ Invoke-WebRequest http://localhost:8080/sample-report -UseBasicParsing
 Invoke-WebRequest http://localhost:8080/sample-pdf -UseBasicParsing
 ```
 
-Expected:
+Pass criteria:
 
-- All four endpoints return HTTP 200.
+- All return HTTP 200.
 
-### Migration Safety
+### Core Flow Smoke
 
-```powershell
-.\mvnw.cmd test "-Dtest=*Migration*"
-```
-
-Expected:
-
-- Migration-related tests pass with no schema validation failures.
-
-Fallback if the pattern matches no tests or is not present yet:
+Use existing smoke scripts for upload and processing path:
 
 ```powershell
-.\mvnw.cmd test
+pwsh scripts\smoke_test.ps1 <path-to-pdf>
+pwsh scripts\mup-smoke.ps1 <path-to-pdf>
 ```
 
-Expected:
+Pass criteria:
 
-- Full suite passes for changed scope.
+- Upload succeeds.
+- Status transitions to SUCCESS.
+- Report route is renderable with valid token.
+- Repeated runs of the same PDF produce identical deterministic output sections after excluding documented volatile fields.
 
-### Provider Switching
+### Baseline Latency Capture and Comparison
 
-Run this explicit provider/profile matrix and verify route contracts remain unchanged.
-
-| Scenario | Setup Command (PowerShell) | Verification |
-|---|---|---|
-| Local baseline | `$env:APP_STORAGE_MODE="local"; $env:APP_MESSAGING_MODE="local"; $env:APP_PROCESSING_MODE="local"` | Start app and run health/readiness/sample endpoints |
-| Cloudrun-parity local boot | `$env:SPRING_PROFILES_ACTIVE="cloudrun"` | App boots and core routes preserve contract |
-| Oracle profile readiness (when added) | `$env:SPRING_PROFILES_ACTIVE="oracle"` | App boot path loads oracle config without profile errors |
-| Metrics provider toggle | `$env:DATADOG_ENABLED="false"` (or profile-specific metrics flag) | `/actuator/metrics` and configured backend endpoint available |
-
-Minimum endpoint checks after each scenario:
+Baseline capture (Chunk 1):
 
 ```powershell
-Invoke-WebRequest http://localhost:8080/health -UseBasicParsing
-Invoke-WebRequest http://localhost:8080/readiness -UseBasicParsing
-Invoke-WebRequest http://localhost:8080/sample-report -UseBasicParsing
-Invoke-WebRequest http://localhost:8080/sample-pdf -UseBasicParsing
+$PdfPath = "<path-to-pdf>"
+$Durations = 1..3 | ForEach-Object { (Measure-Command { pwsh scripts\smoke_test.ps1 $PdfPath }).TotalSeconds }
+$Durations
 ```
 
-Expected:
+Oracle comparison (Chunk 4):
 
-- No HTTP contract changes for core routes.
-- No increase in failed job rate for baseline smoke runs.
+```powershell
+$PdfPath = "<path-to-pdf>"
+$OracleDurations = 1..3 | ForEach-Object { (Measure-Command { pwsh scripts\smoke_test.ps1 $PdfPath }).TotalSeconds }
+$OracleDurations
+```
 
-## Cutover Strategy
+Pass criteria:
 
-1. Keep Cloud Run path as primary while Oracle path is validated.
-2. Run Oracle-target smoke deploy with branch-tagged artifacts.
-3. Canary step 1: 5% traffic for 30 minutes.
-4. Canary step 2: 25% traffic for 2 hours.
-5. Canary step 3: 50% traffic for 4 hours.
-6. Full promotion: 100% traffic only if error rate and latency remain within baseline tolerance.
-7. Rollback trigger: immediately revert to Cloud Run baseline if 5xx rate doubles from baseline for 10 minutes or p95 latency increases by 30% for 15 minutes.
+- Oracle median smoke duration is less than or equal to 1.30 times baseline median.
+- If Oracle median exceeds 1.30 times baseline median in two consecutive validation rounds, rollback trigger is met.
+
+### Oracle Path Operability Check
+
+Pass criteria:
+
+- Oracle deployment meets Oracle deployment boots definition.
+- Oracle-hosted app processes at least one PDF end-to-end without Pub/Sub as default dependency.
+- Postgres remains active datasource unless explicit repo evidence changes this decision.
+
+### Cloud Run Fallback Check
+
+Pass criteria:
+
+- Existing Cloud Run path can still boot and pass minimum smoke checks.
+
+### Cost Rule Check
+
+Pass criteria:
+
+- Default Oracle deployment path has no mandatory dependency on Cloud SQL, Pub/Sub, Datadog, or other paid managed services.
+- Service boot and minimum route health (/health, /readiness, /sample-report, /sample-pdf) pass without live LLM dependency.
+- Smoke-flow dependency follows repo evidence: current repo includes a non-live fallback path (Gemini stub mode when vertexai.enabled=false), so default Oracle upload->status->report smoke flow should pass without live LLM; if configured as live-LLM-only, that requirement must be explicitly documented as a scoped exception.
+
+## Rollback Triggers
+
+- Any required route regression in upload, status, report, share, sample-report, or sample-pdf (expected 200 becomes non-200).
+- Any Oracle deployment boots check fails.
+- Upload->status->report smoke flow fails once in validation.
+- Status-flow parity fails (client-visible contract/state behavior changes incompatibly).
+- Oracle median smoke latency exceeds 1.30 times baseline median in two consecutive validation rounds.
+- Any newly required paid service appears in default Oracle path.
+
+## Rollback Actions
+
+1. Switch active traffic back to Cloud Run path immediately.
+2. Revert the most recent Oracle-specific chunk commit.
+3. Re-run baseline compile/test and route smoke checks.
+4. Keep Oracle path disabled until failed matrix items are fixed.
 
 ## Definition of Done
 
-- Five chunk commits are complete and pushed.
-- No endpoint regressions in baseline route set.
-- Oracle-target path can be deployed and smoke-validated.
-- Provider switches are config-only and tested.
-- CI coverage includes baseline and Oracle-ready checks.
-- Rollback runbook exists and is actionable.
-
-## Scope Decisions
-
-Included:
-
-- Architecture decoupling.
-- Oracle-path enablement.
-- Provider abstraction.
-- CI, verification, and deployment documentation for `policyinsight-revamp`.
-
-Excluded:
-
-- Full frontend redesign.
-- New product features unrelated to portability, cost, or reliability.
-- Removal of current GCP path before Oracle path is proven.
-
-## Further Considerations
-
-1. Start Oracle with profile-based compatibility mode before deep vendor tuning.
-2. Keep Pub/Sub default until alternate queue path reaches retry/idempotency parity.
-3. Prefer deterministic logic for chart-ready data; reserve LLM for extraction and explanation where it adds clear value.
+- PolicyInsight has a working Oracle Cloud free-tier deployment path that satisfies Oracle deployment boots definition.
+- Postgres remains default and operational unless repo evidence requires change.
+- Core route behavior preserves status-flow parity with no contract regressions.
+- Oracle path is operable without Pub/Sub as default dependency.
+- Cloud Run path remains functional as fallback until Oracle path is proven stable.
+- Validation matrix passes twice on Oracle with no baseline regression threshold breach.
+- Cost improved definition is met for default Oracle path.
+- LLM dependency boundary definition is met.
+- Rollback runbook is actionable and verified.
