@@ -683,3 +683,385 @@ footer:not(.site-footer) {
         font-size: 1.2rem;
     }
 }
+
+/* ========================================
+   Report Pages
+   ======================================== */
+.report-container {
+    width: 100%;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem 3rem;
+    flex: 1;
+}
+
+/* Back navigation */
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #3498db;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+/* Info / read-only / sample notice banners */
+.report-notice {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-bottom: 1.75rem;
+    line-height: 1.5;
+}
+
+.report-notice-info {
+    background-color: #e8f4fc;
+    border: 1px solid #aed6f1;
+    color: #1a5276;
+}
+
+.report-notice-warning {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+    border-radius: 4px;
+    color: #856404;
+}
+
+.report-notice a {
+    color: #2980b9;
+    font-weight: 500;
+}
+
+/* Report sections */
+.report-section {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.report-section h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 2px solid #eef2f5;
+}
+
+.report-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #34495e;
+    margin-top: 1.25rem;
+    margin-bottom: 0.6rem;
+}
+
+/* Overview meta fields */
+.report-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.report-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.report-meta-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+}
+
+.report-meta-value {
+    font-size: 0.95rem;
+    color: #2c3e50;
+}
+
+/* Bulleted lists in reports */
+.report-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.report-list-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: #374151;
+}
+
+.report-list-item::before {
+    content: "•";
+    color: #3498db;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+/* Citation link inside list item */
+.citation-link {
+    color: #3498db;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.citation-link:hover {
+    text-decoration: underline;
+}
+
+/* Risk taxonomy */
+.risk-category {
+    margin-bottom: 1.25rem;
+}
+
+.risk-category:last-child {
+    margin-bottom: 0;
+}
+
+.risk-clear {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #27ae60;
+    font-size: 0.9rem;
+}
+
+.risk-clear-icon {
+    font-size: 1rem;
+}
+
+/* Q&A section */
+.qa-form-group {
+    margin-bottom: 1rem;
+}
+
+.qa-form-group label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    margin-bottom: 0.4rem;
+}
+
+.qa-textarea {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1.5px solid #d0d7de;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    min-height: 90px;
+    resize: vertical;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.qa-textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.qa-hint {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.3rem;
+}
+
+.qa-limit-reached {
+    color: #e74c3c;
+    font-size: 0.9rem;
+}
+
+.qa-counter {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 1rem;
+}
+
+#qa-results .qa-entry {
+    background: #f8f9fa;
+    border-left: 3px solid #3498db;
+    border-radius: 0 6px 6px 0;
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+}
+
+.qa-entry p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 0.35rem;
+}
+
+.qa-entry p:last-child {
+    margin-bottom: 0;
+}
+
+.qa-confidence-confident {
+    color: #27ae60;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.qa-confidence-abstained {
+    color: #e74c3c;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* Export & Share actions */
+.report-actions {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.report-actions h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.report-actions-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Share link result box */
+.share-link-box {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    background-color: #d4edda;
+    border-radius: 8px;
+    border: 1px solid #c3e6cb;
+    display: none;
+}
+
+.share-link-box input[type="text"] {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.875rem;
+    margin-top: 0.4rem;
+}
+
+.share-expires {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #155724;
+}
+
+/* Signature block notice */
+.signature-notice {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Disclaimer in report */
+.report-disclaimer {
+    background: linear-gradient(135deg, #fef9e7 0%, #fef3cd 100%);
+    border: 1px solid #f7dc6f;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.report-disclaimer strong {
+    color: #7d6608;
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.95rem;
+}
+
+.report-disclaimer p {
+    color: #9a7d0a;
+    font-size: 0.875rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Upload status fragments */
+.upload-status-box {
+    margin-top: 1rem;
+}
+
+.status-processing {
+    padding: 0.875rem 1.25rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.status-error {
+    color: #e74c3c;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Report page responsive */
+@media (max-width: 768px) {
+    .report-container {
+        padding: 0 1rem 2rem;
+        margin: 1.25rem auto;
+    }
+
+    .report-section {
+        padding: 1.25rem;
+    }
+
+    .report-meta {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .report-actions-row {
+        flex-direction: column;
+    }
+
+    .report-actions-row .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .report-meta {
+        grid-template-columns: 1fr;
+    }
+}

@@ -7,19 +7,56 @@
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
-    <header>
-        <h1>PolicyInsight</h1>
-        <p>Demo is sleeping to save cost.</p>
+    <header class="site-header">
+        <div class="header-content">
+            <h1>PolicyInsight</h1>
+            <p class="tagline">Analyze legal documents. Understand what you're agreeing to.</p>
+        </div>
     </header>
 
-    <main>
-        <section id="sleep-message" class="warning-box">
-            <p>This demo instance is in sleep mode. The database is not running. Wake the environment to use the full application.</p>
+    <main class="container">
+        <div class="card-grid">
+            <!-- Card: Try the Demo (primary action in sleep mode) -->
+            <section class="card card-demo card-primary">
+                <div class="card-header">
+                    <h2>Try the Demo</h2>
+                </div>
+                <div class="card-body">
+                    <p class="card-description">Explore a pre-analyzed sample document to see how PolicyInsight extracts risks, obligations, and citations.</p>
+                    <div class="button-group">
+                        <a th:href="@{/sample-report}" class="btn btn-primary">Try sample report</a>
+                        <a th:href="@{/sample-pdf}" download="sample.pdf" class="btn btn-secondary">Download sample PDF</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Card: Upload (disabled in sleep mode) -->
+            <section class="card card-upload card-disabled">
+                <div class="card-header">
+                    <h2>Upload Document</h2>
+                    <span class="badge badge-warning">Disabled</span>
+                </div>
+                <div class="card-body">
+                    <div class="notice notice-warning">
+                        <span class="notice-icon">&#128274;</span>
+                        <span>Demo is sleeping to save costs. The database is not running. Uploads are unavailable. Use the sample report to explore features.</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <section class="disclaimer-card">
+            <div class="disclaimer-icon">&#9888;</div>
+            <div class="disclaimer-content">
+                <strong>Not Legal Advice</strong>
+                <p>PolicyInsight provides clarity and risk surfacing. It is not a substitute for legal counsel.</p>
+            </div>
         </section>
     </main>
 
-    <footer>
+    <footer class="site-footer">
         <p>Built with Spring Boot, Vertex AI, and Datadog.</p>
     </footer>
 </body>
 </html>
+
