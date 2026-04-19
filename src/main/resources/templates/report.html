@@ -180,8 +180,8 @@
             </div>
         </section>
 
-        <!-- Chunks Section (for citation link anchors, hidden from view) -->
-        <section id="chunks" aria-hidden="true" style="display:none;">
+        <!-- Chunks Section (hidden, for citation anchors) -->
+        <section id="chunks" style="display:none;">
             <div th:each="chunk : ${chunks}">
                 <div th:id="'chunk-' + ${chunk.id}">
                     <span th:text="${chunk.text}"></span>
@@ -234,7 +234,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             })
-            .then(r => r.json())
+            .then(response => response.json())
             .then(data => {
                 if (data.shareUrl) {
                     urlInput.value = data.shareUrl;

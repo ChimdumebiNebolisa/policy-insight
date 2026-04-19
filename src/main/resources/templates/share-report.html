@@ -141,7 +141,7 @@
         <!-- Note: Q&A is not available in read-only view -->
 
         <!-- Chunks Section (hidden, for citation anchors) -->
-        <section id="chunks" aria-hidden="true" style="display:none;">
+        <section id="chunks" style="display:none;">
             <div th:each="chunk : ${chunks}">
                 <div th:id="'chunk-' + ${chunk.id}">
                     <span th:text="${chunk.text}"></span>
