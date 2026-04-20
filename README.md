@@ -176,6 +176,30 @@ Baseline latency capture (same PDF, three runs):
 - Run 3: `5.3247559s`
 - Median: `5.2709681s`
 
+### Baseline refresh (2026-04-19)
+
+Refreshed local baseline evidence on `policyinsight-revamp` after hardening `scripts/verify-local.ps1`.
+
+Route contract smoke (local):
+
+- `GET /health` -> `200`
+- `GET /readiness` -> `200`
+- `GET /sample-report` -> `200`
+- `GET /sample-pdf` -> `200`
+
+Core flow smoke (`upload -> status SUCCESS -> reportUrl`) using `src/test/resources/valid.pdf` and `WEB_URL=http://localhost:8080`:
+
+- Run 1: `jobId=ec28f00f-b6cd-4881-8810-29913b29f367` -> `SUCCESS`
+- Run 2: `jobId=618beed2-f5e7-4b0d-b328-8325b2ca29bd` -> `SUCCESS`
+- Run 3: `jobId=c19e56bf-72e2-4279-bd78-30d82216eebf` -> `SUCCESS`
+
+Latency capture (same PDF, three runs):
+
+- Run 1: `6.2708764s`
+- Run 2: `5.3388266s`
+- Run 3: `5.2993056s`
+- Median: `5.3388266s`
+
 ## Roadmap
 
 - Add a minimal React front end for faster UX iteration.
