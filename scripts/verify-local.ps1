@@ -42,8 +42,8 @@ $dbUser = $env:DB_USER
 $serverPort = if ($env:SERVER_PORT) { [int]$env:SERVER_PORT } else { 8080 }
 if (Get-NetTCPConnection -LocalPort $serverPort -State Listen -ErrorAction SilentlyContinue) {
     $serverPort = 8081
+    $env:SERVER_PORT = $serverPort.ToString()
 }
-$env:SERVER_PORT = $serverPort.ToString()
 if ($AppUrl -eq "http://localhost:8080") {
     $AppUrl = "http://localhost:$serverPort"
 }

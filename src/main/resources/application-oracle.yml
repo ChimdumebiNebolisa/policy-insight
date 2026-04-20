@@ -1,5 +1,18 @@
 # Oracle VM profile configuration
 # Activate with SPRING_PROFILES_ACTIVE=oracle
+#
+# Oracle path defaults (all overridable via env vars):
+#   - Storage:   local filesystem  (APP_STORAGE_MODE=local)
+#   - Messaging: no Pub/Sub        (APP_MESSAGING_MODE=local, PUBSUB_ENABLED=false)
+#   - Processing: in-process worker (APP_PROCESSING_MODE=local, POLICYINSIGHT_WORKER_ENABLED=true)
+#   - LLM:       disabled by default (VERTEX_AI_ENABLED=false)
+#   - Observability: Datadog disabled (DATADOG_ENABLED=false)
+#
+# Non-negotiables (see MUST_READ_FIRST/01_POLICYINSIGHT_REVAMP_BRANCH_PLAN.md):
+#   - Postgres remains the active datasource; no Oracle DB adoption.
+#   - Pub/Sub is NOT required for default Oracle smoke flow.
+#   - App boot and health routes (/health, /readiness, /sample-report, /sample-pdf)
+#     must succeed without live LLM or paid managed services.
 
 spring:
   datasource:
@@ -8,6 +21,13 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:postgres}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:postgres}}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # Conservative pool size for Oracle free-tier VM (1–2 OCPUs, 1–4 GB RAM).
+      maximum-pool-size: ${DB_POOL_MAX:5}
+      minimum-idle: ${DB_POOL_MIN_IDLE:1}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
 server:
   port: ${PORT:8080}
@@ -16,18 +36,43 @@ server:
 app:
   base-url: ${APP_BASE_URL:http://localhost:${PORT:8080}}
   storage:
+    # local = filesystem; override with APP_STORAGE_MODE=gcp to use GCS.
     mode: ${APP_STORAGE_MODE:local}
+    local-dir: ${APP_STORAGE_LOCAL_DIR:/opt/policyinsight/storage}
   messaging:
+    # local = no Pub/Sub; override with APP_MESSAGING_MODE=gcp to use GCP Pub/Sub.
     mode: ${APP_MESSAGING_MODE:local}
   processing:
+    # local = in-process polling worker; override with APP_PROCESSING_MODE=gcp for Pub/Sub worker.
     mode: ${APP_PROCESSING_MODE:local}
 
+# In-process polling worker: processes jobs directly on the Oracle VM without Pub/Sub.
 policyinsight:
   worker:
     enabled: ${POLICYINSIGHT_WORKER_ENABLED:true}
 
+# LLM dependency boundary:
+#   App boot, /health, /readiness, /sample-report, and /sample-pdf must not require live LLM.
+#   Set VERTEX_AI_ENABLED=true (and provide GOOGLE_APPLICATION_CREDENTIALS) to enable Gemini.
+vertexai:
+  enabled: ${VERTEX_AI_ENABLED:false}
+
+# Pub/Sub is disabled for the default Oracle path.
 pubsub:
   enabled: ${PUBSUB_ENABLED:false}
 
+# Datadog agent is not available on Oracle free-tier by default.
 datadog:
   enabled: ${DATADOG_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,readiness,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    db:
+      enabled: true

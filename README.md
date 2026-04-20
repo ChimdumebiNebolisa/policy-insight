@@ -205,3 +205,52 @@ Latency capture (same PDF, three runs):
 - Add a minimal React front end for faster UX iteration.
 - Support batch uploads and templated report exports.
 - Expand policy-specific heuristics and citation ranking.
+
+## Oracle Cloud deployment path (policyinsight-revamp)
+
+PolicyInsight is being migrated to Oracle Cloud free-tier for lower run cost.
+The Cloud Run path remains functional as an immediate fallback during the transition.
+
+### Oracle path defaults
+
+| Setting | Default | Override env var |
+|---------|---------|-----------------|
+| Storage | local filesystem | `APP_STORAGE_MODE=gcp` |
+| Messaging | local (no Pub/Sub) | `APP_MESSAGING_MODE=gcp` |
+| Processing | in-process worker | `APP_PROCESSING_MODE=gcp` |
+| LLM (Vertex AI) | disabled | `VERTEX_AI_ENABLED=true` |
+| Datadog | disabled | `DATADOG_ENABLED=true` |
+
+No paid managed services (Cloud SQL, Pub/Sub, Datadog, Vertex AI) are required
+for the default Oracle path.
+
+### Oracle path definition-of-done checklist
+
+- [x] **Chunk 1**: Revamp plan, chunk gates, and baseline evidence recorded.
+- [x] **Chunk 2**: Oracle runtime profile (`application-oracle.yml`), deploy scripts
+  (`deploy_oracle_web.ps1`, `deploy_oracle_web.sh`), and runbook committed.
+- [x] **Chunk 3**: Oracle runtime simplification:
+  - [x] `application-oracle.yml` hardened with explicit LLM boundary
+    (`vertexai.enabled: false`), Hikari pool settings, and explicit storage
+    local-dir.
+  - [x] `OracleProfileSmokeTest` added — 5 tests that validate the oracle profile
+    loads correctly and `/health`, `/readiness`, `/sample-report`, `/sample-pdf`
+    all return HTTP 200 without live LLM or paid services.
+  - [x] Full test suite passes (77 tests, 0 failures) with oracle profile active.
+- [ ] **Chunk 4**: Cutover readiness — run validation matrix twice on live Oracle host
+  and confirm cost rule, latency threshold, and Cloud Run fallback.
+
+### Deploying to Oracle VM
+
+See [docs/ORACLE_WEB_DEPLOYMENT_RUNBOOK.md](docs/ORACLE_WEB_DEPLOYMENT_RUNBOOK.md)
+for the full deploy, verify, rollback, and validation matrix steps.
+
+Quick start:
+
+```powershell
+# Windows
+.\scripts\deploy_oracle_web.ps1 -Host <oracle-vm-ip> -SshKeyPath <key-path> -VerifyRoutes
+
+# Linux/macOS
+./scripts/deploy_oracle_web.sh --host <oracle-vm-ip> --ssh-key <key-path> --verify-routes
+```
