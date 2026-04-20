@@ -42,8 +42,8 @@ $dbUser = $env:DB_USER
 $serverPort = if ($env:SERVER_PORT) { [int]$env:SERVER_PORT } else { 8080 }
 if (Get-NetTCPConnection -LocalPort $serverPort -State Listen -ErrorAction SilentlyContinue) {
     $serverPort = 8081
-    $env:SERVER_PORT = $serverPort.ToString()
 }
+$env:SERVER_PORT = $serverPort.ToString()
 if ($AppUrl -eq "http://localhost:8080") {
     $AppUrl = "http://localhost:$serverPort"
 }
@@ -131,7 +131,7 @@ try {
         $appStartAttempt++
         Write-Host "Starting app attempt $appStartAttempt/$maxAppStartAttempts..." -ForegroundColor Yellow
         if ($appJob -and $appJob.State -eq "Running") {
-            Stop-Job -Id $appJob.Id -Force
+            Stop-Job -Id $appJob.Id -ErrorAction SilentlyContinue
             Remove-Job -Id $appJob.Id -Force -ErrorAction SilentlyContinue
         }
         $appJob = Start-Job -ScriptBlock {
@@ -142,14 +142,11 @@ try {
                     Set-Item -Path ("Env:" + $entry.Key) -Value $entry.Value
                 }
             }
-            & .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local 1> $stdoutPath 2> $stderrPath
+            & .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local" "-Dspring-boot.run.fork=false" "-Dspring-boot.run.jvmArguments=-Dspring.devtools.restart.enabled=false" 1> $stdoutPath 2> $stderrPath
         } -ArgumentList (Get-Location).Path, $logOutPath, $logErrPath, $jobEnv
 
         Write-Host "Waiting for app health endpoint..." -ForegroundColor Yellow
         for ($i = 1; $i -le $healthAttempts; $i++) {
-            if ($appJob -and $appJob.State -ne "Running") {
-                throw "App process exited early. Check $logOutPath and $logErrPath."
-            }
             Write-Host "  Health attempt $i/$healthAttempts"
             try {
                 $healthResponse = Invoke-RestMethod -Uri "$AppUrl/health" -Method Get -TimeoutSec 3
@@ -164,7 +161,7 @@ try {
         }
         if (-not $appReady) {
             Write-Host "App did not become healthy on attempt $appStartAttempt." -ForegroundColor Yellow
-            Stop-Job -Id $appJob.Id -Force
+            Stop-Job -Id $appJob.Id -ErrorAction SilentlyContinue
             Remove-Job -Id $appJob.Id -Force -ErrorAction SilentlyContinue
         }
     }
@@ -256,7 +253,7 @@ try {
     if ($appJob) {
         Write-Host "Stopping app job..." -ForegroundColor Yellow
         if ($appJob.State -eq "Running") {
-            Stop-Job -Id $appJob.Id -Force
+            Stop-Job -Id $appJob.Id -ErrorAction SilentlyContinue
         }
         Receive-Job -Id $appJob.Id -ErrorAction SilentlyContinue | Out-Null
         Remove-Job -Id $appJob.Id -Force -ErrorAction SilentlyContinue

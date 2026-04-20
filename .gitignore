@@ -61,6 +61,7 @@ application-*.yml
 !application-local.yml
 !application-cloudrun.yml
 !application-demSleep.yml
+!application-oracle.yml
 
 # Database
 *.db

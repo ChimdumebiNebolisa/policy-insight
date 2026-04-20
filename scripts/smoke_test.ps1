@@ -46,15 +46,13 @@ Write-Host ""
 
 # Upload document
 Write-Host "Step 1: Uploading document..." -ForegroundColor Yellow
-$form = @{
-    file = Get-Item $PDF_PATH
-}
 try {
-    $UPLOAD_RESPONSE = Invoke-RestMethod -Uri "$WEB_URL/api/documents/upload" `
-        -Method Post `
-        -Form $form `
-        -ContentType "multipart/form-data"
-    $UPLOAD_RESPONSE_JSON = $UPLOAD_RESPONSE | ConvertTo-Json -Depth 10
+    $UPLOAD_RESPONSE_JSON = & curl.exe -sS -X POST -F "file=@$PDF_PATH" "$WEB_URL/api/documents/upload"
+    if ($LASTEXITCODE -ne 0) {
+        throw "curl upload failed with exit code $LASTEXITCODE"
+    }
+
+    $UPLOAD_RESPONSE = $UPLOAD_RESPONSE_JSON | ConvertFrom-Json
 } catch {
     Write-Host "ERROR: Upload failed: $_" -ForegroundColor Red
     exit 1
@@ -65,9 +63,16 @@ Write-Host ""
 
 # Extract jobId
 $JOB_ID = $UPLOAD_RESPONSE.jobId
+$JOB_TOKEN = $UPLOAD_RESPONSE.token
 
 if ([string]::IsNullOrWhiteSpace($JOB_ID)) {
     Write-Host "ERROR: Could not extract jobId from upload response" -ForegroundColor Red
+    Write-Host "Response: $UPLOAD_RESPONSE_JSON"
+    exit 1
+}
+
+if ([string]::IsNullOrWhiteSpace($JOB_TOKEN)) {
+    Write-Host "ERROR: Could not extract token from upload response" -ForegroundColor Red
     Write-Host "Response: $UPLOAD_RESPONSE_JSON"
     exit 1
 }
@@ -84,7 +89,7 @@ $FINAL_RESPONSE = $null
 
 while ($ATTEMPT -lt $MAX_ATTEMPTS) {
     try {
-        $STATUS_RESPONSE = Invoke-RestMethod -Uri "$WEB_URL/api/documents/$JOB_ID/status"
+        $STATUS_RESPONSE = Invoke-RestMethod -Uri "$WEB_URL/api/documents/$JOB_ID/status" -Headers @{ "X-Job-Token" = $JOB_TOKEN }
         $STATUS = $STATUS_RESPONSE.status
     } catch {
         Write-Host "ERROR: Failed to get status: $_" -ForegroundColor Red
@@ -119,5 +124,5 @@ if ($STATUS -eq "FAILED") {
     exit 1
 }
 
-Write-Host "✓ Smoke test passed: Job completed successfully" -ForegroundColor Green
+Write-Host "Smoke test passed: Job completed successfully" -ForegroundColor Green
 

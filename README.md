@@ -145,6 +145,61 @@ PolicyInsight produced stable structured outputs and generally useful evidence-l
 
 Evaluation artifacts and results are version-controlled in this repo for auditability.
 
+## Revamp Chunk 1 Baseline Artifact (2026-04-14)
+
+Baseline safety context:
+
+- Branch: `policyinsight-revamp`
+- Git status at preflight: `## policyinsight-revamp...origin/policyinsight-revamp`
+- Worktrees: `C:/Users/Chimdumebi/policy-insight` (`policyinsight-revamp`), `C:/Users/Chimdumebi/policy-insight-main` (`main`)
+- Local runtime note: a host PostgreSQL service was already bound to `5432`, so baseline smoke capture used `DB_PORT=5433` and `POLICYINSIGHT_WORKER_ENABLED=true`.
+
+Validation commands and outcomes:
+
+- `./mvnw.cmd -q -DskipTests compile`: PASS
+- `./mvnw.cmd test`: PASS (`72` tests, `0` failures, `0` errors)
+- `Invoke-WebRequest http://localhost:8080/health -UseBasicParsing`: `200`
+- `Invoke-WebRequest http://localhost:8080/readiness -UseBasicParsing`: `200`
+- `Invoke-WebRequest http://localhost:8080/sample-report -UseBasicParsing`: `200`
+- `Invoke-WebRequest http://localhost:8080/sample-pdf -UseBasicParsing`: `200`
+
+Core flow smoke (`upload -> status SUCCESS -> report URL available`):
+
+- Command: `./scripts/smoke_test.ps1 src/test/resources/valid.pdf` with `WEB_URL=http://localhost:8080`
+- Result: PASS (status reached `SUCCESS` on polling attempt `2`)
+- Example artifact: `jobId=1428ad11-7ea7-4928-8e91-ca5f374a9a63`, `reportUrl=/documents/1428ad11-7ea7-4928-8e91-ca5f374a9a63/report`
+
+Baseline latency capture (same PDF, three runs):
+
+- Run 1: `5.2610685s`
+- Run 2: `5.2709681s`
+- Run 3: `5.3247559s`
+- Median: `5.2709681s`
+
+### Baseline refresh (2026-04-19)
+
+Refreshed local baseline evidence on `policyinsight-revamp` after hardening `scripts/verify-local.ps1`.
+
+Route contract smoke (local):
+
+- `GET /health` -> `200`
+- `GET /readiness` -> `200`
+- `GET /sample-report` -> `200`
+- `GET /sample-pdf` -> `200`
+
+Core flow smoke (`upload -> status SUCCESS -> reportUrl`) using `src/test/resources/valid.pdf` and `WEB_URL=http://localhost:8080`:
+
+- Run 1: `jobId=ec28f00f-b6cd-4881-8810-29913b29f367` -> `SUCCESS`
+- Run 2: `jobId=618beed2-f5e7-4b0d-b328-8325b2ca29bd` -> `SUCCESS`
+- Run 3: `jobId=c19e56bf-72e2-4279-bd78-30d82216eebf` -> `SUCCESS`
+
+Latency capture (same PDF, three runs):
+
+- Run 1: `6.2708764s`
+- Run 2: `5.3388266s`
+- Run 3: `5.2993056s`
+- Median: `5.3388266s`
+
 ## Roadmap
 
 - Add a minimal React front end for faster UX iteration.
