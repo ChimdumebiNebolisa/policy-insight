@@ -56,14 +56,24 @@ public class SampleReportService {
     public SampleReportResult openSampleReport() {
         String ownerToken = tokenService.generateToken();
         PolicyJob job = policyJobRepository.findByDemoKey(SAMPLE_DEMO_KEY)
+                .map(this::reuseOrRebuildSampleJob)
                 .orElseGet(this::createSampleJob);
         job.setOwnerTokenHash(tokenService.hashToken(ownerToken));
         job.setOwnerTokenExpiresAt(Instant.now().plus(ownerTokenProperties.ttlMinutes(), ChronoUnit.MINUTES));
         policyJobRepository.save(job);
         int chunkCount = documentChunkRepository.findByJobIdOrderByChunkIndex(job.getId()).size();
         Report report = reportRepository.findByJobId(job.getId())
-                .orElseThrow(() -> new BadUploadException("Sample report is not available yet."));
+                .orElseThrow(() -> new SampleReportException("The fictional sample report could not be generated. Check AI configuration or try again."));
         return new SampleReportResult(job.getId(), report.getId(), ownerToken, chunkCount);
+    }
+
+    private PolicyJob reuseOrRebuildSampleJob(PolicyJob existingJob) {
+        if (existingJob.getStatus() == JobStatus.COMPLETED && reportRepository.findByJobId(existingJob.getId()).isPresent()) {
+            return existingJob;
+        }
+        policyJobRepository.delete(existingJob);
+        policyJobRepository.flush();
+        return createSampleJob();
     }
 
     private PolicyJob createSampleJob() {

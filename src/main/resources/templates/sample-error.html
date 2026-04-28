@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head th:replace="~{fragments/layout :: head('Sample report unavailable')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="page-shell narrow-shell">
+    <section class="error-card">
+        <p class="eyebrow">Sample report</p>
+        <h1>Sample report is temporarily unavailable</h1>
+        <p th:text="${safeErrorMessage}">The fictional sample report could not be generated. Check AI configuration or try again.</p>
+        <div class="hero-actions">
+            <a class="button button-primary" href="/sample">Try again</a>
+            <a class="button button-secondary" href="/#upload">Back to upload</a>
+        </div>
+        <p class="fine-print">Fictional sample agreement. Demonstration only.</p>
+    </section>
+</main>
+</body>
+</html>

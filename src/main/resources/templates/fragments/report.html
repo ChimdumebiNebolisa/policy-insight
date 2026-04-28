@@ -1,24 +1,22 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
-<section th:fragment="reportHeader(shared, ownerControls)" class="report-hero card">
-    <div class="report-title-block">
-        <p class="eyebrow" th:text="${shared} ? 'Shared read-only report' : 'PolicyInsight report'">PolicyInsight report</p>
+<section th:fragment="reportHeader(shared, ownerControls)" class="report-header-panel">
+    <div>
+        <a class="back-link" href="/">Back to upload</a>
+        <p class="section-kicker" th:text="${shared} ? 'Shared read-only report' : (${reportView.demo()} ? 'Fictional sample' : 'PolicyInsight report')">PolicyInsight report</p>
         <h1 th:text="${reportView.demo()} ? 'Fictional business agreement review' : 'Risk report'">Risk report</h1>
-        <p class="hero-lede" th:text="${reportView.report().documentOverview()}">Document overview</p>
-        <div class="badge-row">
-            <span class="badge badge-success">Citation-grounded</span>
-            <span class="badge badge-muted" th:text="${reportView.createdAtDisplay()}">Created recently</span>
-            <span class="badge badge-warning" th:if="${reportView.demo()}">Fictional sample agreement. Demonstration only.</span>
+        <div class="meta-row">
+            <span th:text="${reportView.createdAtDisplay()}">Created recently</span>
+            <span class="badge">Citation-grounded</span>
+            <span class="badge badge-warning" th:if="${reportView.demo()}">Demo only</span>
         </div>
-        <p class="fine-print">PolicyInsight is for document review support only and does not provide legal advice.</p>
     </div>
     <div class="report-actions">
         <form th:if="${ownerControls}" th:hx-post="@{/share/{id}(id=${reportView.reportId()})}"
               hx-target="#share-result" hx-swap="innerHTML" method="post">
-            <button class="button button-primary" type="submit">Share report</button>
+            <button class="button button-primary" type="submit">Share</button>
         </form>
-        <a class="button button-secondary" href="/">Back to upload</a>
         <a class="button button-secondary" th:if="${ownerControls}" href="#qa">Ask a question</a>
         <div id="share-result" aria-live="polite"></div>
     </div>
@@ -26,90 +24,116 @@
 
 <section th:fragment="reportBody(qaEnabled)" class="report-layout">
     <div class="report-main">
-        <section class="summary-grid">
-            <article class="card">
-                <p class="section-kicker">Overview</p>
-                <h2>Document overview</h2>
+        <section class="summary-strip" aria-label="Report summary">
+            <article>
+                <span>Overview</span>
                 <p th:text="${reportView.report().documentOverview()}">Document overview</p>
             </article>
-            <article class="card">
-                <p class="section-kicker">Summary</p>
-                <h2>Key summary bullets</h2>
-                <div th:replace="~{fragments/report :: claims(${reportView.report().summaryBullets()})}"></div>
+            <article>
+                <span>Top risks</span>
+                <strong th:text="${#lists.size(reportView.report().riskTaxonomy())}">0</strong>
             </article>
-            <article class="card">
-                <p class="section-kicker">Risk</p>
-                <h2>Top risks</h2>
-                <div th:replace="~{fragments/report :: claims(${reportView.report().riskTaxonomy()})}"></div>
+            <article>
+                <span>Key obligations</span>
+                <strong th:text="${#lists.size(reportView.report().obligations())}">0</strong>
+            </article>
+            <article>
+                <span>Termination terms</span>
+                <strong th:text="${#lists.size(reportView.report().terminationTriggers())}">0</strong>
             </article>
         </section>
 
-        <section class="section-stack">
-            <article class="card">
+        <section class="report-section">
+            <div class="section-heading">
+                <h2>Summary bullets</h2>
+                <span th:text="${#lists.size(reportView.report().summaryBullets()) + ' items'}">0 items</span>
+            </div>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().summaryBullets()})}"></div>
+        </section>
+
+        <section class="report-section">
+            <div class="section-heading">
                 <h2>Obligations</h2>
-                <div th:replace="~{fragments/report :: claims(${reportView.report().obligations()})}"></div>
-            </article>
-            <article class="card">
-                <h2>Restrictions</h2>
-                <div th:replace="~{fragments/report :: claims(${reportView.report().restrictions()})}"></div>
-            </article>
-            <article class="card">
-                <h2>Termination triggers</h2>
-                <div th:replace="~{fragments/report :: claims(${reportView.report().terminationTriggers()})}"></div>
-            </article>
-            <article class="card">
-                <h2>Risk taxonomy</h2>
-                <div th:replace="~{fragments/report :: claims(${reportView.report().riskTaxonomy()})}"></div>
-            </article>
+                <span th:text="${#lists.size(reportView.report().obligations()) + ' items'}">0 items</span>
+            </div>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().obligations()})}"></div>
         </section>
 
-        <section id="qa" class="card qa-panel" th:if="${qaEnabled}">
-            <div>
-                <p class="section-kicker">Grounded Q&amp;A</p>
-                <h2>Ask a question about this document</h2>
-                <p class="muted">Answers use the saved document chunks as context and include cited chunk IDs.</p>
+        <section class="report-section">
+            <div class="section-heading">
+                <h2>Restrictions</h2>
+                <span th:text="${#lists.size(reportView.report().restrictions()) + ' items'}">0 items</span>
+            </div>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().restrictions()})}"></div>
+        </section>
+
+        <section class="report-section">
+            <div class="section-heading">
+                <h2>Termination triggers</h2>
+                <span th:text="${#lists.size(reportView.report().terminationTriggers()) + ' items'}">0 items</span>
+            </div>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().terminationTriggers()})}"></div>
+        </section>
+
+        <section class="report-section">
+            <div class="section-heading">
+                <h2>Risk taxonomy</h2>
+                <span th:text="${#lists.size(reportView.report().riskTaxonomy()) + ' items'}">0 items</span>
+            </div>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().riskTaxonomy()})}"></div>
+        </section>
+
+        <section id="qa" class="qa-panel" th:if="${qaEnabled}">
+            <div class="section-heading">
+                <div>
+                    <h2>Grounded Q&amp;A</h2>
+                    <p>Ask questions about this document. Answers are grounded in the extracted text.</p>
+                </div>
             </div>
             <form class="qa-form" th:hx-post="@{/qa/{id}(id=${reportView.reportId()})}"
                   hx-target="#qa-result" hx-swap="afterbegin" method="post">
                 <label for="question">Question</label>
                 <div class="qa-input-row">
                     <input id="question" name="question" type="text" maxlength="1000"
-                           placeholder="What termination rights should I review?" required>
+                           placeholder="What happens if the client breaches the agreement?" required>
                     <button class="button button-primary" type="submit">
                         <span class="idle-text">Ask</span>
-                        <span class="loading-text">Checking chunks...</span>
+                        <span class="loading-text">Checking sources...</span>
                     </button>
                 </div>
             </form>
             <div id="qa-result" class="answer-stack" aria-live="polite">
-                <p class="empty-state">No questions yet. Ask a focused question about obligations, risk, or source language.</p>
+                <p class="empty-state">No questions yet.</p>
             </div>
         </section>
     </div>
 
-    <aside class="evidence-rail card">
-        <p class="section-kicker">Source evidence</p>
-        <h2>Citations and chunks</h2>
-        <p class="muted">Citation chips link back to these extracted text chunks.</p>
+    <aside class="evidence-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Source evidence</h2>
+                <p>Extracted chunks cited by the report.</p>
+            </div>
+        </div>
         <div class="chunk-list">
             <article class="chunk-card" th:each="chunk, iter : ${reportView.chunks()}" th:id="${'chunk-' + chunk.id}">
                 <div class="chunk-meta">
                     <span th:text="${'Chunk ' + (iter.index + 1)}">Chunk 1</span>
                     <code th:text="${#strings.substring(chunk.id.toString(), 0, 8)}">chunk</code>
                 </div>
-                <p th:text="${chunk.textContent}">Source text</p>
+                <p th:text="${chunk.excerpt}">Source text</p>
             </article>
         </div>
     </aside>
 </section>
 
 <div th:fragment="claims(claims)" class="claim-list">
-    <article class="claim" th:each="claim : ${claims}">
+    <article class="claim-row" th:each="claim : ${claims}">
         <p th:text="${claim.text()}">Claim text</p>
         <div class="claim-meta">
             <a class="citation-chip" th:each="id : ${claim.chunkIds()}"
-               th:href="${'#chunk-' + id}" th:title="${id}" th:text="${'#' + #strings.substring(id.toString(), 0, 8)}">#chunk</a>
-            <span class="unsupported-chip" th:if="${claim.unsupported()}">Unsupported citation</span>
+               th:href="${'#chunk-' + id}" th:title="${id}" th:text="${'chunk ' + #strings.substring(id.toString(), 0, 8)}">chunk</a>
+            <span class="unsupported-chip" th:if="${claim.unsupported()}">Unsupported</span>
         </div>
     </article>
     <p class="empty-state" th:if="${claims == null || claims.isEmpty()}">No claims were generated for this section.</p>

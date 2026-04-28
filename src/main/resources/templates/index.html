@@ -7,30 +7,27 @@
 <main class="page-shell">
     <section class="hero-grid">
         <div class="hero-copy">
-            <p class="eyebrow">AI document review</p>
-            <h1>Analyze policy documents with grounded AI</h1>
-            <p class="hero-lede">Upload a PDF and get a structured risk report with citations tied back to the original text.</p>
+            <h1>Review policy PDFs with cited AI analysis</h1>
+            <p class="hero-lede">Upload a document and get a structured report covering obligations, restrictions, termination terms, and risks, with citations back to the source text.</p>
             <div class="hero-actions">
-                <a class="button button-primary" href="#upload">Upload a PDF</a>
+                <a class="button button-primary" href="#upload">Upload PDF</a>
                 <a class="button button-secondary" href="/sample">View sample report</a>
             </div>
-            <p class="fine-print">PolicyInsight is for document review support only and does not provide legal advice.</p>
+            <p class="trust-line">No stored uploads. Source-linked reports. Built for fast review.</p>
         </div>
 
-        <aside class="insight-card" aria-label="Product preview">
-            <div class="insight-card-header">
-                <span class="status-dot"></span>
-                <span>Citation-grounded report</span>
+        <aside class="preview-panel" aria-label="Product preview">
+            <div class="preview-header">
+                <span>Risk report</span>
+                <span class="badge">Citation-grounded</span>
             </div>
-            <div class="preview-line strong"></div>
-            <div class="preview-line"></div>
-            <div class="preview-line short"></div>
-            <div class="preview-list">
-                <span>Obligations</span>
-                <span>Restrictions</span>
-                <span>Termination</span>
+            <div class="preview-table">
+                <div><span>Obligations</span><strong>12</strong></div>
+                <div><span>Restrictions</span><strong>8</strong></div>
+                <div><span>Termination triggers</span><strong>6</strong></div>
+                <div><span>Risk taxonomy</span><strong>14</strong></div>
             </div>
-            <div class="citation-row">
+            <div class="citation-row" aria-label="Example citations">
                 <span>chunk 01</span>
                 <span>chunk 04</span>
                 <span>chunk 07</span>
@@ -38,64 +35,52 @@
         </aside>
     </section>
 
-    <section id="upload" class="upload-section">
-        <article class="card upload-card">
-            <div>
-                <p class="section-kicker">Start a review</p>
-                <h2>Upload a PDF</h2>
-                <p class="muted">Accepted type: PDF. Maximum file size: <span th:text="${maxUploadMb}">10</span> MB.</p>
-            </div>
-            <form class="upload-form" hx-post="/upload" hx-target="#upload-result" hx-swap="innerHTML"
-                  enctype="multipart/form-data" method="post">
-                <label class="file-drop" for="file">
-                    <span class="file-drop-title">Choose a policy PDF</span>
-                    <span class="file-drop-copy">The original upload is discarded after text extraction.</span>
-                    <input id="file" name="file" type="file" accept="application/pdf" required>
-                </label>
-                <button class="button button-primary" type="submit">
-                    <span class="idle-text">Upload and analyze</span>
-                    <span class="loading-text">Uploading and analyzing...</span>
-                </button>
-            </form>
-            <div id="upload-result" aria-live="polite"></div>
-        </article>
-    </section>
-
     <section class="feature-grid" aria-label="Product features">
-        <article class="mini-card">
-            <h3>Citation-grounded analysis</h3>
-            <p>Every claim references document chunks.</p>
+        <article>
+            <h2>Cited reports</h2>
+            <p>Every AI claim must reference saved document chunks.</p>
         </article>
-        <article class="mini-card">
-            <h3>Shareable reports</h3>
-            <p>Create read-only links for review.</p>
+        <article>
+            <h2>Shareable review</h2>
+            <p>Create read-only links for reports.</p>
         </article>
-        <article class="mini-card">
-            <h3>Grounded Q&amp;A</h3>
-            <p>Ask questions against the uploaded document.</p>
+        <article>
+            <h2>Grounded Q&amp;A</h2>
+            <p>Ask follow-up questions against the extracted text.</p>
         </article>
     </section>
 
-    <section class="steps-section">
+    <section id="upload" class="upload-panel">
         <div>
-            <p class="section-kicker">How it works</p>
-            <h2>From PDF to cited report in three steps</h2>
+            <p class="section-kicker">Upload</p>
+            <h2>Analyze a policy document</h2>
+            <p>PDF only. Maximum <span th:text="${maxUploadMb}">10</span> MB. The original upload is discarded after text extraction.</p>
         </div>
-        <ol class="steps-list">
-            <li><span>1</span>Upload a PDF</li>
-            <li><span>2</span>Review a cited risk report</li>
-            <li><span>3</span>Ask follow-up questions</li>
-        </ol>
+        <form class="upload-form" hx-post="/upload" hx-target="#upload-result" hx-swap="innerHTML"
+              enctype="multipart/form-data" method="post">
+            <label for="file">PDF document</label>
+            <div class="file-row">
+                <input id="file" name="file" type="file" accept="application/pdf" required>
+                <button class="button button-primary" type="submit">
+                    <span class="idle-text">Analyze document</span>
+                    <span class="loading-text">Extracting text and building cited report...</span>
+                </button>
+            </div>
+        </form>
+        <div id="upload-result" aria-live="polite"></div>
     </section>
 
-    <section class="sample-cta card">
+    <section class="sample-callout">
         <div>
-            <p class="section-kicker">Want to try it first?</p>
-            <h2>Open a fictional sample report</h2>
-            <p class="muted">Uses a fictional business agreement for demonstration only.</p>
+            <p class="section-kicker">Demo</p>
+            <h2>Try the fictional agreement</h2>
+            <p>Open a preloaded business agreement demo before uploading your own file.</p>
+            <p class="fine-print">Fictional sample agreement. Demonstration only.</p>
         </div>
-        <a class="button button-primary" href="/sample">Open fictional sample report</a>
+        <a class="button button-primary" href="/sample">Open sample report</a>
     </section>
+
+    <p class="legal-note">PolicyInsight is for document review support only and does not provide legal advice.</p>
 </main>
 </body>
 </html>

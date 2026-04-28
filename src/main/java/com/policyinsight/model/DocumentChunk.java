@@ -56,4 +56,11 @@ public class DocumentChunk {
     public String getTextContent() {
         return textContent;
     }
+
+    public String getExcerpt() {
+        if (textContent == null || textContent.length() <= 520) {
+            return textContent;
+        }
+        return textContent.substring(0, 520).stripTrailing() + "...";
+    }
 }
