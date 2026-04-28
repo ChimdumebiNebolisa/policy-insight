@@ -1,0 +1,126 @@
+:root {
+    --bg: #f6f7f4;
+    --ink: #1c2520;
+    --muted: #66736b;
+    --line: #d9dfd7;
+    --panel: #ffffff;
+    --accent: #0f766e;
+    --danger: #a5362f;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: linear-gradient(135deg, #f6f7f4 0%, #eaf0ed 100%);
+    color: var(--ink);
+    font-family: Georgia, "Times New Roman", serif;
+}
+
+.shell {
+    width: min(1100px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 56px 0;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 14px 35px rgba(28, 37, 32, 0.08);
+}
+
+.eyebrow {
+    color: var(--accent);
+    font: 700 0.78rem/1.2 Verdana, sans-serif;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+h1, h2 {
+    margin: 0 0 16px;
+    line-height: 1.05;
+}
+
+h1 {
+    font-size: clamp(2rem, 8vw, 4.5rem);
+}
+
+h2 {
+    font-size: 1.25rem;
+}
+
+form {
+    display: grid;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+input, button {
+    font: 600 1rem/1.2 Verdana, sans-serif;
+}
+
+input[type="file"] {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px;
+    background: #fbfcfb;
+}
+
+button, a {
+    display: inline-block;
+    width: fit-content;
+    border: 0;
+    border-radius: 6px;
+    padding: 12px 16px;
+    background: var(--accent);
+    color: white;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.status-box {
+    margin-top: 18px;
+    color: var(--muted);
+}
+
+.report-header {
+    margin-bottom: 24px;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+li {
+    margin-bottom: 10px;
+}
+
+.citation {
+    display: inline-block;
+    margin-left: 6px;
+    color: var(--accent);
+    font-size: 0.78rem;
+    overflow-wrap: anywhere;
+}
+
+.unsupported {
+    color: var(--danger);
+    font-size: 0.84rem;
+}
+
+@media (max-width: 640px) {
+    .shell {
+        width: min(100% - 20px, 1100px);
+        padding: 24px 0;
+    }
+
+    .panel {
+        padding: 18px;
+    }
+}

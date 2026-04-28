@@ -1,0 +1,11 @@
+<div th:fragment="status" class="status-box">
+    <p>
+        <span>Status:</span>
+        <strong th:text="${status.status()}">PROCESSING</strong>
+    </p>
+    <p th:if="${status.safeErrorMessage()}" th:text="${status.safeErrorMessage()}">Processing failed.</p>
+    <a th:if="${completed}" th:href="@{/report/{id}(id=${status.reportId()})}">View report</a>
+    <div th:unless="${completed}" th:hx-get="@{/status/{id}(id=${status.jobId()})}" hx-trigger="every 2s" hx-swap="outerHTML">
+        Processing...
+    </div>
+</div>
