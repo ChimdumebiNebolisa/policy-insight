@@ -82,7 +82,8 @@ The app does not use GCP, Cloud Run, Cloud SQL, GCS, Pub/Sub, Vertex AI, Datadog
 - Public report access is only through `/shared/{token}`.
 - Share tokens are generated with `SecureRandom`; only HMAC hashes are stored.
 - AI and user-generated text is rendered through escaped Thymeleaf expressions.
-- Q&A is protected with simple in-memory per-IP rate limiting.
+- Upload and Q&A are protected with simple in-memory per-IP rate limiting.
+- Railway and live Gemini mode reject the default or short `APP_TOKEN_SECRET`.
 
 ## Useful Commands
 
