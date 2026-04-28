@@ -6,11 +6,7 @@ import com.policyinsight.ai.dto.RiskReport;
 import com.policyinsight.model.DocumentChunk;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.stereotype.Component;
 
-@Component
-@ConditionalOnExpression("'${app.ai.provider:mock}' != 'gemini'")
 public class MockAiAnalyzer implements AiAnalyzer {
 
     @Override

@@ -16,11 +16,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.stereotype.Component;
 
-@Component
-@ConditionalOnExpression("'${app.ai.provider:mock}' == 'gemini' && '${app.gemini.api-key:}' != ''")
 public class GeminiAnalyzer implements AiAnalyzer {
 
     private final GeminiProperties properties;
