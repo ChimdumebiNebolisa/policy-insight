@@ -1,5 +1,6 @@
 package com.policyinsight.service;
 
+import com.policyinsight.ai.AiAnalyzerException;
 import com.policyinsight.config.OwnerTokenProperties;
 import com.policyinsight.model.DocumentChunk;
 import com.policyinsight.model.PolicyJob;
@@ -45,7 +46,6 @@ public class DocumentService {
         this.reportService = reportService;
     }
 
-    @Transactional
     public UploadResult upload(MultipartFile file) {
         byte[] pdfBytes = pdfValidator.validateAndRead(file);
         String text = pdfTextExtractor.extractText(pdfBytes);
@@ -62,7 +62,17 @@ public class DocumentService {
         for (int i = 0; i < chunks.size(); i++) {
             documentChunkRepository.save(new DocumentChunk(job, i, chunks.get(i)));
         }
-        reportService.generateAndSaveReport(job);
+        try {
+            reportService.generateAndSaveReport(job);
+        } catch (AiAnalyzerException ex) {
+            job.setStatus(com.policyinsight.model.JobStatus.FAILED);
+            job.setSafeErrorMessage(ex.getMessage());
+            policyJobRepository.save(job);
+        } catch (RuntimeException ex) {
+            job.setStatus(com.policyinsight.model.JobStatus.FAILED);
+            job.setSafeErrorMessage("Unable to generate the report.");
+            policyJobRepository.save(job);
+        }
         return new UploadResult(job.getId(), ownerToken, chunks.size());
     }
 }
