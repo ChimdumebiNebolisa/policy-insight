@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: policy-insight
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: rebuild/simple-gemini-railway
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: policy-insight-db
+          property: connectionString
+      - key: APP_AI_PROVIDER
+        value: gemini
+      - key: PORT
+        value: 10000
+      - key: APP_TOKEN_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+databases:
+  - name: policy-insight-db
+    plan: free
+    region: oregon
+    databaseName: policyinsight
+    user: policyinsight

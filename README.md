@@ -15,6 +15,7 @@ Flow:
 - Gemini API through the Google Generative Language REST API
 - Thymeleaf and HTMX
 - Railway deployment
+- Render deployment
 - Docker Compose only for local PostgreSQL
 
 ## Local Setup
@@ -56,9 +57,9 @@ The local database is exposed on host port `55432` to avoid collisions with a Wi
 
 ## Environment Variables
 
-Required for Railway:
+Required for Render or Railway:
 
-- `DATABASE_URL`: Railway-style `postgres://user:password@host:port/db` or JDBC `jdbc:postgresql://...`
+- `DATABASE_URL`: Render/Railway-style `postgresql://user:password@host:port/db`, `postgres://...`, or JDBC `jdbc:postgresql://...`
 - `GEMINI_API_KEY`: Gemini API key, required only when `APP_AI_PROVIDER=gemini`
 - `APP_TOKEN_SECRET`: long random secret used to hash owner/share tokens
 
@@ -94,6 +95,39 @@ Optional:
 Railway can use `railway.json` and the included `Dockerfile`. The PostgreSQL plugin supplies `DATABASE_URL`; do not set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, or `SPRING_DATASOURCE_PASSWORD` in Railway unless you intentionally want to override `DATABASE_URL`.
 
 The app does not use GCP, Cloud Run, Cloud SQL, GCS, Pub/Sub, Vertex AI, Datadog, Kubernetes, uploaded-file storage, or a worker service.
+
+## Render Deployment
+
+Render can deploy the included `Dockerfile` directly. The included `render.yaml` is a Render Blueprint that creates one Docker web service and one Render Postgres database, then wires the database's internal connection string into `DATABASE_URL`.
+
+Blueprint setup:
+
+1. Push this branch to GitHub.
+2. In Render, choose **New +** -> **Blueprint**.
+3. Connect `ChimdumebiNebolisa/policy-insight`.
+4. Select the `rebuild/simple-gemini-railway` branch.
+5. Review the `policy-insight` web service and `policy-insight-db` Postgres database.
+6. Add the required secret values when Render prompts for unsynced env vars:
+   - `APP_TOKEN_SECRET`
+   - `GEMINI_API_KEY`
+7. Apply the Blueprint. Flyway runs migrations on application startup.
+
+Manual web service setup:
+
+1. Create a Render Postgres database in the same region as the web service.
+2. Create a Render Web Service from this repository and branch.
+3. Set Runtime to `Docker`.
+4. Set Health Check Path to `/health`.
+5. Add environment variables:
+   - `DATABASE_URL=<Render Postgres internal database URL>`
+   - `APP_TOKEN_SECRET=<long random production secret>`
+   - `APP_AI_PROVIDER=gemini`
+   - `GEMINI_API_KEY=<your Gemini API key>`
+   - `PORT=10000`
+6. Deploy. Do not set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, or `SPRING_DATASOURCE_PASSWORD` on Render unless you intentionally want to override `DATABASE_URL`.
+
+Render's internal Postgres URL has the form `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`. PolicyInsight converts that value into Spring's JDBC datasource settings at startup.
+Render expects web services to bind to `$PORT`; PolicyInsight maps `server.port` to `${PORT:8080}` so local runs still use `8080`.
 
 ## Security Notes
 

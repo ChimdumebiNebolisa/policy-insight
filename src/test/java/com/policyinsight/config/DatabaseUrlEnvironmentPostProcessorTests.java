@@ -35,4 +35,30 @@ class DatabaseUrlEnvironmentPostProcessorTests {
         assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("railway");
         assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("secret");
     }
+
+    @Test
+    void renderDatabaseUrlIsConvertedToSpringDatasourceProperties() {
+        MockEnvironment environment = new MockEnvironment()
+                .withProperty("DATABASE_URL",
+                        "postgresql://policyinsight:encoded%40secret@policy-insight-db:5432/policyinsight");
+
+        processor.postProcessEnvironment(environment, new SpringApplication());
+
+        assertThat(environment.getProperty("spring.datasource.url"))
+                .isEqualTo("jdbc:postgresql://policy-insight-db:5432/policyinsight");
+        assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("policyinsight");
+        assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("encoded@secret");
+    }
+
+    @Test
+    void databaseUrlQueryParametersArePreserved() {
+        MockEnvironment environment = new MockEnvironment()
+                .withProperty("DATABASE_URL",
+                        "postgresql://policyinsight:secret@example.com:5432/policyinsight?sslmode=require");
+
+        processor.postProcessEnvironment(environment, new SpringApplication());
+
+        assertThat(environment.getProperty("spring.datasource.url"))
+                .isEqualTo("jdbc:postgresql://example.com:5432/policyinsight?sslmode=require");
+    }
 }
