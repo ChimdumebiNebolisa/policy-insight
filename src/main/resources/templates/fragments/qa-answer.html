@@ -1,0 +1,7 @@
+<div th:fragment="qaAnswer" class="status-box">
+    <p th:text="${answer.answer()}">Answer</p>
+    <p>
+        <span class="citation" th:each="id : ${answer.chunkIds()}" th:text="${'#' + id}">#chunk</span>
+        <span class="unsupported" th:if="${answer.unsupported()}">Unsupported citation</span>
+    </p>
+</div>

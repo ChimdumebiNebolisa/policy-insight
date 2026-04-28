@@ -63,6 +63,15 @@
                 </li>
             </ol>
         </article>
+        <article class="panel">
+            <h2>Ask A Question</h2>
+            <form th:hx-post="@{/qa/{id}(id=${reportView.reportId()})}" hx-target="#qa-result" hx-swap="afterbegin" method="post">
+                <label for="question">Question</label>
+                <input id="question" name="question" type="text" maxlength="1000" required>
+                <button type="submit">Ask</button>
+            </form>
+            <div id="qa-result"></div>
+        </article>
     </section>
 </main>
 </body>
