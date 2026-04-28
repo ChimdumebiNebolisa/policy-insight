@@ -33,7 +33,7 @@ public class SampleController {
         cookie.setPath("/");
         cookie.setMaxAge(60 * 60 * 2);
         response.addCookie(cookie);
-        redirectAttributes.addFlashAttribute("sampleNotice", "Fictional sample agreement. Demonstration only.");
+        redirectAttributes.addFlashAttribute("sampleNotice", "Fictional sample. Demonstration only.");
         return "redirect:/report/" + result.reportId();
     }
 }

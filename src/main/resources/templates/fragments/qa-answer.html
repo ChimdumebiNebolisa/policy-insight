@@ -2,7 +2,8 @@
     <p th:text="${answer.answer()}">Answer</p>
     <div class="claim-meta">
         <a class="citation-chip" th:each="id : ${answer.chunkIds()}"
-           th:href="${'#chunk-' + id}" th:title="${id}" th:text="${'#' + #strings.substring(id.toString(), 0, 8)}">#chunk</a>
+           th:href="${'#chunk-' + id}" th:title="${id}"
+           th:text="${sourceLabels != null && sourceLabels.containsKey(id) ? sourceLabels.get(id) : 'Source'}">Source</a>
         <span class="unsupported-chip" th:if="${answer.unsupported()}">Unsupported citation</span>
     </div>
 </article>

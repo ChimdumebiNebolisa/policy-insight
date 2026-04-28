@@ -42,7 +42,11 @@ class ReportControllerTests {
 
         mockMvc.perform(get("/report/" + fixture.reportId()).cookie(fixture.ownerCookie()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Risk report")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Risk report")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source evidence")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source 1")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Chunk "))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("chunk 01"))));
     }
 
     private UploadFixture upload() throws Exception {

@@ -6,6 +6,7 @@ import com.policyinsight.service.AccessDeniedException;
 import com.policyinsight.service.QaService;
 import com.policyinsight.service.RateLimitExceededException;
 import com.policyinsight.service.ReportService;
+import com.policyinsight.service.ReportView;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.springframework.stereotype.Controller;
@@ -34,13 +35,14 @@ public class QaController {
             HttpServletRequest request,
             Model model
     ) {
-        reportService.reportForOwner(reportId, request.getCookies())
+        ReportView report = reportService.reportForOwner(reportId, request.getCookies())
                 .orElseThrow(() -> new AccessDeniedException("Q&A is not available for this session."));
         if (!rateLimitService.allow("qa:" + clientIp(request))) {
             throw new RateLimitExceededException("Too many Q&A requests. Try again shortly.");
         }
         QaAnswer answer = qaService.answer(reportId, question);
         model.addAttribute("answer", answer);
+        model.addAttribute("sourceLabels", report.sourceLabels());
         return "fragments/qa-answer :: qaAnswer";
     }
 

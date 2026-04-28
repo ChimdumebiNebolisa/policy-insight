@@ -14,7 +14,7 @@ public class MockAiAnalyzer implements AiAnalyzer {
         UUID chunkId = chunks.isEmpty() ? null : chunks.getFirst().getId();
         List<UUID> citations = chunkId == null ? List.of() : List.of(chunkId);
         return new RiskReport(
-                "Mock overview generated from " + chunks.size() + " chunk(s).",
+                "Mock overview generated from " + chunks.size() + " source section(s).",
                 List.of(new CitedClaim("The document contains policy terms requiring review.", citations, false)),
                 List.of(new CitedClaim("Review notice, payment, and compliance obligations.", citations, false)),
                 List.of(new CitedClaim("Restrictions should be checked against cited source text.", citations, false)),
@@ -27,6 +27,6 @@ public class MockAiAnalyzer implements AiAnalyzer {
     public QaAnswer answerQuestion(List<DocumentChunk> chunks, String question) {
         UUID chunkId = chunks.isEmpty() ? null : chunks.getFirst().getId();
         List<UUID> citations = chunkId == null ? List.of() : List.of(chunkId);
-        return new QaAnswer("Mock answer based on saved document chunks: " + question, citations, false);
+        return new QaAnswer("Mock answer based on saved document source sections: " + question, citations, false);
     }
 }

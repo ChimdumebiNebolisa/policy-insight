@@ -42,7 +42,9 @@ class QaControllerTests {
                         .cookie(fixture.ownerCookie())
                         .param("question", "What should I review?"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Mock answer")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Mock answer")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source 1")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(">#"))));
 
         assertThat(qaInteractionRepository.count()).isEqualTo(before + 1);
     }

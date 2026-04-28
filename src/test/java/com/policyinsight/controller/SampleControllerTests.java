@@ -40,6 +40,8 @@ class SampleControllerTests {
         ClassPathResource resource = new ClassPathResource("samples/fictional_business_agreement.pdf");
 
         assertThat(resource.exists()).isTrue();
+        assertThat(Thread.currentThread().getContextClassLoader().getResource("samples/fictional_business_agreement.pdf"))
+                .isNotNull();
         assertThat(resource.getContentAsByteArray()).startsWith("%PDF-".getBytes());
     }
 
@@ -56,7 +58,9 @@ class SampleControllerTests {
                 .orElseThrow();
 
         mockMvc.perform(get(result.getResponse().getRedirectedUrl()).cookie(ownerCookie))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Fictional sample. Demonstration only.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source 1")));
     }
 
     @Test
@@ -93,9 +97,16 @@ class SampleControllerTests {
     void landingPageShowsSharpValuePropositionAndSampleCta() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Review policy PDFs with cited AI analysis")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("No stored uploads. Source-linked reports. Built for fast review.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Open sample report")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<h1 id=\"page-title\">PolicyInsight</h1>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Review policy and agreement PDFs with AI-generated reports linked to source text.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Analyze your document")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Analyze PDF")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Open sample report")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Fictional sample. Demonstration only.")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("hero-grid"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("preview-panel"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("feature-grid"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("chunk 01"))));
     }
 
     private void resetSampleJob() {
