@@ -11,6 +11,7 @@ import com.policyinsight.model.Report;
 import com.policyinsight.repository.DocumentChunkRepository;
 import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
+import com.policyinsight.util.CitationValidator;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -22,24 +23,27 @@ public class ReportService {
     private final DocumentChunkRepository documentChunkRepository;
     private final PolicyJobRepository policyJobRepository;
     private final ReportRepository reportRepository;
+    private final CitationValidator citationValidator;
 
     public ReportService(
             AiAnalyzer aiAnalyzer,
             ObjectMapper objectMapper,
             DocumentChunkRepository documentChunkRepository,
             PolicyJobRepository policyJobRepository,
-            ReportRepository reportRepository
+            ReportRepository reportRepository,
+            CitationValidator citationValidator
     ) {
         this.aiAnalyzer = aiAnalyzer;
         this.objectMapper = objectMapper;
         this.documentChunkRepository = documentChunkRepository;
         this.policyJobRepository = policyJobRepository;
         this.reportRepository = reportRepository;
+        this.citationValidator = citationValidator;
     }
 
     public Report generateAndSaveReport(PolicyJob job) {
         List<DocumentChunk> chunks = documentChunkRepository.findByJobIdOrderByChunkIndex(job.getId());
-        RiskReport riskReport = aiAnalyzer.generateReport(chunks);
+        RiskReport riskReport = citationValidator.validateReport(aiAnalyzer.generateReport(chunks), chunks);
         Report report = reportRepository.save(new Report(job, toJson(riskReport)));
         job.setStatus(JobStatus.COMPLETED);
         policyJobRepository.save(job);
