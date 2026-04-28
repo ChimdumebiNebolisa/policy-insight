@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.policyinsight.TestPdfFactory;
+import com.policyinsight.repository.ReportRepository;
 import com.policyinsight.repository.DocumentChunkRepository;
 import jakarta.servlet.http.Cookie;
 import java.util.Arrays;
@@ -24,6 +25,9 @@ class DocumentControllerTests {
 
     @Autowired
     DocumentChunkRepository documentChunkRepository;
+
+    @Autowired
+    ReportRepository reportRepository;
 
     @Test
     void rejectsInvalidFile() throws Exception {
@@ -51,5 +55,6 @@ class DocumentControllerTests {
         assertThat(Arrays.stream(cookies).map(Cookie::getName))
                 .anyMatch(name -> name.startsWith("PI_OWNER_"));
         assertThat(documentChunkRepository.count()).isEqualTo(1);
+        assertThat(reportRepository.count()).isEqualTo(1);
     }
 }

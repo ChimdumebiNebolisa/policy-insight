@@ -23,6 +23,7 @@ public class DocumentService {
     private final DocumentChunkRepository documentChunkRepository;
     private final TokenService tokenService;
     private final OwnerTokenProperties ownerTokenProperties;
+    private final ReportService reportService;
 
     public DocumentService(
             PdfValidator pdfValidator,
@@ -31,7 +32,8 @@ public class DocumentService {
             PolicyJobRepository policyJobRepository,
             DocumentChunkRepository documentChunkRepository,
             TokenService tokenService,
-            OwnerTokenProperties ownerTokenProperties
+            OwnerTokenProperties ownerTokenProperties,
+            ReportService reportService
     ) {
         this.pdfValidator = pdfValidator;
         this.pdfTextExtractor = pdfTextExtractor;
@@ -40,6 +42,7 @@ public class DocumentService {
         this.documentChunkRepository = documentChunkRepository;
         this.tokenService = tokenService;
         this.ownerTokenProperties = ownerTokenProperties;
+        this.reportService = reportService;
     }
 
     @Transactional
@@ -59,6 +62,7 @@ public class DocumentService {
         for (int i = 0; i < chunks.size(); i++) {
             documentChunkRepository.save(new DocumentChunk(job, i, chunks.get(i)));
         }
+        reportService.generateAndSaveReport(job);
         return new UploadResult(job.getId(), ownerToken, chunks.size());
     }
 }
