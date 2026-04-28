@@ -63,7 +63,7 @@ class ShareControllerTests {
 
         mockMvc.perform(get("/shared/" + token))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Shared PolicyInsight report")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Shared read-only report")));
     }
 
     @Test

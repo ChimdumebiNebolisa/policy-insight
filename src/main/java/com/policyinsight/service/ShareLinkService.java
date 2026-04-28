@@ -64,7 +64,14 @@ public class ShareLinkService {
                 .map(link -> {
                     Report report = link.getReport();
                     List<DocumentChunk> chunks = documentChunkRepository.findByJobIdOrderByChunkIndex(report.getJob().getId());
-                    return new ReportView(report.getId(), report.getJob().getId(), fromJson(report.getContent()), chunks);
+                    return new ReportView(
+                            report.getId(),
+                            report.getJob().getId(),
+                            report.getCreatedAt(),
+                            report.getJob().getDemoKey() != null,
+                            fromJson(report.getContent()),
+                            chunks
+                    );
                 });
     }
 

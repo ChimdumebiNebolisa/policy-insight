@@ -1,4 +1,5 @@
-<div th:fragment="shareLink" class="status-box">
-    <p>Shared report link created.</p>
+<div th:fragment="shareLink" class="share-panel">
+    <p class="section-kicker">Shared report link created</p>
     <a th:href="${share.url()}" th:text="${share.url()}">Shared report</a>
+    <p class="fine-print">Anyone with this link can view the read-only report until it expires.</p>
 </div>

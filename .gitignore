@@ -53,3 +53,4 @@ logs/
 # Uploaded documents must never be committed
 *.pdf
 !src/test/resources/**/*.pdf
+!src/main/resources/samples/*.pdf

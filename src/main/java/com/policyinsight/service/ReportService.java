@@ -83,7 +83,14 @@ public class ReportService {
             return Optional.empty();
         }
         List<DocumentChunk> chunks = documentChunkRepository.findByJobIdOrderByChunkIndex(job.getId());
-        return Optional.of(new ReportView(reportId, job.getId(), fromJson(report.get().getContent()), chunks));
+        return Optional.of(new ReportView(
+                reportId,
+                job.getId(),
+                report.get().getCreatedAt(),
+                job.getDemoKey() != null,
+                fromJson(report.get().getContent()),
+                chunks
+        ));
     }
 
     private String toJson(Object value) {

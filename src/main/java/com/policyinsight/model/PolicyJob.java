@@ -33,6 +33,9 @@ public class PolicyJob {
     @Column(name = "safe_error_message", length = 500)
     private String safeErrorMessage;
 
+    @Column(name = "demo_key", unique = true, length = 80)
+    private String demoKey;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -65,8 +68,16 @@ public class PolicyJob {
         return ownerTokenHash;
     }
 
+    public void setOwnerTokenHash(String ownerTokenHash) {
+        this.ownerTokenHash = ownerTokenHash;
+    }
+
     public Instant getOwnerTokenExpiresAt() {
         return ownerTokenExpiresAt;
+    }
+
+    public void setOwnerTokenExpiresAt(Instant ownerTokenExpiresAt) {
+        this.ownerTokenExpiresAt = ownerTokenExpiresAt;
     }
 
     public String getSafeErrorMessage() {
@@ -75,6 +86,14 @@ public class PolicyJob {
 
     public void setSafeErrorMessage(String safeErrorMessage) {
         this.safeErrorMessage = safeErrorMessage;
+    }
+
+    public String getDemoKey() {
+        return demoKey;
+    }
+
+    public void setDemoKey(String demoKey) {
+        this.demoKey = demoKey;
     }
 
     public Instant getCreatedAt() {

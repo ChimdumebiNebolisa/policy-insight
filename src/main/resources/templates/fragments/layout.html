@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title}">PolicyInsight</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header th:fragment="nav" class="app-header">
+    <nav class="app-nav" aria-label="Primary navigation">
+        <a class="brand" href="/" aria-label="PolicyInsight home">
+            <span class="brand-mark">PI</span>
+            <span>PolicyInsight</span>
+        </a>
+        <div class="nav-links">
+            <a href="/#upload">Upload</a>
+            <a href="/sample">Sample report</a>
+        </div>
+    </nav>
+</header>
+</body>
+</html>

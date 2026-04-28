@@ -1,78 +1,12 @@
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PolicyInsight Report</title>
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <link rel="stylesheet" href="/css/app.css">
-</head>
+<head th:replace="~{fragments/layout :: head('PolicyInsight Report')}"></head>
 <body>
-<main class="shell report-shell">
-    <header class="report-header">
-        <p class="eyebrow">PolicyInsight report</p>
-        <h1>Risk report</h1>
-        <p th:text="${reportView.report().documentOverview()}">Document overview</p>
-        <form th:hx-post="@{/share/{id}(id=${reportView.reportId()})}" hx-target="#share-result" hx-swap="innerHTML" method="post">
-            <button type="submit">Create share link</button>
-        </form>
-        <div id="share-result"></div>
-    </header>
+<header th:replace="~{fragments/layout :: nav}"></header>
 
-    <section class="report-grid">
-        <article class="panel">
-            <h2>Summary</h2>
-            <ul>
-                <li th:each="claim : ${reportView.report().summaryBullets()}">
-                    <span th:text="${claim.text()}">Claim</span>
-                    <span class="citation" th:each="id : ${claim.chunkIds()}" th:text="${'#' + id}">#chunk</span>
-                    <span class="unsupported" th:if="${claim.unsupported()}">Unsupported citation</span>
-                </li>
-            </ul>
-        </article>
-        <article class="panel">
-            <h2>Obligations</h2>
-            <ul>
-                <li th:each="claim : ${reportView.report().obligations()}" th:text="${claim.text()}">Obligation</li>
-            </ul>
-        </article>
-        <article class="panel">
-            <h2>Restrictions</h2>
-            <ul>
-                <li th:each="claim : ${reportView.report().restrictions()}" th:text="${claim.text()}">Restriction</li>
-            </ul>
-        </article>
-        <article class="panel">
-            <h2>Termination Triggers</h2>
-            <ul>
-                <li th:each="claim : ${reportView.report().terminationTriggers()}" th:text="${claim.text()}">Trigger</li>
-            </ul>
-        </article>
-        <article class="panel">
-            <h2>Risk Taxonomy</h2>
-            <ul>
-                <li th:each="claim : ${reportView.report().riskTaxonomy()}" th:text="${claim.text()}">Risk</li>
-            </ul>
-        </article>
-        <article class="panel">
-            <h2>Source Chunks</h2>
-            <ol>
-                <li th:each="chunk : ${reportView.chunks()}">
-                    <strong th:text="${chunk.id}">chunk</strong>
-                    <p th:text="${chunk.textContent}">Source text</p>
-                </li>
-            </ol>
-        </article>
-        <article class="panel">
-            <h2>Ask A Question</h2>
-            <form th:hx-post="@{/qa/{id}(id=${reportView.reportId()})}" hx-target="#qa-result" hx-swap="afterbegin" method="post">
-                <label for="question">Question</label>
-                <input id="question" name="question" type="text" maxlength="1000" required>
-                <button type="submit">Ask</button>
-            </form>
-            <div id="qa-result"></div>
-        </article>
-    </section>
+<main class="page-shell report-page">
+    <section th:replace="~{fragments/report :: reportHeader(false, true)}"></section>
+    <section th:replace="~{fragments/report :: reportBody(true)}"></section>
 </main>
 </body>
 </html>

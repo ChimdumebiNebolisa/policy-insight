@@ -1,10 +1,19 @@
-<div th:fragment="uploadStarted" class="status-box">
-    <p>
-        <strong>Upload accepted.</strong>
-        <span th:text="${chunkCount}">0</span>
-        <span>chunk(s) extracted.</span>
-    </p>
+<div th:fragment="uploadStarted" class="status-card">
+    <div class="status-header">
+        <span class="status-icon" aria-hidden="true"></span>
+        <div>
+            <p class="section-kicker">Upload accepted</p>
+            <h3>
+                <span th:text="${chunkCount}">0</span>
+                <span>chunk(s) extracted</span>
+            </h3>
+        </div>
+    </div>
     <div th:hx-get="@{/status/{id}(id=${jobId})}" hx-trigger="load, every 2s" hx-swap="outerHTML">
-        Checking report status...
+        <div class="progress-list">
+            <span>Extracting text</span>
+            <span>Building cited report</span>
+            <span>Validating evidence</span>
+        </div>
     </div>
 </div>

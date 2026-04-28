@@ -1,7 +1,8 @@
-<div th:fragment="qaAnswer" class="status-box">
+<article th:fragment="qaAnswer" class="answer-card">
     <p th:text="${answer.answer()}">Answer</p>
-    <p>
-        <span class="citation" th:each="id : ${answer.chunkIds()}" th:text="${'#' + id}">#chunk</span>
-        <span class="unsupported" th:if="${answer.unsupported()}">Unsupported citation</span>
-    </p>
-</div>
+    <div class="claim-meta">
+        <a class="citation-chip" th:each="id : ${answer.chunkIds()}"
+           th:href="${'#chunk-' + id}" th:title="${id}" th:text="${'#' + #strings.substring(id.toString(), 0, 8)}">#chunk</a>
+        <span class="unsupported-chip" th:if="${answer.unsupported()}">Unsupported citation</span>
+    </div>
+</article>
