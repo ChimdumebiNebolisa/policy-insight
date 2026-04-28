@@ -17,7 +17,7 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         String databaseUrl = environment.getProperty("DATABASE_URL");
-        if (!StringUtils.hasText(databaseUrl) || environment.containsProperty("spring.datasource.url")) {
+        if (!StringUtils.hasText(databaseUrl) || hasSpringDatasourceUrl(environment)) {
             return;
         }
 
@@ -35,10 +35,16 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
                 }
             }
             String query = StringUtils.hasText(uri.getQuery()) ? "?" + uri.getQuery() : "";
+            int port = uri.getPort() > 0 ? uri.getPort() : 5432;
             properties.put("spring.datasource.url",
-                    "jdbc:postgresql://" + uri.getHost() + ":" + uri.getPort() + uri.getPath() + query);
+                    "jdbc:postgresql://" + uri.getHost() + ":" + port + uri.getPath() + query);
         }
         environment.getPropertySources().addFirst(new MapPropertySource("databaseUrl", properties));
+    }
+
+    private static boolean hasSpringDatasourceUrl(ConfigurableEnvironment environment) {
+        return StringUtils.hasText(environment.getProperty("SPRING_DATASOURCE_URL"))
+                || StringUtils.hasText(environment.getProperty("spring.datasource.url"));
     }
 
     private static String decode(String value) {
