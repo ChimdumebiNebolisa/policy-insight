@@ -3,20 +3,15 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PolicyInsight Report</title>
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <title>Shared PolicyInsight Report</title>
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
 <main class="shell report-shell">
     <header class="report-header">
-        <p class="eyebrow">PolicyInsight report</p>
+        <p class="eyebrow">Shared PolicyInsight report</p>
         <h1>Risk report</h1>
         <p th:text="${reportView.report().documentOverview()}">Document overview</p>
-        <form th:hx-post="@{/share/{id}(id=${reportView.reportId()})}" hx-target="#share-result" hx-swap="innerHTML" method="post">
-            <button type="submit">Create share link</button>
-        </form>
-        <div id="share-result"></div>
     </header>
 
     <section class="report-grid">

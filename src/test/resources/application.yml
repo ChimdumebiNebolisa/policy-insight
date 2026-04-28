@@ -17,5 +17,7 @@ app:
     max-bytes: 10485760
   owner-token:
     ttl-minutes: 120
+  share:
+    ttl-days: 7
   ai:
     provider: mock
