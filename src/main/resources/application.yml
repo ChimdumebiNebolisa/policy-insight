@@ -1,176 +1,38 @@
 spring:
   application:
     name: policy-insight
-
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:policyinsight}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/policyinsight}
+    username: ${SPRING_DATASOURCE_USERNAME:policyinsight}
+    password: ${SPRING_DATASOURCE_PASSWORD:policyinsight}
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-        use_sql_comments: true
-
+    open-in-view: false
   flyway:
     enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    validate-on-migrate: true
-
-  thymeleaf:
-    prefix: classpath:/templates/
-    suffix: .html
-    mode: HTML
-    encoding: UTF-8
-    cache: false
-
   servlet:
     multipart:
-      enabled: true
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: ${APP_MAX_UPLOAD_SIZE:10MB}
+      max-request-size: ${APP_MAX_UPLOAD_SIZE:10MB}
 
-server:
-  port: ${SERVER_PORT:8080}
-  error:
-    include-message: always
-    include-binding-errors: always
-    include-stacktrace: on_param
-    include-exception: false
-
-# Application configuration
 app:
-  base-url: ${APP_BASE_URL:http://localhost:8080}
-  security:
-    token-secret: ${APP_TOKEN_SECRET:change-me-in-production}
-    allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:8080}
-  rate-limit:
-    upload:
-      max-per-hour: ${APP_RATE_LIMIT_UPLOAD_MAX_PER_HOUR:10}
-    qa:
-      max-per-hour: ${APP_RATE_LIMIT_QA_MAX_PER_HOUR:20}
-      max-per-job: ${APP_RATE_LIMIT_QA_MAX_PER_JOB:3}
-  storage:
-    mode: ${APP_STORAGE_MODE:local}  # local (default) | gcp
-    local-dir: ${APP_STORAGE_LOCAL_DIR:.local-storage}
-  messaging:
-    mode: ${APP_MESSAGING_MODE:local}  # local (default) | gcp
-  processing:
-    mode: ${APP_PROCESSING_MODE:local}  # local (default) | gcp - controls job processing (local in-process vs pubsub worker)
-    max-text-length: ${APP_PROCESSING_MAX_TEXT_LENGTH:1000000}  # Maximum extracted text length (characters) - hard cap to prevent excessive costs
-    stage-timeout-seconds: ${APP_PROCESSING_STAGE_TIMEOUT_SECONDS:300}  # Timeout per processing stage (extraction, classification, etc.)
-  local-worker:
-    poll-ms: ${APP_LOCAL_WORKER_POLL_MS:2000}  # Poll every 2 seconds
-    batch-size: ${APP_LOCAL_WORKER_BATCH_SIZE:5}  # Process up to 5 jobs per poll
-  job:
-    lease-duration-minutes: ${APP_JOB_LEASE_DURATION_MINUTES:30}  # Lease duration for job processing
-    max-attempts: ${APP_JOB_MAX_ATTEMPTS:3}  # Maximum retry attempts before marking as FAILED
+  ai:
+    provider: ${APP_AI_PROVIDER:mock}
+  upload:
+    max-bytes: ${APP_UPLOAD_MAX_BYTES:10485760}
+  owner-token:
+    ttl-minutes: ${APP_OWNER_TOKEN_TTL_MINUTES:120}
+  share:
+    ttl-days: ${APP_SHARE_TTL_DAYS:7}
+  token-secret: ${APP_TOKEN_SECRET:dev-only-change-me}
   gemini:
-    retry:
-      max-attempts: ${APP_GEMINI_RETRY_MAX_ATTEMPTS:3}  # Maximum retry attempts for Gemini API calls
-      base-delay-ms: ${APP_GEMINI_RETRY_BASE_DELAY_MS:1000}  # Base delay for exponential backoff (in milliseconds)
-  validation:
-    pdf:
-      max-pages: ${APP_VALIDATION_PDF_MAX_PAGES:100}  # Maximum PDF pages allowed (worker validation)
-      max-text-length: ${APP_VALIDATION_PDF_MAX_TEXT_LENGTH:1048576}  # Maximum extracted text length (1MB) - worker validation
-  retention:
-    days: ${APP_RETENTION_DAYS:30}  # Delete jobs/chunks/reports older than this many days
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-1.5-flash}
+    timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:30}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,readiness,info,metrics,prometheus
-  endpoint:
-    health:
-      show-details: when-authorized
-    metrics:
-      enabled: true
-  health:
-    db:
-      enabled: true
-  metrics:
-    export:
-      statsd:
-        enabled: ${datadog.enabled:false}
-        flavor: datadog
-        host: ${DD_AGENT_HOST:localhost}
-        port: ${DD_DOGSTATSD_PORT:8125}
-
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    enabled: true
-
-logging:
-  level:
-    root: INFO
-    com.policyinsight: DEBUG
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-
-# Google Cloud Storage configuration
-gcs:
-  bucket-name: ${GCS_BUCKET_NAME:policyinsight-bucket}
-  # For local emulator: set STORAGE_EMULATOR_HOST=http://localhost:9023
-
-# Google Cloud Pub/Sub configuration
-pubsub:
-  enabled: false
-  project-id: ${GOOGLE_CLOUD_PROJECT:local-project}
-  topic-name: ${PUBSUB_TOPIC_NAME:document-analysis-topic}
-  subscription-name: ${PUBSUB_SUBSCRIPTION_NAME:document-analysis-sub}
-  # For local emulator: set PUBSUB_EMULATOR_HOST=http://localhost:8085
-  push:
-    verification:
-      enabled: ${PUBSUB_PUSH_VERIFICATION_ENABLED:true}
-    expected-email: ${PUBSUB_PUSH_EXPECTED_EMAIL:}
-    expected-audience: ${PUBSUB_PUSH_EXPECTED_AUDIENCE:}
-
-# Document Processing Worker configuration
-worker:
-  enabled: ${WORKER_ENABLED:false}
-  # Set to true to enable Pub/Sub message consumption and document processing
-
-# PolicyInsight worker configuration
-policyinsight:
-  worker:
-    enabled: ${POLICYINSIGHT_WORKER_ENABLED:false}
-    # Controls whether background job processing (polling) is enabled
-    # Set to true only on worker instances, false on web instances
-
-# Vertex AI Gemini configuration
-vertexai:
-  enabled: ${VERTEX_AI_ENABLED:false}
-  project-id: ${GOOGLE_CLOUD_PROJECT:local-project}
-  location: ${VERTEX_AI_LOCATION:us-central1}
-  model: ${VERTEX_AI_MODEL:gemini-2.0-flash-exp}
-
-# Datadog observability configuration
-datadog:
-  enabled: ${DATADOG_ENABLED:false}
-  # When enabled=true, requires:
-  # - DD_AGENT_HOST (default: localhost, or datadog-agent in docker-compose)
-  # - DD_SERVICE (default: policy-insight)
-  # - DD_ENV (default: local)
-  # - DD_VERSION (optional, git commit SHA)
-  # - DD_LOGS_INJECTION=true (for trace correlation in logs)
-
+        include: health

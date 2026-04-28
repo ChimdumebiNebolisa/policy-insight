@@ -1,21 +1,19 @@
 services:
   postgres:
-    image: postgres:15-alpine
-    container_name: policyinsight-postgres
+    image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${DB_NAME:-policyinsight}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: policyinsight
+      POSTGRES_USER: policyinsight
+      POSTGRES_PASSWORD: policyinsight
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - policyinsight-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-policyinsight}"]
+      test: ["CMD-SHELL", "pg_isready -U policyinsight -d policyinsight"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
-  postgres_data:
-
+  policyinsight-postgres:

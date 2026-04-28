@@ -8,41 +8,18 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
 
 # IDE
 .idea/
 *.iml
-*.iws
-*.ipr
-.cursor/
 .vscode/
 .settings/
 .classpath
 .project
-.factorypath
-
-# Eclipse
-bin/
-tmp/
-*.tmp
-*.bak
-*.swp
-*~.nib
-local.properties
-.loadpath
-.recommenders
-
-# IntelliJ IDEA
-out/
-*.log
 
 # OS
 .DS_Store
 Thumbs.db
-*.png
-*.jpg
-*.jpeg
 
 # Environment variables and secrets
 .env
@@ -50,72 +27,29 @@ Thumbs.db
 .env.*.local
 .env.*
 !.env.example
-
-# Logs
-*.log
-logs/
-
-# Spring Boot
-application-local.properties
-application-*.yml
-!application-local.yml
-!application-cloudrun.yml
-!application-demSleep.yml
-
-# Database
-*.db
-*.sqlite
-
-# Build artifacts
-*.jar
-!maven-wrapper.jar
-*.war
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# Test coverage
-.nyc_output/
-coverage/
-
-# Temporary files
-*.tmp
-*.temp
-
-# Local storage (test artifacts)
-.local-storage/
-
-# Local dev/test artifacts
-*_headers.txt
-*_body.txt
-*.pdf
-!src/test/resources/**/*.pdf
-!src/main/resources/static/sample/*.pdf
-perf/
-
-
-# local Datadog scratch
-dd-*.json
-
-# Ignore generated credentials from google-github-actions/auth
-gha-creds-*.json
-
-# Secret files and credentials
-**/*service-account*.json
 **/*credentials*.json
+**/*service-account*.json
+**/*secret*.json
 **/*.pem
 **/*.key
 **/*.p12
 **/*.pfx
 **/*.jks
 **/*.keystore
-**/*secret*.json
-**/*secret*.yml
-**/*secret*.yaml
-**/*secret*.properties
 
-# python cache
-**/__pycache__/
-**/*.pyc
+# Logs and local artifacts
+*.log
+logs/
+*.tmp
+*.temp
+*.db
+*.sqlite
 
+# Build artifacts
+*.jar
+*.war
+*.ear
+
+# Uploaded documents must never be committed
+*.pdf
+!src/test/resources/**/*.pdf
