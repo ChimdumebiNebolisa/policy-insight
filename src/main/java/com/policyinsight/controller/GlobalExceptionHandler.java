@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.util.HtmlUtils;
@@ -18,6 +19,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadUploadException.class)
     public Object badUpload(BadUploadException ex, HttpServletRequest request) {
         return errorResponse(HttpStatus.BAD_REQUEST, "Upload could not be processed", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public Object multipartUpload(MultipartException ex, HttpServletRequest request) {
+        return errorResponse(
+                HttpStatus.BAD_REQUEST,
+                "Upload could not be completed",
+                "The upload could not be completed. Try a smaller PDF or upload again.",
+                request
+        );
     }
 
     @ExceptionHandler(AccessDeniedException.class)

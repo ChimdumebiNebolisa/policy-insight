@@ -11,9 +11,11 @@
     </div>
     <div th:hx-get="@{/status/{id}(id=${jobId})}" hx-trigger="load, every 2s" hx-swap="outerHTML">
         <div class="progress-list">
-            <span>Extracting text</span>
-            <span>Building cited report</span>
-            <span>Validating evidence</span>
+            <span class="step-done">Upload received</span>
+            <span class="step-done">Text extracted</span>
+            <span>Building AI report</span>
+            <span>Validating citations</span>
+            <span>Completed</span>
         </div>
     </div>
 </div>

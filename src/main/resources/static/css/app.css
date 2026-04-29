@@ -710,7 +710,7 @@ code {
 
 .progress-list {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 8px;
 }
 
@@ -723,6 +723,19 @@ code {
     font-size: 0.78rem;
     font-weight: 750;
     text-align: center;
+}
+
+.progress-list .step-done {
+    border-color: #b8d0cd;
+    background: #eef7f5;
+    color: var(--accent-dark);
+}
+
+.progress-list .step-active {
+    border-color: var(--accent);
+    background: #fff;
+    color: var(--text);
+    box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .share-panel a {

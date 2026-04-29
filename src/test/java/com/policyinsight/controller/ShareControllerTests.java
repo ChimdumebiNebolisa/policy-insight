@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.policyinsight.TestPdfFactory;
 import com.policyinsight.model.Report;
 import com.policyinsight.model.ShareLink;
+import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
 import com.policyinsight.repository.ShareLinkRepository;
 import com.policyinsight.security.TokenService;
@@ -40,6 +41,9 @@ class ShareControllerTests {
 
     @Autowired
     TokenService tokenService;
+
+    @Autowired
+    PolicyJobRepository policyJobRepository;
 
     @Test
     void createsShareLinkForOwner() throws Exception {
@@ -101,7 +105,19 @@ class ShareControllerTests {
                 .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
                 .findFirst()
                 .orElseThrow();
-        return new UploadFixture(reportRepository.findAll().getLast().getId(), ownerCookie);
+        UUID jobId = policyJobRepository.findAll().getLast().getId();
+        return new UploadFixture(waitForReport(jobId), ownerCookie);
+    }
+
+    private UUID waitForReport(UUID jobId) throws InterruptedException {
+        for (int i = 0; i < 40; i++) {
+            var report = reportRepository.findByJobId(jobId);
+            if (report.isPresent()) {
+                return report.get().getId();
+            }
+            Thread.sleep(100);
+        }
+        throw new AssertionError("Timed out waiting for async report.");
     }
 
     private record UploadFixture(UUID reportId, Cookie ownerCookie) {

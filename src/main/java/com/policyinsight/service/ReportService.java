@@ -57,7 +57,12 @@ public class ReportService {
 
     public Report generateAndSaveReport(PolicyJob job) {
         List<DocumentChunk> chunks = documentChunkRepository.findByJobIdOrderByChunkIndex(job.getId());
-        RiskReport riskReport = citationValidator.validateReport(aiAnalyzer.generateReport(chunks), chunks);
+        job.setStatus(JobStatus.BUILDING_AI_REPORT);
+        policyJobRepository.save(job);
+        RiskReport generatedReport = aiAnalyzer.generateReport(chunks);
+        job.setStatus(JobStatus.VALIDATING_CITATIONS);
+        policyJobRepository.save(job);
+        RiskReport riskReport = citationValidator.validateReport(generatedReport, chunks);
         Report report = reportRepository.save(new Report(job, toJson(riskReport)));
         job.setStatus(JobStatus.COMPLETED);
         policyJobRepository.save(job);

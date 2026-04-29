@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.policyinsight.TestPdfFactory;
+import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.QaInteractionRepository;
 import com.policyinsight.repository.ReportRepository;
 import jakarta.servlet.http.Cookie;
@@ -32,6 +33,9 @@ class QaControllerTests {
 
     @Autowired
     QaInteractionRepository qaInteractionRepository;
+
+    @Autowired
+    PolicyJobRepository policyJobRepository;
 
     @Test
     void answersAndSavesGroundedQuestion() throws Exception {
@@ -98,7 +102,19 @@ class QaControllerTests {
                 .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
                 .findFirst()
                 .orElseThrow();
-        return new UploadFixture(reportRepository.findAll().getLast().getId(), ownerCookie);
+        UUID jobId = policyJobRepository.findAll().getLast().getId();
+        return new UploadFixture(waitForReport(jobId), ownerCookie);
+    }
+
+    private UUID waitForReport(UUID jobId) throws InterruptedException {
+        for (int i = 0; i < 40; i++) {
+            var report = reportRepository.findByJobId(jobId);
+            if (report.isPresent()) {
+                return report.get().getId();
+            }
+            Thread.sleep(100);
+        }
+        throw new AssertionError("Timed out waiting for async report.");
     }
 
     private record UploadFixture(UUID reportId, Cookie ownerCookie) {

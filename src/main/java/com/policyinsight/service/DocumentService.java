@@ -1,9 +1,8 @@
 package com.policyinsight.service;
 
-import com.policyinsight.ai.AiAnalyzerException;
-import com.policyinsight.ai.GeminiAnalyzer;
 import com.policyinsight.config.OwnerTokenProperties;
 import com.policyinsight.model.DocumentChunk;
+import com.policyinsight.model.JobStatus;
 import com.policyinsight.model.PolicyJob;
 import com.policyinsight.repository.DocumentChunkRepository;
 import com.policyinsight.repository.PolicyJobRepository;
@@ -25,7 +24,7 @@ public class DocumentService {
     private final DocumentChunkRepository documentChunkRepository;
     private final TokenService tokenService;
     private final OwnerTokenProperties ownerTokenProperties;
-    private final ReportService reportService;
+    private final AsyncReportGenerationService asyncReportGenerationService;
 
     public DocumentService(
             PdfValidator pdfValidator,
@@ -35,7 +34,7 @@ public class DocumentService {
             DocumentChunkRepository documentChunkRepository,
             TokenService tokenService,
             OwnerTokenProperties ownerTokenProperties,
-            ReportService reportService
+            AsyncReportGenerationService asyncReportGenerationService
     ) {
         this.pdfValidator = pdfValidator;
         this.pdfTextExtractor = pdfTextExtractor;
@@ -44,7 +43,7 @@ public class DocumentService {
         this.documentChunkRepository = documentChunkRepository;
         this.tokenService = tokenService;
         this.ownerTokenProperties = ownerTokenProperties;
-        this.reportService = reportService;
+        this.asyncReportGenerationService = asyncReportGenerationService;
     }
 
     public UploadResult upload(MultipartFile file) {
@@ -60,20 +59,14 @@ public class DocumentService {
                 tokenService.hashToken(ownerToken),
                 Instant.now().plus(ownerTokenProperties.ttlMinutes(), ChronoUnit.MINUTES)
         ));
+        job.setStatus(JobStatus.UPLOADED);
+        policyJobRepository.save(job);
         for (int i = 0; i < chunks.size(); i++) {
             documentChunkRepository.save(new DocumentChunk(job, i, chunks.get(i)));
         }
-        try {
-            reportService.generateAndSaveReport(job);
-        } catch (AiAnalyzerException ex) {
-            job.setStatus(com.policyinsight.model.JobStatus.FAILED);
-            job.setSafeErrorMessage(GeminiAnalyzer.SAFE_ANALYSIS_FAILURE_MESSAGE);
-            policyJobRepository.save(job);
-        } catch (RuntimeException ex) {
-            job.setStatus(com.policyinsight.model.JobStatus.FAILED);
-            job.setSafeErrorMessage("Unable to generate the report.");
-            policyJobRepository.save(job);
-        }
+        job.setStatus(JobStatus.TEXT_EXTRACTED);
+        policyJobRepository.save(job);
+        asyncReportGenerationService.generate(job.getId());
         return new UploadResult(job.getId(), ownerToken, chunks.size());
     }
 }

@@ -2,14 +2,16 @@
     <div class="status-header">
         <span class="status-icon" aria-hidden="true"></span>
         <div>
-            <p class="section-kicker" th:text="${status.status().name() == 'FAILED'} ? 'Review stopped' : (${completed} ? 'Report ready' : 'Processing document')">Processing document</p>
-            <h3 th:text="${completed} ? 'Your cited report is ready' : (${status.status().name() == 'FAILED'} ? 'We could not finish this report' : 'Building your report')">Building your report</h3>
+            <p class="section-kicker" th:text="${status.kicker()}">Processing document</p>
+            <h3 th:text="${status.title()}">Building your report</h3>
         </div>
     </div>
     <div class="progress-list" th:if="${!completed && status.status().name() != 'FAILED'}">
-        <span>Extracting text</span>
-        <span>Building cited report</span>
-        <span>Validating evidence</span>
+        <span th:classappend="${status.stepClass('UPLOAD_RECEIVED')}">Upload received</span>
+        <span th:classappend="${status.stepClass('TEXT_EXTRACTED')}">Text extracted</span>
+        <span th:classappend="${status.stepClass('BUILDING_AI_REPORT')}">Building AI report</span>
+        <span th:classappend="${status.stepClass('VALIDATING_CITATIONS')}">Validating citations</span>
+        <span th:classappend="${status.stepClass('COMPLETED')}">Completed</span>
     </div>
     <p class="muted" th:if="${status.safeErrorMessage()}" th:text="${status.safeErrorMessage()}">Processing failed.</p>
     <form class="fallback-form" th:if="${status.fallbackAvailable()}"
@@ -24,6 +26,6 @@
     <a class="button button-primary" th:if="${completed}" th:href="@{/report/{id}(id=${status.reportId()})}">View report</a>
     <div th:unless="${completed || status.status().name() == 'FAILED'}"
          th:hx-get="@{/status/{id}(id=${status.jobId()})}" hx-trigger="every 2s" hx-swap="outerHTML">
-        <p class="muted">This usually takes a few seconds. You can keep this page open.</p>
+        <p class="muted">This can take a minute for longer PDFs. You can keep this page open.</p>
     </div>
 </div>

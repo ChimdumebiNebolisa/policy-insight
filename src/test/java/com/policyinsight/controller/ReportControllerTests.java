@@ -7,9 +7,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.policyinsight.TestPdfFactory;
+import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
 import jakarta.servlet.http.Cookie;
 import java.util.Arrays;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,6 +29,9 @@ class ReportControllerTests {
 
     @Autowired
     ReportRepository reportRepository;
+
+    @Autowired
+    PolicyJobRepository policyJobRepository;
 
     @Test
     void reportRequiresOwnerCookie() throws Exception {
@@ -71,8 +76,19 @@ class ReportControllerTests {
                 .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
                 .findFirst()
                 .orElseThrow();
-        assertThat(reportRepository.count()).isGreaterThan(0);
-        return new UploadFixture(reportRepository.findAll().getLast().getId(), ownerCookie);
+        UUID jobId = policyJobRepository.findAll().getLast().getId();
+        return new UploadFixture(waitForReport(jobId), ownerCookie);
+    }
+
+    private UUID waitForReport(UUID jobId) throws InterruptedException {
+        for (int i = 0; i < 40; i++) {
+            var report = reportRepository.findByJobId(jobId);
+            if (report.isPresent()) {
+                return report.get().getId();
+            }
+            Thread.sleep(100);
+        }
+        throw new AssertionError("Timed out waiting for async report.");
     }
 
     private record UploadFixture(java.util.UUID reportId, Cookie ownerCookie) {

@@ -20,6 +20,7 @@ import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
 import jakarta.servlet.http.Cookie;
 import java.util.Arrays;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -59,6 +60,8 @@ class UploadFailureFallbackTests {
                 .andReturn();
         Cookie ownerCookie = ownerCookie(upload);
         PolicyJob job = policyJobRepository.findAll().getLast();
+        waitForStatus(job.getId(), JobStatus.FAILED);
+        job = policyJobRepository.findById(job.getId()).orElseThrow();
 
         assertThat(job.getStatus()).isEqualTo(JobStatus.FAILED);
         assertThat(job.getSafeErrorMessage()).isEqualTo(GeminiAnalyzer.SAFE_ANALYSIS_FAILURE_MESSAGE);
@@ -71,6 +74,7 @@ class UploadFailureFallbackTests {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(GeminiAnalyzer.SAFE_ANALYSIS_FAILURE_MESSAGE)))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Generate demo-style report from extracted text")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Demo fallback. Not live AI analysis.")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("every 2s"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("secret-token"))));
 
         mockMvc.perform(post("/fallback/" + job.getId()).cookie(ownerCookie))
@@ -91,6 +95,7 @@ class UploadFailureFallbackTests {
                 .andReturn();
         Cookie ownerCookie = ownerCookie(upload);
         PolicyJob job = policyJobRepository.findAll().getLast();
+        waitForStatus(job.getId(), JobStatus.FAILED);
 
         mockMvc.perform(post("/fallback/" + job.getId()).cookie(ownerCookie))
                 .andExpect(status().isOk());
@@ -116,5 +121,16 @@ class UploadFailureFallbackTests {
                 .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private void waitForStatus(UUID jobId, JobStatus expectedStatus) throws InterruptedException {
+        for (int i = 0; i < 40; i++) {
+            PolicyJob job = policyJobRepository.findById(jobId).orElseThrow();
+            if (job.getStatus() == expectedStatus) {
+                return;
+            }
+            Thread.sleep(100);
+        }
+        throw new AssertionError("Timed out waiting for status " + expectedStatus);
     }
 }
