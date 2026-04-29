@@ -17,7 +17,7 @@
               hx-target="#share-result" hx-swap="innerHTML" method="post">
             <button class="button button-primary" type="submit">Share</button>
         </form>
-        <a class="button button-secondary" th:if="${ownerControls}" href="#qa">Ask a question</a>
+        <a class="button button-secondary" th:if="${ownerControls && !reportView.demo()}" href="#qa">Ask a question</a>
         <div id="share-result" aria-live="polite"></div>
     </div>
 </section>
@@ -106,19 +106,22 @@
                 <p class="empty-state">No questions yet.</p>
             </div>
         </section>
+        <section class="qa-panel" th:if="${!qaEnabled && reportView.demo()}">
+            <p class="muted">Q&amp;A is available for uploaded documents.</p>
+        </section>
     </div>
 
     <aside class="evidence-panel">
         <div class="section-heading">
             <div>
-                <h2>Source evidence</h2>
-                <p>Extracted source text cited by the report.</p>
+                <h2>Cited evidence</h2>
+                <p>Source text cited by the report.</p>
             </div>
         </div>
-        <div class="chunk-list">
-            <article class="chunk-card" th:each="chunk, iter : ${reportView.chunks()}" th:id="${'chunk-' + chunk.id}">
-                <div class="chunk-meta">
-                    <span th:text="${'Source ' + (iter.index + 1)}">Source 1</span>
+        <div class="source-list">
+            <article class="source-card" th:each="chunk : ${reportView.citedChunks()}" th:id="${'source-' + chunk.id}">
+                <div class="source-meta">
+                    <span th:text="${reportView.sourceLabel(chunk.id)}">Source 1</span>
                     <code th:text="${#strings.substring(chunk.id.toString(), 0, 8)}">source</code>
                 </div>
                 <p th:text="${chunk.excerpt}">Source text</p>
@@ -132,7 +135,7 @@
         <p th:text="${claim.text()}">Claim text</p>
         <div class="claim-meta">
             <a class="citation-chip" th:each="id : ${claim.chunkIds()}"
-               th:href="${'#chunk-' + id}" th:title="${id}" th:text="${reportView.sourceLabel(id)}">Source</a>
+               th:href="${'#source-' + id}" th:title="${id}" th:text="${reportView.sourceLabel(id)}">Source</a>
             <span class="unsupported-chip" th:if="${claim.unsupported()}">Unsupported</span>
         </div>
     </article>

@@ -46,12 +46,12 @@ class AiAnalyzerConfigTests {
     }
 
     @Test
-    void geminiProviderFailsClearlyWhenKeyIsMissing() {
+    void geminiProviderStartsWithGeminiAnalyzerWhenKeyIsMissing() {
         contextRunner
                 .withPropertyValues("app.ai.provider=gemini")
                 .run(context -> {
-                    assertThat(context).hasFailed();
-                    assertThat(context.getStartupFailure()).hasMessageContaining("GEMINI_API_KEY");
+                    assertThat(context).hasSingleBean(AiAnalyzer.class);
+                    assertThat(context.getBean(AiAnalyzer.class)).isInstanceOf(GeminiAnalyzer.class);
                 });
     }
 

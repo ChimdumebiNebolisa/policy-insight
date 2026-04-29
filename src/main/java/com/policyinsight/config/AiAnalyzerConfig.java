@@ -8,7 +8,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.util.StringUtils;
 
 @Configuration
 public class AiAnalyzerConfig {
@@ -16,9 +15,6 @@ public class AiAnalyzerConfig {
     @Bean
     @ConditionalOnProperty(prefix = "app.ai", name = "provider", havingValue = "gemini")
     public AiAnalyzer geminiAnalyzer(GeminiProperties properties, ObjectMapper objectMapper) {
-        if (!StringUtils.hasText(properties.apiKey())) {
-            throw new IllegalStateException("GEMINI_API_KEY is required when APP_AI_PROVIDER=gemini.");
-        }
         return new GeminiAnalyzer(properties, objectMapper);
     }
 

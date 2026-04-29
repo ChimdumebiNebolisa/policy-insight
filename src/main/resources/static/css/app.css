@@ -316,7 +316,7 @@ a:focus-visible {
 .meta-row,
 .badge-row,
 .claim-meta,
-.chunk-meta,
+.source-meta,
 .status-header,
 .section-heading {
     display: flex;
@@ -424,14 +424,14 @@ a:focus-visible {
 
 .claim-list,
 .answer-stack,
-.chunk-list {
+.source-list {
     display: grid;
     gap: 10px;
 }
 
 .claim-row,
 .answer-card,
-.chunk-card {
+.source-card {
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: #fff;
@@ -440,7 +440,7 @@ a:focus-visible {
 
 .claim-row p,
 .answer-card p,
-.chunk-card p {
+.source-card p {
     margin: 0;
 }
 
@@ -456,16 +456,16 @@ a:focus-visible {
     overflow: auto;
 }
 
-.chunk-card {
+.source-card {
     scroll-margin-top: 82px;
 }
 
-.chunk-card:target {
+.source-card:target {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(31, 95, 91, 0.14);
 }
 
-.chunk-meta {
+.source-meta {
     justify-content: space-between;
     margin-bottom: 8px;
     color: var(--muted);

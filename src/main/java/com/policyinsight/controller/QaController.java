@@ -37,6 +37,9 @@ public class QaController {
     ) {
         ReportView report = reportService.reportForOwner(reportId, request.getCookies())
                 .orElseThrow(() -> new AccessDeniedException("Q&A is not available for this session."));
+        if (report.demo()) {
+            throw new AccessDeniedException("Q&A is available for uploaded documents.");
+        }
         if (!rateLimitService.allow("qa:" + clientIp(request))) {
             throw new RateLimitExceededException("Too many Q&A requests. Try again shortly.");
         }

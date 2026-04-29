@@ -43,10 +43,13 @@ class ReportControllerTests {
         mockMvc.perform(get("/report/" + fixture.reportId()).cookie(fixture.ownerCookie()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Risk report")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source evidence")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Cited evidence")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Source 1")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Chunk "))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("chunk 01"))));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Ask a question")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Grounded Q&amp;A")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("chunk"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("mock"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("fallback"))));
     }
 
     private UploadFixture upload() throws Exception {

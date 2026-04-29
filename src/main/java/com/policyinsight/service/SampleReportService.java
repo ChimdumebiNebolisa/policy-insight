@@ -2,8 +2,6 @@ package com.policyinsight.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.policyinsight.ai.AiAnalyzerException;
-import com.policyinsight.ai.MockAiAnalyzer;
 import com.policyinsight.ai.dto.RiskReport;
 import com.policyinsight.config.OwnerTokenProperties;
 import com.policyinsight.model.DocumentChunk;
@@ -14,7 +12,6 @@ import com.policyinsight.repository.DocumentChunkRepository;
 import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
 import com.policyinsight.security.TokenService;
-import com.policyinsight.util.CitationValidator;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -28,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SampleReportService {
 
-    public static final String SAMPLE_DEMO_KEY = "fictional-business-agreement";
+    public static final String SAMPLE_DEMO_KEY = "fictional-business-agreement-deterministic-v1";
     private static final Logger LOGGER = LoggerFactory.getLogger(SampleReportService.class);
     private static final String SAMPLE_PDF_CLASSPATH = "samples/fictional_business_agreement.pdf";
 
@@ -39,10 +36,8 @@ public class SampleReportService {
     private final ReportRepository reportRepository;
     private final TokenService tokenService;
     private final OwnerTokenProperties ownerTokenProperties;
-    private final ReportService reportService;
     private final ObjectMapper objectMapper;
-    private final CitationValidator citationValidator;
-    private final MockAiAnalyzer sampleFallbackAnalyzer = new MockAiAnalyzer();
+    private final SampleAgreementReportBuilder sampleAgreementReportBuilder;
 
     public SampleReportService(
             PdfTextExtractor pdfTextExtractor,
@@ -52,9 +47,8 @@ public class SampleReportService {
             ReportRepository reportRepository,
             TokenService tokenService,
             OwnerTokenProperties ownerTokenProperties,
-            ReportService reportService,
             ObjectMapper objectMapper,
-            CitationValidator citationValidator
+            SampleAgreementReportBuilder sampleAgreementReportBuilder
     ) {
         this.pdfTextExtractor = pdfTextExtractor;
         this.chunkingService = chunkingService;
@@ -63,9 +57,8 @@ public class SampleReportService {
         this.reportRepository = reportRepository;
         this.tokenService = tokenService;
         this.ownerTokenProperties = ownerTokenProperties;
-        this.reportService = reportService;
         this.objectMapper = objectMapper;
-        this.citationValidator = citationValidator;
+        this.sampleAgreementReportBuilder = sampleAgreementReportBuilder;
     }
 
     @Transactional
@@ -107,24 +100,11 @@ public class SampleReportService {
             documentChunkRepository.save(new DocumentChunk(saved, i, chunks.get(i)));
         }
         List<DocumentChunk> savedChunks = documentChunkRepository.findByJobIdOrderByChunkIndex(saved.getId());
-        try {
-            Report report = reportService.generateAndSaveReport(saved);
-            return report.getJob();
-        } catch (AiAnalyzerException ex) {
-            LOGGER.warn(
-                    "Sample report live AI generation failed; using deterministic fallback. safeReason={} exceptionType={}",
-                    ex.getMessage(),
-                    ex.getClass().getName()
-            );
-            return generateFallbackSampleReport(saved, savedChunks);
-        } catch (RuntimeException ex) {
-            LOGGER.warn(
-                    "Sample report generation failed unexpectedly; using deterministic fallback. safeReason={} exceptionType={}",
-                    safeReason(ex),
-                    ex.getClass().getName()
-            );
-            return generateFallbackSampleReport(saved, savedChunks);
-        }
+        RiskReport riskReport = sampleAgreementReportBuilder.build(savedChunks);
+        reportRepository.save(new Report(saved, toJson(riskReport)));
+        saved.setStatus(JobStatus.COMPLETED);
+        saved.setSafeErrorMessage(null);
+        return policyJobRepository.save(saved);
     }
 
     private byte[] readSamplePdf() {
@@ -141,26 +121,11 @@ public class SampleReportService {
         }
     }
 
-    private PolicyJob generateFallbackSampleReport(PolicyJob job, List<DocumentChunk> chunks) {
-        RiskReport report = citationValidator.validateReport(sampleFallbackAnalyzer.generateReport(chunks), chunks);
-        reportRepository.save(new Report(job, toJson(report)));
-        job.setStatus(JobStatus.COMPLETED);
-        job.setSafeErrorMessage(null);
-        return policyJobRepository.save(job);
-    }
-
     private String toJson(RiskReport report) {
         try {
             return objectMapper.writeValueAsString(report);
         } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Unable to serialize fallback sample report", ex);
+            throw new IllegalStateException("Unable to serialize sample report", ex);
         }
-    }
-
-    private String safeReason(RuntimeException ex) {
-        if (ex.getMessage() == null || ex.getMessage().isBlank()) {
-            return "No exception message was provided.";
-        }
-        return ex.getMessage();
     }
 }

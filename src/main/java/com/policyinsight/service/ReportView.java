@@ -5,10 +5,13 @@ import com.policyinsight.model.DocumentChunk;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 public record ReportView(
         UUID reportId,
@@ -49,5 +52,32 @@ public record ReportView(
             labels.put(chunks.get(i).getId(), "Source " + (i + 1));
         }
         return labels;
+    }
+
+    public List<DocumentChunk> citedChunks() {
+        if (chunks == null || report == null) {
+            return List.of();
+        }
+        Set<UUID> citedIds = citedIds();
+        return chunks.stream()
+                .filter(chunk -> citedIds.contains(chunk.getId()))
+                .toList();
+    }
+
+    private Set<UUID> citedIds() {
+        Set<UUID> ids = new HashSet<>();
+        Stream.of(
+                        report.summaryBullets(),
+                        report.obligations(),
+                        report.restrictions(),
+                        report.terminationTriggers(),
+                        report.riskTaxonomy()
+                )
+                .filter(claims -> claims != null)
+                .flatMap(List::stream)
+                .filter(claim -> claim.chunkIds() != null)
+                .flatMap(claim -> claim.chunkIds().stream())
+                .forEach(ids::add);
+        return ids;
     }
 }

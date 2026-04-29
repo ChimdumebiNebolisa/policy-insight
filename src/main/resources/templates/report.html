@@ -6,7 +6,7 @@
 
 <main class="page-shell report-page">
     <section th:replace="~{fragments/report :: reportHeader(false, true)}"></section>
-    <section th:replace="~{fragments/report :: reportBody(true)}"></section>
+    <section th:replace="~{fragments/report :: reportBody(${!reportView.demo()})}"></section>
 </main>
 </body>
 </html>
