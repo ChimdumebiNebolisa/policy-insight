@@ -158,15 +158,15 @@ The sample report path is separate from uploaded analysis. It loads the committe
 
 ## Architecture
 
-Codebase layout:
+Key directories:
 
 ```txt
-src/main/java/com/policyinsight/
-src/main/resources/templates/
-src/main/resources/static/
-src/main/resources/samples/
-src/main/resources/db/migration/
-src/test/
+src/main/java/com/policyinsight/      Application code
+src/main/resources/templates/         Thymeleaf pages and fragments
+src/main/resources/static/            CSS assets
+src/main/resources/samples/           Bundled deterministic sample PDF
+src/main/resources/db/migration/      Flyway migrations
+src/test/                             Test suite
 ```
 
 ```mermaid
@@ -188,25 +188,11 @@ flowchart LR
 
 System overview:
 
-Frontend:
-
-Server-rendered Thymeleaf pages with HTMX for upload submission, status polling, share-link fragments, and Q&A partial updates.
-
-Backend:
-
-Spring Boot handles PDF validation, text extraction, chunking, async report generation, citation validation, report access, share links, and Q&A.
-
-Database:
-
-PostgreSQL stores jobs, extracted source chunks, reports, share links, and saved Q&A interactions.
-
-External services:
-
-Google Gemini is used for uploaded-document analysis and uploaded-document Q&A when `APP_AI_PROVIDER=gemini`.
-
-Deployment:
-
-The app is packaged as a Dockerized Spring Boot service and deployed to Render with a Postgres database and `/health` health check.
+- `Frontend`: Server-rendered Thymeleaf pages with HTMX for upload submission, status polling, share-link fragments, and Q&A partial updates.
+- `Backend`: Spring Boot handles PDF validation, text extraction, chunking, async report generation, citation validation, report access, share links, and Q&A.
+- `Database`: PostgreSQL stores jobs, extracted source chunks, reports, share links, and saved Q&A interactions.
+- `External services`: Google Gemini is used for uploaded-document analysis and uploaded-document Q&A when `APP_AI_PROVIDER=gemini`.
+- `Deployment`: The app is packaged as a Dockerized Spring Boot service and deployed to Render with a Postgres database and `/health` health check.
 
 ## Known limitations
 
