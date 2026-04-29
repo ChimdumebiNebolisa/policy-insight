@@ -22,9 +22,19 @@
     </div>
 </section>
 
-<section th:fragment="reportBody(qaEnabled)" class="report-layout">
+<section th:fragment="reportBody(qaEnabled)" class="report-workspace">
+    <nav class="section-nav" aria-label="Report sections">
+        <a href="#overview">Overview</a>
+        <a href="#summary">Summary</a>
+        <a href="#obligations">Obligations</a>
+        <a href="#restrictions">Restrictions</a>
+        <a href="#termination">Termination</a>
+        <a href="#risks">Risks</a>
+        <a href="#evidence">Evidence</a>
+    </nav>
+
     <div class="report-main">
-        <section class="summary-strip" aria-label="Report summary">
+        <section id="overview" class="summary-strip" aria-label="Report summary">
             <article>
                 <span>Overview</span>
                 <p th:text="${reportView.report().documentOverview()}">Document overview</p>
@@ -43,45 +53,69 @@
             </article>
         </section>
 
-        <section class="report-section">
+        <section class="guided-review" th:if="${reportView.demo()}" aria-labelledby="guided-review-title">
             <div class="section-heading">
-                <h2>Summary bullets</h2>
-                <span th:text="${#lists.size(reportView.report().summaryBullets()) + ' items'}">0 items</span>
+                <div>
+                    <span>Guided demo</span>
+                    <h2 id="guided-review-title">Review focus areas</h2>
+                    <p>Key sample findings with cited sources.</p>
+                </div>
             </div>
-            <div th:replace="~{fragments/report :: claims(${reportView.report().summaryBullets()})}"></div>
+            <div class="review-card-track" aria-label="Sample review cards">
+                <article class="review-card" th:each="card : ${reportView.sampleReviewCards()}">
+                    <h3 th:text="${card.title()}">Payment terms</h3>
+                    <p class="review-finding" th:text="${card.finding()}">Finding</p>
+                    <div class="review-why">
+                        <span>Why it matters</span>
+                        <p th:text="${card.whyItMatters()}">Why it matters</p>
+                    </div>
+                    <div class="claim-meta">
+                        <a class="citation-chip" th:each="id : ${card.sourceIds()}"
+                           th:href="${'#source-' + id}" th:title="${id}" th:text="${reportView.sourceLabel(id)}">Source</a>
+                    </div>
+                </article>
+            </div>
         </section>
 
-        <section class="report-section">
-            <div class="section-heading">
-                <h2>Obligations</h2>
-                <span th:text="${#lists.size(reportView.report().obligations()) + ' items'}">0 items</span>
-            </div>
-            <div th:replace="~{fragments/report :: claims(${reportView.report().obligations()})}"></div>
-        </section>
+        <details id="summary" class="report-section" open>
+            <summary>
+                <span>Summary</span>
+                <strong th:text="${#lists.size(reportView.report().summaryBullets()) + ' items'}">0 items</strong>
+            </summary>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().summaryBullets()}, 'Informational')}"></div>
+        </details>
 
-        <section class="report-section">
-            <div class="section-heading">
-                <h2>Restrictions</h2>
-                <span th:text="${#lists.size(reportView.report().restrictions()) + ' items'}">0 items</span>
-            </div>
-            <div th:replace="~{fragments/report :: claims(${reportView.report().restrictions()})}"></div>
-        </section>
+        <details id="obligations" class="report-section">
+            <summary>
+                <span>Obligations</span>
+                <strong th:text="${#lists.size(reportView.report().obligations()) + ' items'}">0 items</strong>
+            </summary>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().obligations()}, 'Operational term')}"></div>
+        </details>
 
-        <section class="report-section">
-            <div class="section-heading">
-                <h2>Termination triggers</h2>
-                <span th:text="${#lists.size(reportView.report().terminationTriggers()) + ' items'}">0 items</span>
-            </div>
-            <div th:replace="~{fragments/report :: claims(${reportView.report().terminationTriggers()})}"></div>
-        </section>
+        <details id="restrictions" class="report-section">
+            <summary>
+                <span>Restrictions</span>
+                <strong th:text="${#lists.size(reportView.report().restrictions()) + ' items'}">0 items</strong>
+            </summary>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().restrictions()}, 'Operational term')}"></div>
+        </details>
 
-        <section class="report-section">
-            <div class="section-heading">
-                <h2>Risk taxonomy</h2>
-                <span th:text="${#lists.size(reportView.report().riskTaxonomy()) + ' items'}">0 items</span>
-            </div>
-            <div th:replace="~{fragments/report :: claims(${reportView.report().riskTaxonomy()})}"></div>
-        </section>
+        <details id="termination" class="report-section">
+            <summary>
+                <span>Termination terms</span>
+                <strong th:text="${#lists.size(reportView.report().terminationTriggers()) + ' items'}">0 items</strong>
+            </summary>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().terminationTriggers()}, 'Operational term')}"></div>
+        </details>
+
+        <details id="risks" class="report-section risk-section" open>
+            <summary>
+                <span>Risks</span>
+                <strong th:text="${#lists.size(reportView.report().riskTaxonomy()) + ' items'}">0 items</strong>
+            </summary>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().riskTaxonomy()}, 'Review closely')}"></div>
+        </details>
 
         <section id="qa" class="qa-panel" th:if="${qaEnabled}">
             <div class="section-heading">
@@ -111,27 +145,28 @@
         </section>
     </div>
 
-    <aside class="evidence-panel">
+    <aside id="evidence" class="evidence-panel">
         <div class="section-heading">
             <div>
                 <h2>Cited evidence</h2>
-                <p>Source text cited by the report.</p>
+                <p>Short excerpts from sources cited by the report.</p>
             </div>
         </div>
         <div class="source-list">
-            <article class="source-card" th:each="chunk : ${reportView.citedChunks()}" th:id="${'source-' + chunk.id}">
+            <article class="source-card" th:each="item : ${reportView.citedEvidence()}" th:id="${'source-' + item.sourceId()}">
                 <div class="source-meta">
-                    <span th:text="${reportView.sourceLabel(chunk.id)}">Source 1</span>
-                    <code th:text="${#strings.substring(chunk.id.toString(), 0, 8)}">source</code>
+                    <span th:text="${item.label()}">Source 1</span>
+                    <span class="source-category" th:text="${item.category()}">Fees</span>
                 </div>
-                <p th:text="${chunk.excerpt}">Source text</p>
+                <p th:text="${item.excerpt()}">Source text</p>
             </article>
         </div>
     </aside>
 </section>
 
-<div th:fragment="claims(claims)" class="claim-list">
-    <article class="claim-row" th:each="claim : ${claims}">
+<div th:fragment="claims(claims, tone)" class="claim-list">
+    <article class="claim-row" th:each="claim : ${claims}" th:classappend="${tone == 'Review closely'} ? ' claim-row-risk' : ''">
+        <span class="attention-label" th:text="${tone}">Informational</span>
         <p th:text="${claim.text()}">Claim text</p>
         <div class="claim-meta">
             <a class="citation-chip" th:each="id : ${claim.chunkIds()}"
