@@ -8,20 +8,6 @@ PolicyInsight is a Spring Boot web app for reviewing policy, agreement, and cont
 
 Reviewing contracts and policy documents manually is slow when the goal is to identify the operational terms quickly. This app reduces that friction by extracting the text, organizing the document into source sections, producing a readable report with cited evidence, and allowing follow-up questions against the uploaded document instead of forcing users to scan the full PDF by hand.
 
-## Demo
-
-Live demo:
-
-[https://policy-insight.onrender.com](https://policy-insight.onrender.com)
-
-Screenshots:
-
-Add screenshots here.
-
-Video/GIF:
-
-Add a walkthrough video or GIF here.
-
 ## Features
 
 - Upload PDF documents, validate them, extract text with PDFBox, and split the text into source sections without storing the original file
@@ -31,33 +17,19 @@ Add a walkthrough video or GIF here.
 
 ## Tech stack
 
-Frontend:
+Frontend: Thymeleaf and HTMX
 
-Thymeleaf and HTMX
+Backend: Java 21 and Spring Boot
 
-Backend:
+Database: PostgreSQL
 
-Java 21 and Spring Boot
+AI/API: Google Gemini
 
-Database:
+Authentication: Owner access cookies, expiring share links, and simple in-memory rate limiting
 
-PostgreSQL
+Deployment: Docker and Render
 
-AI/API:
-
-Google Gemini
-
-Authentication:
-
-Owner access cookies, expiring share links, and simple in-memory rate limiting
-
-Deployment:
-
-Docker and Render
-
-Other tools:
-
-PDFBox, Flyway, Maven Wrapper, H2 for tests, and Docker Compose for local PostgreSQL
+Other tools: PDFBox, Flyway, Maven Wrapper, H2 for tests, and Docker Compose for local PostgreSQL
 
 ## Setup
 
@@ -171,10 +143,6 @@ What is tested:
 - Q&A behavior
 - Gemini error handling where covered
 
-Latest verified local result:
-
-`49` tests passed.
-
 ## How it works
 
 For this project:
@@ -190,23 +158,32 @@ The sample report path is separate from uploaded analysis. It loads the committe
 
 ## Architecture
 
-Briefly explain the codebase structure based on the actual folders.
+Codebase layout:
 
 ```txt
 src/main/java/com/policyinsight/
-  ai/: analyzer interface, Gemini integration, DTOs, mock analyzer
-  config/: application config, environment processing, health endpoint, secret validation
-  controller/: upload, sample, report, share, Q&A, and global exception handlers
-  model/: JPA entities and job status enum
-  repository/: Spring Data repositories
-  security/: token hashing and in-memory rate limiting
-  service/: PDF processing, chunking, async report generation, sample builder, fallback builder, sharing, Q&A
-  util/: citation validation and supporting utilities
 src/main/resources/templates/
 src/main/resources/static/
 src/main/resources/samples/
 src/main/resources/db/migration/
 src/test/
+```
+
+```mermaid
+flowchart LR
+    U[User] --> F[Thymeleaf + HTMX UI]
+    F --> C[Spring MVC Controllers]
+    C --> S[Services]
+    S --> P[PDFBox Extraction + Chunking]
+    S --> G[Google Gemini]
+    S --> D[Deterministic Sample Builder]
+    S --> V[Citation Validation]
+    V --> DB[(PostgreSQL)]
+    S --> DB
+    C --> T[Owner Cookies + Share Links]
+
+    D --> DB
+    P --> DB
 ```
 
 System overview:
@@ -242,4 +219,4 @@ The app is packaged as a Dockerized Spring Boot service and deployed to Render w
 
 ## License
 
-No license specified yet.
+MIT License. See [LICENSE](</C:/Users/Chimdumebi/Documents/New project/LICENSE>).
