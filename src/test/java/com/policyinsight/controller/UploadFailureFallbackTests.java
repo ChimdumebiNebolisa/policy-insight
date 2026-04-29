@@ -86,6 +86,31 @@ class UploadFailureFallbackTests {
     }
 
     @Test
+    void processingStatusPollsOneStableContainerWithoutNestedCards() throws Exception {
+        when(aiAnalyzer.generateReport(anyList()))
+                .thenAnswer(invocation -> {
+                    Thread.sleep(1000);
+                    throw new AiAnalyzerException("slow provider failure");
+                });
+
+        MvcResult upload = mockMvc.perform(multipart("/upload").file(pdf()))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie ownerCookie = ownerCookie(upload);
+        PolicyJob job = policyJobRepository.findAll().getLast();
+
+        MvcResult statusResult = mockMvc.perform(get("/status/" + job.getId()).cookie(ownerCookie))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("hx-target=\"#job-status\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("hx-swap=\"innerHTML\"")))
+                .andReturn();
+
+        String body = statusResult.getResponse().getContentAsString();
+        assertThat(countOccurrences(body, "class=\"status-card\"")).isEqualTo(1);
+        assertThat(countOccurrences(body, "hx-get=\"/status/")).isEqualTo(1);
+    }
+
+    @Test
     void fallbackReportIsClearlyLabeledWhenOpened() throws Exception {
         when(aiAnalyzer.generateReport(anyList()))
                 .thenThrow(new AiAnalyzerException(GeminiAnalyzer.SAFE_ANALYSIS_FAILURE_MESSAGE));
@@ -121,6 +146,16 @@ class UploadFailureFallbackTests {
                 .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private int countOccurrences(String text, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(needle, index)) >= 0) {
+            count++;
+            index += needle.length();
+        }
+        return count;
     }
 
     private void waitForStatus(UUID jobId, JobStatus expectedStatus) throws InterruptedException {

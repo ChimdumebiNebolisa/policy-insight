@@ -65,7 +65,10 @@ class DocumentControllerTests {
         assertThat(result.getResponse().getContentAsString())
                 .contains("Upload accepted")
                 .contains("source section(s) extracted")
-                .contains("Building AI report");
+                .contains("Building AI report")
+                .contains("hx-target=\"#job-status\"")
+                .contains("hx-swap=\"innerHTML\"");
+        assertThat(countOccurrences(result.getResponse().getContentAsString(), "class=\"status-card\"")).isEqualTo(1);
 
         PolicyJob job = policyJobRepository.findAll().getLast();
         assertThat(job.getStatus()).isIn(
@@ -79,8 +82,20 @@ class DocumentControllerTests {
         mockMvc.perform(get("/status/" + job.getId()).cookie(cookies))
                 .andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(org.hamcrest.Matchers.containsString("Your cited report is ready")));
+                        .string(org.hamcrest.Matchers.containsString("Your cited report is ready")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("hx-trigger"))));
         assertThat(reportRepository.findByJobId(job.getId())).isPresent();
+    }
+
+    private int countOccurrences(String text, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(needle, index)) >= 0) {
+            count++;
+            index += needle.length();
+        }
+        return count;
     }
 
     private void waitForCompleted(UUID jobId) throws InterruptedException {

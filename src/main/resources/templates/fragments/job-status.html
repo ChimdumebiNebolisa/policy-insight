@@ -1,4 +1,9 @@
-<div th:fragment="status" class="status-card" th:classappend="${status.status().name() == 'FAILED'} ? ' status-card-error' : ''">
+<div th:fragment="status" class="status-card"
+     th:classappend="${status.status().name() == 'FAILED'} ? ' status-card-error' : ''"
+     th:attr="hx-get=${(!completed && status.status().name() != 'FAILED') ? '/status/' + status.jobId() : null},
+              hx-trigger=${(!completed && status.status().name() != 'FAILED') ? 'every 2s' : null},
+              hx-target=${(!completed && status.status().name() != 'FAILED') ? '#job-status' : null},
+              hx-swap=${(!completed && status.status().name() != 'FAILED') ? 'innerHTML' : null}">
     <div class="status-header">
         <span class="status-icon" aria-hidden="true"></span>
         <div>
@@ -24,8 +29,7 @@
         <button class="button button-secondary" type="submit">Generate demo-style report</button>
     </form>
     <a class="button button-primary" th:if="${completed}" th:href="@{/report/{id}(id=${status.reportId()})}">View report</a>
-    <div th:unless="${completed || status.status().name() == 'FAILED'}"
-         th:hx-get="@{/status/{id}(id=${status.jobId()})}" hx-trigger="every 2s" hx-swap="outerHTML">
+    <div th:unless="${completed || status.status().name() == 'FAILED'}">
         <p class="muted">This can take a minute for longer PDFs. You can keep this page open.</p>
     </div>
 </div>

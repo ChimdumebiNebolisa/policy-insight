@@ -1,4 +1,6 @@
-<div th:fragment="uploadStarted" class="status-card">
+<div th:fragment="uploadStarted" class="status-card"
+     th:hx-get="@{/status/{id}(id=${jobId})}" hx-trigger="load delay:500ms, every 2s"
+     hx-target="#job-status" hx-swap="innerHTML">
     <div class="status-header">
         <span class="status-icon" aria-hidden="true"></span>
         <div>
@@ -9,13 +11,11 @@
             </h3>
         </div>
     </div>
-    <div th:hx-get="@{/status/{id}(id=${jobId})}" hx-trigger="load, every 2s" hx-swap="outerHTML">
-        <div class="progress-list">
-            <span class="step-done">Upload received</span>
-            <span class="step-done">Text extracted</span>
-            <span>Building AI report</span>
-            <span>Validating citations</span>
-            <span>Completed</span>
-        </div>
+    <div class="progress-list">
+        <span class="step-done">Upload received</span>
+        <span class="step-done">Text extracted</span>
+        <span>Building AI report</span>
+        <span>Validating citations</span>
+        <span>Completed</span>
     </div>
 </div>

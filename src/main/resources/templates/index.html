@@ -18,7 +18,7 @@
                     <h2 id="upload-title">Analyze your document</h2>
                     <p>PDF only. Maximum <span th:text="${maxUploadMb}">10</span> MB. The original upload is discarded after text extraction.</p>
                 </div>
-                <form class="upload-form" hx-post="/upload" hx-target="#upload-result" hx-swap="innerHTML"
+                <form class="upload-form" hx-post="/upload" hx-target="#job-status" hx-swap="innerHTML"
                       enctype="multipart/form-data" method="post">
                     <label for="file">Upload a PDF</label>
                     <input id="file" name="file" type="file" accept="application/pdf" required>
@@ -27,7 +27,7 @@
                         <span class="loading-text">Analyzing PDF...</span>
                     </button>
                 </form>
-                <div id="upload-result" aria-live="polite"></div>
+                <div id="job-status" aria-live="polite"></div>
             </section>
 
             <section class="option-panel" aria-labelledby="sample-title">
