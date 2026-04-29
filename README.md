@@ -1,31 +1,146 @@
 # PolicyInsight
 
-PolicyInsight is a lightweight Spring Boot app for grounded PDF policy analysis.
+## What this is
 
-Flow:
+PolicyInsight is a Spring Boot web app for reviewing policy and agreement PDFs with AI-generated reports grounded in source text. Users can upload a PDF, extract and split its text into cited evidence sections, generate a structured report, and ask follow-up questions against the uploaded document. It also includes a deterministic built-in sample report for demos that does not depend on live Gemini availability.
 
-`Upload PDF -> extract text -> chunk text -> generate Gemini or mock risk report -> validate chunk IDs -> save report -> view/share report -> grounded Q&A`
+## Problem it solves
 
-## Stack
+Policy and contract PDFs are slow to review manually, especially when users need to find obligations, restrictions, termination language, and risk points quickly. PolicyInsight reduces that friction by extracting the text, organizing key findings into a readable report, and linking each claim back to cited source evidence.
 
-- Java 21 and Spring Boot
-- PostgreSQL with Flyway migrations
-- Spring Data JPA
-- PDFBox
-- Gemini API through the Google Generative Language REST API
-- Thymeleaf and HTMX
-- Railway deployment
-- Render deployment
-- Docker Compose only for local PostgreSQL
+## Demo
 
-## Local Setup
+Live demo:
 
-Reset and start PostgreSQL from a clean local volume:
+Add your Render or Railway deployment URL here.
+
+Screenshots:
+
+Add screenshots here.
+
+Video/GIF:
+
+Add a walkthrough video or GIF here.
+
+## Features
+
+- Upload PDF documents up to the configured file size limit and extract text without storing the original file
+- Generate structured reports with overview, summary, obligations, restrictions, termination terms, and risks
+- Link report claims and Q&A answers back to cited source evidence
+- Open a deterministic built-in sample report from the bundled fictional agreement PDF
+
+## Tech stack
+
+Frontend:
+
+Thymeleaf templates, HTMX, and plain CSS
+
+Backend:
+
+Java 21, Spring Boot, Spring MVC, and Spring Data JPA
+
+Database:
+
+PostgreSQL with Flyway migrations
+
+AI/API:
+
+Google Generative Language API through Gemini, plus a deterministic sample report builder and a demo fallback builder
+
+Authentication:
+
+Owner access cookies, signed share tokens, and simple in-memory IP rate limiting
+
+Deployment:
+
+Render, Railway, Dockerfile, and `render.yaml` / `railway.json`
+
+Other tools:
+
+Apache PDFBox, Maven Wrapper, and Docker Compose for local PostgreSQL
+
+## Setup
+
+### 1. Clone the repo
+
+```bash
+git clone <repo-url>
+cd policy-insight
+```
+
+### 2. Install dependencies
+
+This project uses Maven, not npm. The Maven Wrapper downloads the required build tooling automatically.
+
+```bash
+./mvnw test
+```
+
+On Windows:
+
+```powershell
+.\mvnw.cmd test
+```
+
+### 3. Add environment variables
+
+Local development with PostgreSQL:
+
+```env
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:55432/policyinsight
+SPRING_DATASOURCE_USERNAME=policyinsight
+SPRING_DATASOURCE_PASSWORD=policyinsight
+APP_TOKEN_SECRET=local-development-token-secret-change-before-deploy
+APP_AI_PROVIDER=mock
+```
+
+Recommended Render or Railway deployment variables:
+
+```env
+DATABASE_URL=<platform postgres url>
+APP_TOKEN_SECRET=<long random secret>
+APP_AI_PROVIDER=gemini
+GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_TIMEOUT_SECONDS=180
+GEMINI_API_KEY=<your Gemini key>
+```
+
+Environment variables used:
+
+```md
+DATABASE_URL: Platform-style Postgres connection string used in Render or Railway.
+SPRING_DATASOURCE_URL: Direct JDBC URL for local database development.
+SPRING_DATASOURCE_USERNAME: Local PostgreSQL username.
+SPRING_DATASOURCE_PASSWORD: Local PostgreSQL password.
+APP_TOKEN_SECRET: Secret used to hash owner and share tokens.
+APP_AI_PROVIDER: Selects the AI provider. Use `mock` locally or `gemini` for live Gemini calls.
+GEMINI_MODEL: Gemini model name for live analysis. `gemini-2.5-flash-lite` is recommended on Render.
+GEMINI_TIMEOUT_SECONDS: Timeout for Gemini requests.
+GEMINI_API_KEY: API key for Gemini.
+APP_UPLOAD_MAX_BYTES: Maximum upload size in bytes.
+APP_OWNER_TOKEN_TTL_MINUTES: Owner access token lifetime.
+APP_SHARE_TTL_DAYS: Share link lifetime.
+PORT: Web service port used by Render.
+```
+
+### 4. Run the app locally
+
+Start PostgreSQL:
 
 ```powershell
 docker compose down -v
 docker compose up -d
 ```
+
+Run the app:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+Open `http://localhost:8080`.
+
+## Testing
 
 Run tests:
 
@@ -33,149 +148,60 @@ Run tests:
 .\mvnw.cmd test
 ```
 
-Run the app with mock AI:
+What is tested:
 
-```powershell
-$env:DATABASE_URL=$null
-$env:SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:55432/policyinsight"
-$env:SPRING_DATASOURCE_USERNAME="policyinsight"
-$env:SPRING_DATASOURCE_PASSWORD="policyinsight"
-$env:APP_TOKEN_SECRET="local-development-token-secret-change-before-deploy"
-$env:APP_AI_PROVIDER="mock"
-.\mvnw.cmd spring-boot:run
+- AI analyzer configuration and Gemini request handling
+- PDF validation, text extraction, and chunk processing
+- Repository and database integration behavior
+- Upload, report, share, sample, and Q&A controller flows
+- Citation validation and report grounding behavior
+- UI and HTMX status rendering for the main user flow
+
+## How it works
+
+User uploads a PDF -> the backend validates it -> text is extracted with PDFBox -> text is chunked into source sections -> a background job generates a report -> the frontend polls job status and then opens the completed report.
+
+For this project:
+
+1. Step one: The user uploads a PDF from the homepage, or opens the built-in sample report.
+2. Step two: Uploaded PDFs are validated, text is extracted, and source sections are stored in PostgreSQL.
+3. Step three: A background job calls Gemini for live analysis, or the sample route builds a deterministic report from the bundled fictional sample PDF.
+4. Step four: The report is saved with citations that map claims back to extracted source evidence.
+5. Step five: The user can review the report, open share links, and ask grounded Q&A questions for uploaded documents.
+
+## Architecture
+
+Briefly explain the structure of the codebase.
+
+```txt
+src/main/java/com/policyinsight/controller/: MVC and HTMX endpoints for upload, sample, report, share, and Q&A flows.
+src/main/java/com/policyinsight/service/: PDF processing, chunking, report generation orchestration, sample report building, and async job handling.
+src/main/java/com/policyinsight/ai/: AI provider interfaces, Gemini integration, DTOs, and mock analyzer support.
+src/main/java/com/policyinsight/repository/: Spring Data repositories for jobs, reports, chunks, Q&A, and share links.
+src/main/java/com/policyinsight/model/: JPA entities and enums.
+src/main/resources/templates/: Thymeleaf pages and fragments.
+src/main/resources/static/: CSS assets.
+src/main/resources/db/migration/: Flyway migrations.
+src/main/resources/samples/: Bundled fictional sample PDF used by `/sample`.
+scripts/: Local helper scripts.
 ```
 
-Open `http://localhost:8080`.
+System overview:
 
-Shortcut:
-
-```powershell
-.\scripts\run-local.ps1
+```txt
+Frontend: Thymeleaf templates rendered by Spring MVC, with HTMX for upload status polling and partial updates.
+Backend: Spring Boot services handle validation, text extraction, chunking, report generation, sharing, and Q&A.
+Database: PostgreSQL stores jobs, extracted chunks, reports, Q&A interactions, and share links.
+External services: Gemini through the Google Generative Language REST API for uploaded document analysis.
+Deployment: Docker-based deployment to Render or Railway with Flyway migrations on startup.
 ```
 
-The local database is exposed on host port `55432` to avoid collisions with a Windows-installed PostgreSQL service on `5432`. If PostgreSQL reports `password authentication failed for user "policyinsight"`, verify `SPRING_DATASOURCE_URL` uses port `55432`, then reset the local Docker volume with `docker compose down -v` and start again from the same repository directory. PostgreSQL only reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` when the database volume is first initialized.
+## Known limitations
 
-## Environment Variables
+- Live Gemini analysis can still fail if deployment environment variables are wrong or the external API times out.
+- Uploaded documents support grounded Q&A, but the deterministic `/sample` report does not expose Q&A.
+- No user account system exists yet; access control is based on owner cookies and share tokens rather than full authentication.
 
-Required for Render or Railway:
+## License
 
-- `DATABASE_URL`: Render/Railway-style `postgresql://user:password@host:port/db`, `postgres://...`, or JDBC `jdbc:postgresql://...`
-- `GEMINI_API_KEY`: Gemini API key, required only when `APP_AI_PROVIDER=gemini`
-- `APP_TOKEN_SECRET`: long random secret used to hash owner/share tokens
-
-Required for local development:
-
-- `SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:55432/policyinsight`
-- `SPRING_DATASOURCE_USERNAME=policyinsight`
-- `SPRING_DATASOURCE_PASSWORD=policyinsight`
-- `APP_TOKEN_SECRET=local-development-token-secret-change-before-deploy`
-- `APP_AI_PROVIDER=mock`
-
-Optional:
-
-- `APP_AI_PROVIDER`: `mock` by default, set to `gemini` for live Gemini calls
-- `GEMINI_MODEL`: defaults to `gemini-2.5-flash`
-- `GEMINI_TIMEOUT_SECONDS`: defaults to `30`
-- `APP_UPLOAD_MAX_BYTES`: defaults to `10485760`
-- `APP_OWNER_TOKEN_TTL_MINUTES`: defaults to `120`
-- `APP_SHARE_TTL_DAYS`: defaults to `7`
-
-## Gemini Troubleshooting
-
-If an upload succeeds, source sections are extracted, and analysis stops with an AI configuration message, the PDF upload, text extraction, and chunking steps worked, but live Gemini report generation failed.
-
-Recommended Render settings:
-
-- `APP_AI_PROVIDER=gemini`
-- `GEMINI_MODEL=gemini-2.5-flash-lite`
-- `GEMINI_TIMEOUT_SECONDS=180`
-- `GEMINI_API_KEY=<your Gemini key>`
-- `APP_TOKEN_SECRET=<long random secret>`
-- `DATABASE_URL=<Render internal Postgres URL>`
-
-`gemini-2.5-flash-lite` is the recommended Render model because free Render instances can time out on heavier Gemini model calls.
-
-If upload succeeds but report generation fails or times out, check:
-
-- `GEMINI_API_KEY` is present and valid
-- `APP_AI_PROVIDER=gemini`
-- `GEMINI_MODEL=gemini-2.5-flash-lite`
-- `GEMINI_TIMEOUT_SECONDS=180`
-- the Render service was redeployed after the env var changes
-
-The upload page may offer `Generate demo-style report from extracted text` after a Gemini failure. That report is clearly labeled `Demo fallback. Not live AI analysis.` and is generated from already extracted source text. The built-in `/sample` report is separate and does not require Gemini.
-
-## Railway Deployment
-
-1. Create a Railway project.
-2. Add a Railway PostgreSQL database.
-3. Deploy this GitHub repository and branch.
-4. Configure environment variables:
-   - `DATABASE_URL`
-   - `APP_TOKEN_SECRET`
-   - `APP_AI_PROVIDER=gemini`
-   - `GEMINI_MODEL=gemini-2.5-flash-lite`
-   - `GEMINI_TIMEOUT_SECONDS=180`
-   - `GEMINI_API_KEY`
-5. Deploy. Flyway runs migrations on application startup.
-
-Railway can use `railway.json` and the included `Dockerfile`. The PostgreSQL plugin supplies `DATABASE_URL`; do not set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, or `SPRING_DATASOURCE_PASSWORD` in Railway unless you intentionally want to override `DATABASE_URL`.
-
-The app does not use GCP, Cloud Run, Cloud SQL, GCS, Pub/Sub, Vertex AI, Datadog, Kubernetes, uploaded-file storage, or a worker service.
-
-## Render Deployment
-
-Render can deploy the included `Dockerfile` directly. The included `render.yaml` is a Render Blueprint that creates one Docker web service and one Render Postgres database, then wires the database's internal connection string into `DATABASE_URL`.
-
-Blueprint setup:
-
-1. Push this branch to GitHub.
-2. In Render, choose **New +** -> **Blueprint**.
-3. Connect `ChimdumebiNebolisa/policy-insight`.
-4. Select the `rebuild/simple-gemini-railway` branch.
-5. Review the `policy-insight` web service and `policy-insight-db` Postgres database.
-6. Add the required secret values when Render prompts for unsynced env vars:
-   - `APP_TOKEN_SECRET`
-   - `GEMINI_API_KEY`
-   - `GEMINI_MODEL=gemini-2.5-flash-lite`
-   - `GEMINI_TIMEOUT_SECONDS=180`
-7. Apply the Blueprint. Flyway runs migrations on application startup.
-
-Manual web service setup:
-
-1. Create a Render Postgres database in the same region as the web service.
-2. Create a Render Web Service from this repository and branch.
-3. Set Runtime to `Docker`.
-4. Set Health Check Path to `/health`.
-5. Add environment variables:
-   - `DATABASE_URL=<Render Postgres internal database URL>`
-   - `APP_TOKEN_SECRET=<long random production secret>`
-   - `APP_AI_PROVIDER=gemini`
-   - `GEMINI_MODEL=gemini-2.5-flash-lite`
-   - `GEMINI_TIMEOUT_SECONDS=180`
-   - `GEMINI_API_KEY=<your Gemini API key>`
-   - `PORT=10000`
-6. Deploy. Do not set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, or `SPRING_DATASOURCE_PASSWORD` on Render unless you intentionally want to override `DATABASE_URL`.
-
-Render's internal Postgres URL has the form `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`. PolicyInsight converts that value into Spring's JDBC datasource settings at startup.
-Render expects web services to bind to `$PORT`; PolicyInsight maps `server.port` to `${PORT:8080}` so local runs still use `8080`.
-The built-in `/sample` route does not require Gemini because it uses the bundled deterministic fictional sample PDF.
-
-## Security Notes
-
-- Uploaded PDFs are read in memory for text extraction and are not stored.
-- Direct report pages require the owner cookie created during upload.
-- Public report access is only through `/shared/{token}`.
-- Share tokens are generated with `SecureRandom`; only HMAC hashes are stored.
-- AI and user-generated text is rendered through escaped Thymeleaf expressions.
-- Upload and Q&A are protected with simple in-memory per-IP rate limiting.
-- Railway and live Gemini mode reject the default or short `APP_TOKEN_SECRET`.
-
-## Useful Commands
-
-```powershell
-.\mvnw.cmd test
-.\mvnw.cmd spring-boot:run
-docker compose up -d
-docker compose down
-```
+No license file is included yet. Add a project license here.
