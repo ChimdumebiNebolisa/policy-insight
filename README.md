@@ -84,12 +84,24 @@ Optional:
 
 If an upload succeeds, source sections are extracted, and analysis stops with an AI configuration message, the PDF upload, text extraction, and chunking steps worked, but live Gemini report generation failed.
 
-Check these Render or Railway environment variables:
+Recommended Render settings:
 
 - `APP_AI_PROVIDER=gemini`
+- `GEMINI_MODEL=gemini-2.5-flash-lite`
+- `GEMINI_TIMEOUT_SECONDS=180`
+- `GEMINI_API_KEY=<your Gemini key>`
+- `APP_TOKEN_SECRET=<long random secret>`
+- `DATABASE_URL=<Render internal Postgres URL>`
+
+`gemini-2.5-flash-lite` is the recommended Render model because free Render instances can time out on heavier Gemini model calls.
+
+If upload succeeds but report generation fails or times out, check:
+
 - `GEMINI_API_KEY` is present and valid
-- `GEMINI_MODEL` is set to a supported Generative Language API model, or omitted to use the default
-- `GEMINI_TIMEOUT_SECONDS` is high enough for the document size
+- `APP_AI_PROVIDER=gemini`
+- `GEMINI_MODEL=gemini-2.5-flash-lite`
+- `GEMINI_TIMEOUT_SECONDS=180`
+- the Render service was redeployed after the env var changes
 
 The upload page may offer `Generate demo-style report from extracted text` after a Gemini failure. That report is clearly labeled `Demo fallback. Not live AI analysis.` and is generated from already extracted source text. The built-in `/sample` report is separate and does not require Gemini.
 
@@ -102,6 +114,8 @@ The upload page may offer `Generate demo-style report from extracted text` after
    - `DATABASE_URL`
    - `APP_TOKEN_SECRET`
    - `APP_AI_PROVIDER=gemini`
+   - `GEMINI_MODEL=gemini-2.5-flash-lite`
+   - `GEMINI_TIMEOUT_SECONDS=180`
    - `GEMINI_API_KEY`
 5. Deploy. Flyway runs migrations on application startup.
 
@@ -123,6 +137,8 @@ Blueprint setup:
 6. Add the required secret values when Render prompts for unsynced env vars:
    - `APP_TOKEN_SECRET`
    - `GEMINI_API_KEY`
+   - `GEMINI_MODEL=gemini-2.5-flash-lite`
+   - `GEMINI_TIMEOUT_SECONDS=180`
 7. Apply the Blueprint. Flyway runs migrations on application startup.
 
 Manual web service setup:
@@ -135,12 +151,15 @@ Manual web service setup:
    - `DATABASE_URL=<Render Postgres internal database URL>`
    - `APP_TOKEN_SECRET=<long random production secret>`
    - `APP_AI_PROVIDER=gemini`
+   - `GEMINI_MODEL=gemini-2.5-flash-lite`
+   - `GEMINI_TIMEOUT_SECONDS=180`
    - `GEMINI_API_KEY=<your Gemini API key>`
    - `PORT=10000`
 6. Deploy. Do not set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, or `SPRING_DATASOURCE_PASSWORD` on Render unless you intentionally want to override `DATABASE_URL`.
 
 Render's internal Postgres URL has the form `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`. PolicyInsight converts that value into Spring's JDBC datasource settings at startup.
 Render expects web services to bind to `$PORT`; PolicyInsight maps `server.port` to `${PORT:8080}` so local runs still use `8080`.
+The built-in `/sample` route does not require Gemini because it uses the bundled deterministic fictional sample PDF.
 
 ## Security Notes
 
