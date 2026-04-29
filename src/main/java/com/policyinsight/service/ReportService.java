@@ -33,6 +33,7 @@ public class ReportService {
     private final ReportRepository reportRepository;
     private final CitationValidator citationValidator;
     private final TokenService tokenService;
+    private final FallbackReportBuilder fallbackReportBuilder;
 
     public ReportService(
             AiAnalyzer aiAnalyzer,
@@ -41,7 +42,8 @@ public class ReportService {
             PolicyJobRepository policyJobRepository,
             ReportRepository reportRepository,
             CitationValidator citationValidator,
-            TokenService tokenService
+            TokenService tokenService,
+            FallbackReportBuilder fallbackReportBuilder
     ) {
         this.aiAnalyzer = aiAnalyzer;
         this.objectMapper = objectMapper;
@@ -50,6 +52,7 @@ public class ReportService {
         this.reportRepository = reportRepository;
         this.citationValidator = citationValidator;
         this.tokenService = tokenService;
+        this.fallbackReportBuilder = fallbackReportBuilder;
     }
 
     public Report generateAndSaveReport(PolicyJob job) {
@@ -61,6 +64,31 @@ public class ReportService {
         return report;
     }
 
+    @Transactional
+    public StatusView generateFallbackReportForOwner(UUID jobId, Cookie[] cookies) {
+        PolicyJob job = policyJobRepository.findById(jobId)
+                .orElseThrow(() -> new NotFoundException("Job was not found."));
+        if (!hasOwnerAccess(job, cookies)) {
+            throw new AccessDeniedException("Fallback report is not available for this session.");
+        }
+        if (job.getDemoKey() != null) {
+            throw new AccessDeniedException("Fallback reports are only available for uploaded documents.");
+        }
+        if (job.getStatus() != JobStatus.FAILED) {
+            return statusForOwner(jobId, cookies);
+        }
+        List<DocumentChunk> chunks = documentChunkRepository.findByJobIdOrderByChunkIndex(job.getId());
+        if (chunks.isEmpty()) {
+            throw new NotFoundException("Extracted source text was not found.");
+        }
+        RiskReport fallbackReport = citationValidator.validateReport(fallbackReportBuilder.build(chunks), chunks);
+        Report report = reportRepository.save(new Report(job, toJson(fallbackReport)));
+        job.setStatus(JobStatus.COMPLETED);
+        job.setSafeErrorMessage(null);
+        policyJobRepository.save(job);
+        return new StatusView(jobId, job.getStatus(), report.getId(), null, false);
+    }
+
     @Transactional(readOnly = true)
     public StatusView statusForOwner(UUID jobId, Cookie[] cookies) {
         PolicyJob job = policyJobRepository.findById(jobId)
@@ -69,7 +97,10 @@ public class ReportService {
             throw new AccessDeniedException("Status is not available for this session.");
         }
         UUID reportId = reportRepository.findByJobId(jobId).map(Report::getId).orElse(null);
-        return new StatusView(jobId, job.getStatus(), reportId, job.getSafeErrorMessage());
+        boolean fallbackAvailable = job.getStatus() == JobStatus.FAILED
+                && job.getDemoKey() == null
+                && documentChunkRepository.findByJobIdOrderByChunkIndex(jobId).size() > 0;
+        return new StatusView(jobId, job.getStatus(), reportId, job.getSafeErrorMessage(), fallbackAvailable);
     }
 
     @Transactional(readOnly = true)
@@ -82,13 +113,16 @@ public class ReportService {
         if (!hasOwnerAccess(job, cookies)) {
             return Optional.empty();
         }
+        RiskReport riskReport = fromJson(report.get().getContent());
         List<DocumentChunk> chunks = documentChunkRepository.findByJobIdOrderByChunkIndex(job.getId());
         return Optional.of(new ReportView(
                 reportId,
                 job.getId(),
                 report.get().getCreatedAt(),
                 job.getDemoKey() != null,
-                fromJson(report.get().getContent()),
+                riskReport.documentOverview() != null
+                        && riskReport.documentOverview().startsWith(FallbackReportBuilder.FALLBACK_LABEL),
+                riskReport,
                 chunks
         ));
     }

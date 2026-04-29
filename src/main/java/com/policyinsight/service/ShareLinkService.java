@@ -64,12 +64,15 @@ public class ShareLinkService {
                 .map(link -> {
                     Report report = link.getReport();
                     List<DocumentChunk> chunks = documentChunkRepository.findByJobIdOrderByChunkIndex(report.getJob().getId());
+                    RiskReport riskReport = fromJson(report.getContent());
                     return new ReportView(
                             report.getId(),
                             report.getJob().getId(),
                             report.getCreatedAt(),
                             report.getJob().getDemoKey() != null,
-                            fromJson(report.getContent()),
+                            riskReport.documentOverview() != null
+                                    && riskReport.documentOverview().startsWith(FallbackReportBuilder.FALLBACK_LABEL),
+                            riskReport,
                             chunks
                     );
                 });

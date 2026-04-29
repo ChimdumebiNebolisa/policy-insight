@@ -16,8 +16,14 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GeminiAnalyzer implements AiAnalyzer {
+
+    public static final String SAFE_ANALYSIS_FAILURE_MESSAGE = "We extracted the document, but AI analysis failed. Check the AI configuration or try again.";
+
+    private static final Logger log = LoggerFactory.getLogger(GeminiAnalyzer.class);
 
     private final GeminiProperties properties;
     private final ObjectMapper objectMapper;
@@ -45,8 +51,11 @@ public class GeminiAnalyzer implements AiAnalyzer {
 
     private <T> T callGemini(String prompt, Class<T> type) {
         if (properties.apiKey() == null || properties.apiKey().isBlank()) {
-            throw new AiAnalyzerException("GEMINI_API_KEY is required when APP_AI_PROVIDER=gemini.");
+            log.warn("Gemini request blocked: model={}, apiKeyPresent=false, reason=missing GEMINI_API_KEY", properties.model());
+            throw new AiAnalyzerException(SAFE_ANALYSIS_FAILURE_MESSAGE);
         }
+        URI uri = URI.create("https://generativelanguage.googleapis.com/v1beta/models/"
+                + properties.model() + ":generateContent");
         try {
             String request = objectMapper.writeValueAsString(Map.of(
                     "contents", List.of(Map.of(
@@ -58,17 +67,35 @@ public class GeminiAnalyzer implements AiAnalyzer {
                             "temperature", 0.2
                     )
             ));
-            URI uri = URI.create("https://generativelanguage.googleapis.com/v1beta/models/"
-                    + properties.model() + ":generateContent");
             String response = transport.post(uri, properties.apiKey(), request, Duration.ofSeconds(properties.timeoutSeconds()));
             return objectMapper.readValue(extractText(response), type);
         } catch (JsonProcessingException ex) {
-            throw new AiAnalyzerException("Gemini returned malformed model output.", ex);
+            log.warn("Gemini response parsing failed: model={}, apiKeyPresent=true, reason={}", properties.model(), ex.toString());
+            throw new AiAnalyzerException(SAFE_ANALYSIS_FAILURE_MESSAGE, ex);
+        } catch (GeminiHttpException ex) {
+            log.warn(
+                    "Gemini API request failed: status={}, model={}, apiKeyPresent=true, responseSummary={}",
+                    ex.statusCode(),
+                    properties.model(),
+                    summarize(ex.responseBody())
+            );
+            throw new AiAnalyzerException(SAFE_ANALYSIS_FAILURE_MESSAGE, ex);
         } catch (IOException ex) {
-            throw new AiAnalyzerException("Gemini API request failed.", ex);
+            log.warn(
+                    "Gemini API request failed: status=unavailable, model={}, apiKeyPresent=true, timeoutSeconds={}, networkFailure={}",
+                    properties.model(),
+                    properties.timeoutSeconds(),
+                    ex.toString()
+            );
+            throw new AiAnalyzerException(SAFE_ANALYSIS_FAILURE_MESSAGE, ex);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            throw new AiAnalyzerException("Gemini API request was interrupted.", ex);
+            log.warn(
+                    "Gemini API request interrupted: status=unavailable, model={}, apiKeyPresent=true, timeoutSeconds={}",
+                    properties.model(),
+                    properties.timeoutSeconds()
+            );
+            throw new AiAnalyzerException(SAFE_ANALYSIS_FAILURE_MESSAGE, ex);
         }
     }
 
@@ -115,6 +142,21 @@ public class GeminiAnalyzer implements AiAnalyzer {
                 .collect(Collectors.joining("\n\n"));
     }
 
+    private String summarize(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return "(empty)";
+        }
+        String sanitized = responseBody.replaceAll("\\s+", " ").trim();
+        String apiKey = properties.apiKey();
+        if (apiKey != null && !apiKey.isBlank()) {
+            sanitized = sanitized.replace(apiKey, "[REDACTED]");
+        }
+        if (sanitized.length() <= 500) {
+            return sanitized;
+        }
+        return sanitized.substring(0, 500) + "...";
+    }
+
     interface GeminiTransport {
         String post(URI uri, String apiKey, String jsonBody, Duration timeout) throws IOException, InterruptedException;
     }
@@ -132,9 +174,28 @@ public class GeminiAnalyzer implements AiAnalyzer {
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IOException("Gemini API returned HTTP " + response.statusCode());
+                throw new GeminiHttpException(response.statusCode(), response.body());
             }
             return response.body();
+        }
+    }
+
+    static final class GeminiHttpException extends IOException {
+        private final int statusCode;
+        private final String responseBody;
+
+        GeminiHttpException(int statusCode, String responseBody) {
+            super("Gemini API returned HTTP " + statusCode);
+            this.statusCode = statusCode;
+            this.responseBody = responseBody;
+        }
+
+        int statusCode() {
+            return statusCode;
+        }
+
+        String responseBody() {
+            return responseBody;
         }
     }
 }

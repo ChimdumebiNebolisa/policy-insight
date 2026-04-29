@@ -674,6 +674,26 @@ code {
     padding: 14px;
 }
 
+.fallback-form {
+    display: grid;
+    gap: 12px;
+}
+
+.fallback-callout {
+    border: 1px solid #ead39a;
+    border-radius: var(--radius);
+    background: var(--warning-bg);
+    padding: 12px;
+}
+
+.fallback-callout p {
+    margin: 0;
+}
+
+.fallback-callout p + p {
+    margin-top: 4px;
+}
+
 .status-card-error,
 .error-card {
     border-color: #ebb2aa;

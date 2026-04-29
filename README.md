@@ -74,11 +74,24 @@ Required for local development:
 Optional:
 
 - `APP_AI_PROVIDER`: `mock` by default, set to `gemini` for live Gemini calls
-- `GEMINI_MODEL`: defaults to `gemini-1.5-flash`
+- `GEMINI_MODEL`: defaults to `gemini-2.5-flash`
 - `GEMINI_TIMEOUT_SECONDS`: defaults to `30`
 - `APP_UPLOAD_MAX_BYTES`: defaults to `10485760`
 - `APP_OWNER_TOKEN_TTL_MINUTES`: defaults to `120`
 - `APP_SHARE_TTL_DAYS`: defaults to `7`
+
+## Gemini Troubleshooting
+
+If an upload succeeds, source sections are extracted, and analysis stops with an AI configuration message, the PDF upload, text extraction, and chunking steps worked, but live Gemini report generation failed.
+
+Check these Render or Railway environment variables:
+
+- `APP_AI_PROVIDER=gemini`
+- `GEMINI_API_KEY` is present and valid
+- `GEMINI_MODEL` is set to a supported Generative Language API model, or omitted to use the default
+- `GEMINI_TIMEOUT_SECONDS` is high enough for the document size
+
+The upload page may offer `Generate demo-style report from extracted text` after a Gemini failure. That report is clearly labeled `Demo fallback. Not live AI analysis.` and is generated from already extracted source text. The built-in `/sample` report is separate and does not require Gemini.
 
 ## Railway Deployment
 

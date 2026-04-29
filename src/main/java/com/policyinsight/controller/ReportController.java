@@ -11,6 +11,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 
 @Controller
 public class ReportController {
@@ -24,6 +25,14 @@ public class ReportController {
     @GetMapping("/status/{jobId}")
     public String status(@PathVariable UUID jobId, HttpServletRequest request, Model model) {
         StatusView status = reportService.statusForOwner(jobId, request.getCookies());
+        model.addAttribute("status", status);
+        model.addAttribute("completed", status.status() == JobStatus.COMPLETED);
+        return "fragments/job-status :: status";
+    }
+
+    @PostMapping("/fallback/{jobId}")
+    public String fallbackReport(@PathVariable UUID jobId, HttpServletRequest request, Model model) {
+        StatusView status = reportService.generateFallbackReportForOwner(jobId, request.getCookies());
         model.addAttribute("status", status);
         model.addAttribute("completed", status.status() == JobStatus.COMPLETED);
         return "fragments/job-status :: status";

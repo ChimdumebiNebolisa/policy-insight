@@ -19,6 +19,7 @@ public record ReportView(
         UUID jobId,
         Instant createdAt,
         boolean demo,
+        boolean fallback,
         RiskReport report,
         List<DocumentChunk> chunks
 ) {

@@ -12,6 +12,15 @@
         <span>Validating evidence</span>
     </div>
     <p class="muted" th:if="${status.safeErrorMessage()}" th:text="${status.safeErrorMessage()}">Processing failed.</p>
+    <form class="fallback-form" th:if="${status.fallbackAvailable()}"
+          th:hx-post="@{/fallback/{id}(id=${status.jobId()})}" hx-target="closest .status-card" hx-swap="outerHTML"
+          method="post">
+        <div class="fallback-callout">
+            <p><strong>Generate demo-style report from extracted text</strong></p>
+            <p class="muted">Demo fallback. Not live AI analysis.</p>
+        </div>
+        <button class="button button-secondary" type="submit">Generate demo-style report</button>
+    </form>
     <a class="button button-primary" th:if="${completed}" th:href="@{/report/{id}(id=${status.reportId()})}">View report</a>
     <div th:unless="${completed || status.status().name() == 'FAILED'}"
          th:hx-get="@{/status/{id}(id=${status.jobId()})}" hx-trigger="every 2s" hx-swap="outerHTML">

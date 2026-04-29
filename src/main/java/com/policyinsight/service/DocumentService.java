@@ -1,6 +1,7 @@
 package com.policyinsight.service;
 
 import com.policyinsight.ai.AiAnalyzerException;
+import com.policyinsight.ai.GeminiAnalyzer;
 import com.policyinsight.config.OwnerTokenProperties;
 import com.policyinsight.model.DocumentChunk;
 import com.policyinsight.model.PolicyJob;
@@ -66,7 +67,7 @@ public class DocumentService {
             reportService.generateAndSaveReport(job);
         } catch (AiAnalyzerException ex) {
             job.setStatus(com.policyinsight.model.JobStatus.FAILED);
-            job.setSafeErrorMessage(ex.getMessage());
+            job.setSafeErrorMessage(GeminiAnalyzer.SAFE_ANALYSIS_FAILURE_MESSAGE);
             policyJobRepository.save(job);
         } catch (RuntimeException ex) {
             job.setStatus(com.policyinsight.model.JobStatus.FAILED);

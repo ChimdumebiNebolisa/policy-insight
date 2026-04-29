@@ -10,6 +10,7 @@
             <span th:text="${reportView.createdAtDisplay()}">Created recently</span>
             <span class="badge">Citation-grounded</span>
             <span class="badge badge-warning" th:if="${reportView.demo()}">Fictional sample. Demonstration only.</span>
+            <span class="badge badge-warning" th:if="${reportView.fallback()}">Demo fallback. Not live AI analysis.</span>
         </div>
     </div>
     <div class="report-actions">
