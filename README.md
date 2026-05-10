@@ -27,7 +27,7 @@ AI/API: Google Gemini or local mock analysis
 
 Authentication: Owner access cookies, expiring share links, and simple in-memory rate limiting
 
-Deployment: Docker and Render
+Deployment: Docker, Render, and Railway
 
 Other tools: PDFBox, Maven Wrapper, H2 for normal tests, Docker Compose for local PostgreSQL, and Testcontainers for optional PostgreSQL integration tests
 
@@ -54,6 +54,9 @@ docker compose up -d
 Environment variables used by this app:
 
 ```text
+SPRING_DATASOURCE_URL
+SPRING_DATASOURCE_USERNAME
+SPRING_DATASOURCE_PASSWORD
 DATABASE_URL
 APP_TOKEN_SECRET
 APP_AI_PROVIDER
@@ -69,6 +72,7 @@ APP_RETENTION_FAILED_DAYS
 APP_RETENTION_EXPIRED_SHARE_DAYS
 APP_JOB_STALE_MINUTES
 APP_CLEANUP_FIXED_DELAY_MS
+PORT
 ```
 
 Local mock mode for Windows PowerShell:
@@ -151,6 +155,11 @@ Run optional PostgreSQL integration tests with Testcontainers:
 
 The integration profile uses Docker to start PostgreSQL and verify Flyway/schema behavior against the real database engine. Normal `.\mvnw.cmd test` does not require Docker.
 
+Current verified result:
+
+- `.\mvnw.cmd clean test`: 60 tests, 0 failures, 0 errors
+- `.\mvnw.cmd verify -Pintegration-tests`: build success; in this environment Docker was unavailable, so `PostgresIntegrationIT` skipped cleanly through Testcontainers
+
 What is tested:
 
 - application context
@@ -187,6 +196,7 @@ HTMX fragments:
 Small JSON API:
 
 - `GET /api/jobs/{jobId}/status`: owner-only job status JSON using the same owner cookie as `/status/{jobId}`
+- This is a small job-status endpoint for polling/debugging; it is not a full REST API for the product.
 
 Example:
 
@@ -212,11 +222,11 @@ Response:
 For this project:
 
 1. User uploads a PDF.
-2. Backend validates and extracts text with PDFBox.
-3. Extracted text is split into source sections.
-4. Analyzer generates a structured report asynchronously.
-5. Citation validation checks referenced sources.
-6. User views, shares, or asks questions against uploaded reports.
+2. Backend creates a database-backed `policy_jobs` row, validates the PDF, extracts text with PDFBox, and stores extracted source chunks in PostgreSQL.
+3. The job moves through persisted statuses such as `UPLOADED`, `TEXT_EXTRACTED`, `BUILDING_AI_REPORT`, `VALIDATING_CITATIONS`, `COMPLETED`, or `FAILED`.
+4. An in-process async worker asks Gemini or the mock analyzer to generate a structured report.
+5. Citation validation checks referenced source chunk IDs before the report is saved.
+6. The UI polls status through HTMX, and owners can view, share, or ask questions against completed uploaded reports.
 
 The sample report path is separate from uploaded analysis. It loads the committed fictional PDF at `src/main/resources/samples/fictional_business_agreement.pdf`, uses a deterministic report builder, does not use Gemini, and does not show Q&A.
 
@@ -286,7 +296,8 @@ System overview:
 - Citation validation is source-reference based, not deep semantic proof.
 - Uploaded PDFs are not malware-scanned.
 - In-memory rate limiting is MVP-level and resets on restart.
-- Async report generation and cleanup are in-process, not durable external workers.
+- Async report generation and cleanup are in-process, not durable external workers or a distributed queue.
+- Uploaded PDFs are text-extracted with PDFBox only; there is no OCR pipeline for scanned/image-only PDFs.
 - The sample report is a deterministic demo path for one bundled fictional document, not a live analysis run.
 
 ## Useful Commands
