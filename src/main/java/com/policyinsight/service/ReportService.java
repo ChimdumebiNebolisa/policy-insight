@@ -91,7 +91,15 @@ public class ReportService {
         job.setStatus(JobStatus.COMPLETED);
         job.setSafeErrorMessage(null);
         policyJobRepository.save(job);
-        return new StatusView(jobId, job.getStatus(), report.getId(), null, false);
+        return new StatusView(
+                jobId,
+                job.getStatus(),
+                report.getId(),
+                null,
+                false,
+                job.getCreatedAt(),
+                job.getUpdatedAt()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -105,7 +113,15 @@ public class ReportService {
         boolean fallbackAvailable = job.getStatus() == JobStatus.FAILED
                 && job.getDemoKey() == null
                 && documentChunkRepository.findByJobIdOrderByChunkIndex(jobId).size() > 0;
-        return new StatusView(jobId, job.getStatus(), reportId, job.getSafeErrorMessage(), fallbackAvailable);
+        return new StatusView(
+                jobId,
+                job.getStatus(),
+                reportId,
+                job.getSafeErrorMessage(),
+                fallbackAvailable,
+                job.getCreatedAt(),
+                job.getUpdatedAt()
+        );
     }
 
     @Transactional(readOnly = true)

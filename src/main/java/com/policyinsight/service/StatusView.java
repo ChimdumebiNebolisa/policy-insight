@@ -1,9 +1,29 @@
 package com.policyinsight.service;
 
 import com.policyinsight.model.JobStatus;
+import java.time.Instant;
 import java.util.UUID;
 
-public record StatusView(UUID jobId, JobStatus status, UUID reportId, String safeErrorMessage, boolean fallbackAvailable) {
+public record StatusView(
+        UUID jobId,
+        JobStatus status,
+        UUID reportId,
+        String safeErrorMessage,
+        boolean fallbackAvailable,
+        Instant createdAt,
+        Instant updatedAt
+) {
+
+    public String message() {
+        return switch (status) {
+            case FAILED -> safeErrorMessage != null && !safeErrorMessage.isBlank()
+                    ? safeErrorMessage
+                    : "Report generation failed.";
+            case COMPLETED -> "Report is ready.";
+            case UPLOADED, TEXT_EXTRACTED, BUILDING_AI_REPORT, VALIDATING_CITATIONS, PROCESSING ->
+                    "Report is still processing.";
+        };
+    }
 
     public String kicker() {
         return switch (status) {

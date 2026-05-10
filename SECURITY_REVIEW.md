@@ -32,10 +32,14 @@ None remaining.
 - Used Spring Data JPA repositories only; no raw SQL, native queries, or string-built SQL were introduced.
 - Added owner-token protection for `/report/{reportId}` and `/status/{jobId}` so direct report URLs are not public by ID alone.
 - Added public access only through `/shared/{token}` with secure random tokens, HMAC token hashes in the database, and expiration.
+- Added explicit SameSite=Lax owner cookies with conditional Secure handling for HTTPS deployments.
 - Rendered AI/user-controlled text through escaped Thymeleaf expressions; no `th:utext` or raw HTML rendering.
 - Added in-memory per-IP rate limiting for upload and Q&A endpoints.
 - Added Gemini missing-key and malformed-output handling.
+- Added safe AI failure handling so provider errors are logged server-side without exposing raw Gemini messages to users.
 - Added Railway/live-Gemini validation that rejects the default or short `APP_TOKEN_SECRET`.
+- Added scheduled retention cleanup for expired share links, stale processing jobs, and old failed/completed non-demo jobs.
+- Preserved demo/sample jobs during cleanup by excluding rows with a non-null `demo_key`.
 
 ## Checks Run
 
@@ -43,7 +47,8 @@ None remaining.
 - `git grep -n -E "sk_live_|sk_test_|AKIA|ghp_|glpat-|xoxb-|Bearer |AIza[0-9A-Za-z_-]{20,}|postgres://[^ ]+:[^ ]+@"`: only documented placeholder syntax in `README.md`.
 - `git grep -n -E "th:utext|utext|innerHTML|document\\.write"`: no raw HTML rendering; only HTMX `hx-swap="innerHTML"` into server-rendered escaped fragments.
 - `git grep -n -E "createNativeQuery|@Query|Statement|executeQuery|queryForObject|jdbcTemplate"`: no raw SQL usage found.
-- Full Maven test suite completed with all recorded Surefire summaries passing: 23 tests, 0 failures, 0 errors.
+- Full Maven test suite completed with all recorded Surefire summaries passing: 60 tests, 0 failures, 0 errors.
+- Optional PostgreSQL/Testcontainers integration profile completed successfully with `.\mvnw.cmd verify -Pintegration-tests`; Docker was unavailable in this environment, so `PostgresIntegrationIT` was skipped by Testcontainers.
 
 ## Remaining Risks
 
@@ -51,3 +56,5 @@ None remaining.
 - The app does not scan PDFs for malware; it only validates size/type and extracts text with PDFBox.
 - In-memory rate limiting is acceptable for the requested MVP but should be replaced with shared infrastructure if the app is scaled horizontally.
 - Stronger semantic citation support validation is intentionally deferred.
+- Async report generation is in-process. It improves the current status-polling UX but is not a durable external job queue.
+- Scheduled cleanup is also in-process. It only runs while the app is up, and it is not a durable cleanup worker for multi-instance production deployments.

@@ -21,6 +21,13 @@ public class CleanupService {
 
     private static final Logger log = LoggerFactory.getLogger(CleanupService.class);
     private static final String STALE_JOB_MESSAGE = "Report generation timed out. Please upload the document again.";
+    private static final List<JobStatus> IN_PROGRESS_STATUSES = List.of(
+            JobStatus.UPLOADED,
+            JobStatus.TEXT_EXTRACTED,
+            JobStatus.BUILDING_AI_REPORT,
+            JobStatus.VALIDATING_CITATIONS,
+            JobStatus.PROCESSING
+    );
 
     private final CleanupProperties properties;
     private final PolicyJobRepository policyJobRepository;
@@ -80,8 +87,8 @@ public class CleanupService {
         policyJobRepository.deleteAll(oldFailedJobs);
 
         List<PolicyJob> staleProcessingJobs = policyJobRepository
-                .findByDemoKeyIsNullAndStatusAndUpdatedAtBefore(
-                        JobStatus.PROCESSING,
+                .findByDemoKeyIsNullAndStatusInAndUpdatedAtBefore(
+                        IN_PROGRESS_STATUSES,
                         now.minus(properties.jobStaleMinutes(), ChronoUnit.MINUTES)
                 );
         for (PolicyJob job : staleProcessingJobs) {
