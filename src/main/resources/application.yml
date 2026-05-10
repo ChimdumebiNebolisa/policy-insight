@@ -13,8 +13,8 @@ spring:
     enabled: true
   servlet:
     multipart:
-      max-file-size: ${APP_MAX_UPLOAD_SIZE:10MB}
-      max-request-size: ${APP_MAX_UPLOAD_SIZE:10MB}
+      max-file-size: ${APP_UPLOAD_MAX_BYTES:10485760}
+      max-request-size: ${APP_UPLOAD_MAX_BYTES:10485760}
 
 app:
   ai:
@@ -30,6 +30,13 @@ app:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-2.5-flash}
     timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:30}
+  cleanup:
+    enabled: ${APP_CLEANUP_ENABLED:true}
+    retention-completed-days: ${APP_RETENTION_COMPLETED_DAYS:30}
+    retention-failed-days: ${APP_RETENTION_FAILED_DAYS:7}
+    retention-expired-share-days: ${APP_RETENTION_EXPIRED_SHARE_DAYS:0}
+    job-stale-minutes: ${APP_JOB_STALE_MINUTES:30}
+    fixed-delay-ms: ${APP_CLEANUP_FIXED_DELAY_MS:3600000}
 
 management:
   endpoints:
