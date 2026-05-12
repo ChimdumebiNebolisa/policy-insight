@@ -10,7 +10,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class SampleAgreementReportBuilder {
 
-    public RiskReport build(List<DocumentChunk> sources) {
+    public RiskReport build(String sampleKey, List<DocumentChunk> sources) {
+        return switch (sampleKey) {
+            case "vendor-agreement" -> buildVendorAgreement(sources);
+            case "privacy-policy" -> buildPrivacyPolicy(sources);
+            case "employment-policy" -> buildEmploymentPolicy(sources);
+            case "campus-student-policy" -> buildCampusStudentPolicy(sources);
+            default -> throw new SampleReportException("The requested sample was not found.");
+        };
+    }
+
+    private RiskReport buildVendorAgreement(List<DocumentChunk> sources) {
         return new RiskReport(
                 "Cedar Ridge Data Solutions, LLC will provide data operations support, dashboard configuration, and monthly performance reporting for Blue Harbor Merchandising, Inc. The agreement has a twelve-month initial term and total contract value of USD $96,000.",
                 List.of(
@@ -47,13 +57,95 @@ public class SampleAgreementReportBuilder {
         );
     }
 
+    private RiskReport buildPrivacyPolicy(List<DocumentChunk> sources) {
+        return new RiskReport(
+                "The privacy policy explains what customer and usage data is collected, limits use to service delivery and security, and defines retention and deletion timelines.",
+                List.of(
+                        claim("The policy collects account profile details and device diagnostics to operate the service.", "account profile details, device diagnostics", sources),
+                        claim("Personal data is retained for twenty-four (24) months unless legal hold applies.", "twenty-four (24) months", sources),
+                        claim("Users can request deletion through a verified privacy request process.", "request deletion through privacy@brightleaf.example", sources)
+                ),
+                List.of(
+                        claim("The company must notify users before materially changing data practices.", "materially change this policy", sources),
+                        claim("Security logs must be monitored for unauthorized access patterns.", "monitor security logs for unauthorized access", sources)
+                ),
+                List.of(
+                        claim("Data may not be sold to third-party advertisers.", "do not sell personal data to third-party advertisers", sources),
+                        claim("Access to raw support transcripts is restricted to trained support leads.", "raw support transcripts is restricted to trained support leads", sources)
+                ),
+                List.of(
+                        claim("Regulatory requests can pause deletion timelines.", "legal hold requests may suspend deletion", sources),
+                        claim("Policy updates take effect thirty (30) days after notice.", "thirty (30) days before new terms take effect", sources)
+                ),
+                List.of(
+                        claim("Delayed privacy request handling could create compliance exposure.", "respond to verified requests within forty-five (45) days", sources),
+                        claim("Retention exceptions for legal hold require clear documentation.", "legal hold requests may suspend deletion", sources)
+                )
+        );
+    }
+
+    private RiskReport buildEmploymentPolicy(List<DocumentChunk> sources) {
+        return new RiskReport(
+                "The employment policy defines attendance, conduct, disciplinary process, and manager approvals for leave, remote work, and conflicts of interest.",
+                List.of(
+                        claim("Employees must complete annual conduct training by March 31.", "annual conduct training by March 31", sources),
+                        claim("Timesheets must be submitted by Monday 10:00 AM local time.", "Monday 10:00 AM local time", sources),
+                        claim("Unauthorized overtime may result in corrective action.", "unauthorized overtime may result in corrective action", sources)
+                ),
+                List.of(
+                        claim("Managers must acknowledge leave requests within five (5) business days.", "acknowledge leave requests within five (5) business days", sources),
+                        claim("Employees must disclose conflicts of interest in writing.", "disclose conflicts of interest in writing", sources)
+                ),
+                List.of(
+                        claim("Sharing confidential customer data on personal devices is prohibited.", "prohibited from storing confidential customer data on personal devices", sources),
+                        claim("Remote work from unapproved countries is not allowed.", "remote work from unapproved countries is not allowed", sources)
+                ),
+                List.of(
+                        claim("Repeated attendance violations can trigger progressive discipline up to termination.", "progressive discipline up to termination", sources),
+                        claim("Policy violations involving harassment can result in immediate termination.", "harassment may result in immediate termination", sources)
+                ),
+                List.of(
+                        claim("Late manager approvals may delay payroll adjustments.", "payroll adjustments depend on approved timesheets", sources),
+                        claim("Cross-border remote work restrictions may impact staffing continuity.", "remote work from unapproved countries is not allowed", sources)
+                )
+        );
+    }
+
+    private RiskReport buildCampusStudentPolicy(List<DocumentChunk> sources) {
+        return new RiskReport(
+                "The campus student policy sets conduct standards, reporting deadlines, disciplinary steps, and accommodations for academic and residential settings.",
+                List.of(
+                        claim("Students must report safety incidents within twenty-four (24) hours.", "report safety incidents within twenty-four (24) hours", sources),
+                        claim("Residence hall quiet hours run from 10:00 PM to 7:00 AM.", "quiet hours run from 10:00 PM to 7:00 AM", sources),
+                        claim("Appeals must be filed within seven (7) calendar days.", "appeals must be filed within seven (7) calendar days", sources)
+                ),
+                List.of(
+                        claim("The campus must provide accommodation review meetings within ten (10) business days.", "accommodation review meetings within ten (10) business days", sources),
+                        claim("Students are expected to follow digital use and anti-harassment standards.", "anti-harassment standards apply to campus and online spaces", sources)
+                ),
+                List.of(
+                        claim("Unauthorized access to labs or residence facilities is prohibited.", "unauthorized access to labs or residence facilities is prohibited", sources),
+                        claim("Retaliation against reporting parties is prohibited.", "retaliation against reporting parties is prohibited", sources)
+                ),
+                List.of(
+                        claim("Repeated major misconduct can lead to suspension or expulsion.", "major misconduct can lead to suspension or expulsion", sources),
+                        claim("Failure to comply with sanctions can escalate penalties.", "failure to comply with sanctions may escalate penalties", sources)
+                ),
+                List.of(
+                        claim("Short incident-reporting windows may reduce reporting completion.", "within twenty-four (24) hours", sources),
+                        claim("Appeal deadlines may be missed without prompt notice.", "within seven (7) calendar days", sources)
+                )
+        );
+    }
+
     private CitedClaim claim(String text, String anchor, List<DocumentChunk> sources) {
         return new CitedClaim(text, List.of(sourceIdFor(anchor, sources)), false);
     }
 
     private UUID sourceIdFor(String anchor, List<DocumentChunk> sources) {
+        String normalizedAnchor = anchor.toLowerCase();
         for (DocumentChunk source : sources) {
-            if (source.getTextContent() != null && source.getTextContent().contains(anchor)) {
+            if (source.getTextContent() != null && source.getTextContent().toLowerCase().contains(normalizedAnchor)) {
                 return source.getId();
             }
         }

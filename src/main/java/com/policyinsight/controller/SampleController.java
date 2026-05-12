@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.ui.Model;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -24,6 +25,34 @@ public class SampleController {
         SampleReportResult result;
         try {
             result = sampleReportService.openSampleReport();
+        } catch (SampleReportException ex) {
+            model.addAttribute("safeErrorMessage", ex.getMessage());
+            return "sample-error";
+        }
+        Cookie cookie = new Cookie(DocumentController.ownerCookieName(result.jobId().toString()), result.ownerToken());
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(60 * 60 * 2);
+        response.addCookie(cookie);
+        redirectAttributes.addFlashAttribute("sampleNotice", "Fictional sample. Demonstration only.");
+        return "redirect:/report/" + result.reportId();
+    }
+
+    @GetMapping("/sample/{sampleKey}")
+    public String sampleByKey(
+            @PathVariable String sampleKey,
+            HttpServletResponse response,
+            RedirectAttributes redirectAttributes,
+            Model model
+    ) {
+        if (!sampleReportService.isKnownSampleKey(sampleKey)) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            model.addAttribute("safeErrorMessage", "The requested sample was not found.");
+            return "sample-error";
+        }
+        SampleReportResult result;
+        try {
+            result = sampleReportService.openSampleReport(sampleKey);
         } catch (SampleReportException ex) {
             model.addAttribute("safeErrorMessage", ex.getMessage());
             return "sample-error";

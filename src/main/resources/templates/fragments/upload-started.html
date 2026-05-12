@@ -4,7 +4,7 @@
     <div class="status-header">
         <span class="status-icon" aria-hidden="true"></span>
         <div>
-            <p class="section-kicker">Upload accepted</p>
+            <p class="section-kicker" th:text="${acceptKicker}">Upload accepted</p>
             <h3>
                 <span th:text="${chunkCount}">0</span>
                 <span>source section(s) extracted</span>
@@ -12,7 +12,7 @@
         </div>
     </div>
     <div class="progress-list">
-        <span class="step-done">Upload received</span>
+        <span class="step-done">Document received</span>
         <span class="step-done">Text extracted</span>
         <span>Building AI report</span>
         <span>Validating citations</span>

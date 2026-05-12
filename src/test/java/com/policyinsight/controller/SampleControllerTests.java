@@ -27,6 +27,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -123,6 +125,37 @@ class SampleControllerTests {
         verifyNoInteractions(aiAnalyzer);
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "vendor-agreement,Cedar Ridge Data Solutions",
+            "privacy-policy,The privacy policy explains",
+            "employment-policy,The employment policy defines",
+            "campus-student-policy,The campus student policy sets"
+    })
+    void namedSampleRoutesOpenSuccessfully(String sampleKey, String expectedText) throws Exception {
+        MvcResult result = mockMvc.perform(get("/sample/" + sampleKey))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("/report/*"))
+                .andReturn();
+
+        Cookie ownerCookie = Arrays.stream(result.getResponse().getCookies())
+                .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
+                .findFirst()
+                .orElseThrow();
+
+        mockMvc.perform(get(result.getResponse().getRedirectedUrl()).cookie(ownerCookie))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Fictional sample. Demonstration only.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(expectedText)));
+    }
+
+    @Test
+    void unknownSampleKeyReturnsSafeNotFound() throws Exception {
+        mockMvc.perform(get("/sample/not-a-real-sample"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("The requested sample was not found.")));
+    }
+
     @Test
     void sampleRouteReusesExistingSampleReport() throws Exception {
         mockMvc.perform(get("/sample"))
@@ -200,7 +233,10 @@ class SampleControllerTests {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Review policy and agreement PDFs with AI-generated reports linked to source text.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Analyze your document")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Analyze PDF")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Open sample report")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Vendor agreement sample")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Privacy policy sample")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Employment policy sample")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Campus/student policy sample")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Fictional sample. Demonstration only.")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("hero-grid"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("preview-panel"))))

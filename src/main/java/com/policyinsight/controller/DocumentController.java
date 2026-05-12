@@ -42,6 +42,29 @@ public class DocumentController {
         response.addCookie(cookie);
         model.addAttribute("jobId", result.jobId());
         model.addAttribute("chunkCount", result.chunkCount());
+        model.addAttribute("acceptKicker", "Upload accepted");
+        return "fragments/upload-started :: uploadStarted";
+    }
+
+    @PostMapping("/paste")
+    public String paste(
+            @RequestParam("text") String text,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Model model
+    ) {
+        if (!rateLimitService.allow("paste:" + clientIp(request))) {
+            throw new RateLimitExceededException("Too many paste requests. Try again shortly.");
+        }
+        UploadResult result = documentService.pasteText(text);
+        Cookie cookie = new Cookie(ownerCookieName(result.jobId().toString()), result.ownerToken());
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(60 * 60 * 2);
+        response.addCookie(cookie);
+        model.addAttribute("jobId", result.jobId());
+        model.addAttribute("chunkCount", result.chunkCount());
+        model.addAttribute("acceptKicker", "Text accepted");
         return "fragments/upload-started :: uploadStarted";
     }
 

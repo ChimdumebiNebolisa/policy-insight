@@ -1,0 +1,13 @@
+BrightLeaf Services Privacy Policy (Fictional)
+
+We collect account profile details, device diagnostics, and service interaction logs to provide support and improve platform reliability.
+We collect account profile details only for account operations, fraud prevention, and product quality.
+We do not sell personal data to third-party advertisers.
+
+We retain personal data for twenty-four (24) months from the last account activity unless legal hold requests may suspend deletion.
+Users may request deletion through privacy@brightleaf.example after identity verification, and we respond to verified requests within forty-five (45) days.
+
+Security teams monitor security logs for unauthorized access and investigate incidents under documented procedures.
+Access to raw support transcripts is restricted to trained support leads.
+
+If we materially change this policy, we notify users at least thirty (30) days before new terms take effect.

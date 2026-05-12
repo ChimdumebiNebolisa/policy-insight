@@ -84,6 +84,10 @@ public record ReportView(
         if (!demo || report == null) {
             return List.of();
         }
+        String overview = report.documentOverview();
+        if (overview == null || !overview.startsWith("Cedar Ridge Data Solutions")) {
+            return List.of();
+        }
         List<ReviewCard> cards = new ArrayList<>();
         cards.add(new ReviewCard(
                 "Payment terms",

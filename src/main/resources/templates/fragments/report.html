@@ -54,7 +54,7 @@
             </article>
         </section>
 
-        <section class="guided-review" th:if="${reportView.demo()}" aria-labelledby="guided-review-title">
+        <section class="guided-review" th:if="${!reportView.sampleReviewCards().isEmpty()}" aria-labelledby="guided-review-title">
             <div class="section-heading">
                 <div>
                     <span>Guided demo</span>

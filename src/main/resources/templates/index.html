@@ -9,33 +9,50 @@
         <div class="intro-block">
             <h1 id="page-title">PolicyInsight</h1>
             <p class="subtitle">Review policy and agreement PDFs with AI-generated reports linked to source text.</p>
-            <p>Upload a PDF to extract its text, identify obligations, restrictions, termination terms, and risk points, then ask follow-up questions against the document.</p>
+            <p>Upload a PDF or paste plain text to identify obligations, restrictions, termination terms, and risk points, then ask follow-up questions against the document.</p>
         </div>
 
         <div class="option-grid">
             <section id="upload" class="option-panel" aria-labelledby="upload-title">
                 <div>
                     <h2 id="upload-title">Analyze your document</h2>
-                    <p>PDF only. Maximum <span th:text="${maxUploadMb}">10</span> MB. The original upload is discarded after text extraction.</p>
+                    <p>PDF (max <span th:text="${maxUploadMb}">10</span> MB) or pasted text (max <span th:text="${maxPasteChars}">500000</span> characters). Uploads are discarded after text extraction.</p>
                 </div>
-                <form class="upload-form" hx-post="/upload" hx-target="#job-status" hx-swap="innerHTML"
-                      enctype="multipart/form-data" method="post">
-                    <label for="file">Upload a PDF</label>
-                    <input id="file" name="file" type="file" accept="application/pdf" required>
-                    <button class="button button-primary" type="submit">
-                        <span class="idle-text">Analyze PDF</span>
-                        <span class="loading-text">Analyzing PDF...</span>
-                    </button>
-                </form>
+                <div class="intake-row">
+                    <form class="upload-form" hx-post="/upload" hx-target="#job-status" hx-swap="innerHTML"
+                          enctype="multipart/form-data" method="post">
+                        <label for="file">Upload a PDF</label>
+                        <input id="file" name="file" type="file" accept="application/pdf" required>
+                        <button class="button button-primary" type="submit">
+                            <span class="idle-text">Analyze PDF</span>
+                            <span class="loading-text">Analyzing PDF...</span>
+                        </button>
+                    </form>
+                    <form class="paste-form" hx-post="/paste" hx-target="#job-status" hx-swap="innerHTML" method="post">
+                        <label for="paste-text">Or paste document text</label>
+                        <textarea id="paste-text" name="text" rows="8" required
+                                  th:attr="maxlength=${maxPasteChars}"
+                                  placeholder="Paste policy or agreement text here"></textarea>
+                        <button class="button button-primary" type="submit">
+                            <span class="idle-text">Analyze pasted text</span>
+                            <span class="loading-text">Analyzing text...</span>
+                        </button>
+                    </form>
+                </div>
                 <div id="job-status" aria-live="polite"></div>
             </section>
 
             <section class="option-panel" aria-labelledby="sample-title">
                 <div>
                     <h2 id="sample-title">Open sample report</h2>
-                    <p>View a fictional business agreement report without uploading a file.</p>
+                    <p>View a fictional sample report without uploading a file.</p>
                 </div>
-                <a class="button button-primary" href="/sample">Open sample report</a>
+                <div class="sample-links">
+                    <a class="button button-primary" href="/sample">Vendor agreement sample</a>
+                    <a class="button button-secondary" href="/sample/privacy-policy">Privacy policy sample</a>
+                    <a class="button button-secondary" href="/sample/employment-policy">Employment policy sample</a>
+                    <a class="button button-secondary" href="/sample/campus-student-policy">Campus/student policy sample</a>
+                </div>
                 <p class="fine-print">Fictional sample. Demonstration only.</p>
             </section>
         </div>

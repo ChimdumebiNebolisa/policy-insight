@@ -13,9 +13,11 @@ import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
 import com.policyinsight.security.TokenService;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -25,9 +27,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SampleReportService {
 
+    public static final String DEFAULT_SAMPLE_KEY = "vendor-agreement";
     public static final String SAMPLE_DEMO_KEY = "fictional-business-agreement-deterministic-v1";
     private static final Logger LOGGER = LoggerFactory.getLogger(SampleReportService.class);
-    private static final String SAMPLE_PDF_CLASSPATH = "samples/fictional_business_agreement.pdf";
+    private static final Map<String, SampleDefinition> SAMPLE_DEFINITIONS = Map.of(
+            DEFAULT_SAMPLE_KEY, new SampleDefinition(
+                    SAMPLE_DEMO_KEY,
+                    "samples/fictional_business_agreement.pdf"
+            ),
+            "privacy-policy", new SampleDefinition(
+                    "privacy-policy-deterministic-v1",
+                    "samples/privacy_policy_sample.txt"
+            ),
+            "employment-policy", new SampleDefinition(
+                    "employment-policy-deterministic-v1",
+                    "samples/employment_policy_sample.txt"
+            ),
+            "campus-student-policy", new SampleDefinition(
+                    "campus-student-policy-deterministic-v1",
+                    "samples/campus_student_policy_sample.txt"
+            )
+    );
 
     private final PdfTextExtractor pdfTextExtractor;
     private final ChunkingService chunkingService;
@@ -63,61 +83,78 @@ public class SampleReportService {
 
     @Transactional
     public SampleReportResult openSampleReport() {
+        return openSampleReport(DEFAULT_SAMPLE_KEY);
+    }
+
+    @Transactional
+    public SampleReportResult openSampleReport(String sampleKey) {
+        SampleDefinition definition = SAMPLE_DEFINITIONS.get(sampleKey);
+        if (definition == null) {
+            throw new SampleReportException("The requested sample was not found.");
+        }
         String ownerToken = tokenService.generateToken();
-        PolicyJob job = policyJobRepository.findByDemoKey(SAMPLE_DEMO_KEY)
-                .map(this::reuseOrRebuildSampleJob)
-                .orElseGet(this::createSampleJob);
+        PolicyJob job = policyJobRepository.findByDemoKey(definition.demoKey())
+                .map(existingJob -> reuseOrRebuildSampleJob(existingJob, definition, sampleKey))
+                .orElseGet(() -> createSampleJob(definition, sampleKey));
         job.setOwnerTokenHash(tokenService.hashToken(ownerToken));
         job.setOwnerTokenExpiresAt(Instant.now().plus(ownerTokenProperties.ttlMinutes(), ChronoUnit.MINUTES));
         policyJobRepository.save(job);
         int chunkCount = documentChunkRepository.findByJobIdOrderByChunkIndex(job.getId()).size();
         Report report = reportRepository.findByJobId(job.getId())
-                .orElseThrow(() -> new SampleReportException("The fictional sample report could not be generated. Check AI configuration or try again."));
+                .orElseThrow(() -> new SampleReportException("The sample report could not be generated. Check configuration or try again."));
         return new SampleReportResult(job.getId(), report.getId(), ownerToken, chunkCount);
     }
 
-    private PolicyJob reuseOrRebuildSampleJob(PolicyJob existingJob) {
+    public boolean isKnownSampleKey(String sampleKey) {
+        return SAMPLE_DEFINITIONS.containsKey(sampleKey);
+    }
+
+    private PolicyJob reuseOrRebuildSampleJob(PolicyJob existingJob, SampleDefinition definition, String sampleKey) {
         if (existingJob.getStatus() == JobStatus.COMPLETED && reportRepository.findByJobId(existingJob.getId()).isPresent()) {
             return existingJob;
         }
         policyJobRepository.delete(existingJob);
         policyJobRepository.flush();
-        return createSampleJob();
+        return createSampleJob(definition, sampleKey);
     }
 
-    private PolicyJob createSampleJob() {
-        byte[] pdfBytes = readSamplePdf();
-        String text = pdfTextExtractor.extractText(pdfBytes);
+    private PolicyJob createSampleJob(SampleDefinition definition, String sampleKey) {
+        String text = readSampleText(definition.resourceClasspath());
         List<String> chunks = chunkingService.chunk(text);
         if (chunks.isEmpty()) {
-            throw new BadUploadException("No extractable text was found in the sample PDF.");
+            throw new BadUploadException("No extractable text was found in the sample document.");
         }
 
         PolicyJob job = new PolicyJob("pending-sample-owner-token", Instant.now().plus(15, ChronoUnit.MINUTES));
-        job.setDemoKey(SAMPLE_DEMO_KEY);
+        job.setDemoKey(definition.demoKey());
         PolicyJob saved = policyJobRepository.save(job);
         for (int i = 0; i < chunks.size(); i++) {
             documentChunkRepository.save(new DocumentChunk(saved, i, chunks.get(i)));
         }
         List<DocumentChunk> savedChunks = documentChunkRepository.findByJobIdOrderByChunkIndex(saved.getId());
-        RiskReport riskReport = sampleAgreementReportBuilder.build(savedChunks);
+        RiskReport riskReport = sampleAgreementReportBuilder.build(sampleKey, savedChunks);
         reportRepository.save(new Report(saved, toJson(riskReport)));
         saved.setStatus(JobStatus.COMPLETED);
         saved.setSafeErrorMessage(null);
         return policyJobRepository.save(saved);
     }
 
-    private byte[] readSamplePdf() {
+    private String readSampleText(String resourcePath) {
         try {
-            ClassPathResource resource = new ClassPathResource(SAMPLE_PDF_CLASSPATH);
+            ClassPathResource resource = new ClassPathResource(resourcePath);
             if (!resource.exists()) {
-                throw new IllegalStateException("Sample PDF resource is missing from the classpath.");
+                throw new IllegalStateException("Sample resource is missing from the classpath.");
             }
-            byte[] bytes = resource.getContentAsByteArray();
-            LOGGER.info("Loaded sample PDF from classpath resource {} ({} bytes).", SAMPLE_PDF_CLASSPATH, bytes.length);
-            return bytes;
+            if (resourcePath.endsWith(".pdf")) {
+                byte[] bytes = resource.getContentAsByteArray();
+                LOGGER.info("Loaded sample PDF from classpath resource {} ({} bytes).", resourcePath, bytes.length);
+                return pdfTextExtractor.extractText(bytes);
+            }
+            String text = new String(resource.getContentAsByteArray(), StandardCharsets.UTF_8);
+            LOGGER.info("Loaded sample text from classpath resource {} ({} chars).", resourcePath, text.length());
+            return text;
         } catch (IOException ex) {
-            throw new IllegalStateException("Sample PDF resource is missing.", ex);
+            throw new IllegalStateException("Sample resource is missing.", ex);
         }
     }
 
@@ -127,5 +164,8 @@ public class SampleReportService {
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Unable to serialize sample report", ex);
         }
+    }
+
+    private record SampleDefinition(String demoKey, String resourceClasspath) {
     }
 }

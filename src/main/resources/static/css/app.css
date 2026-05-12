@@ -239,20 +239,53 @@ button:hover {
 
 button .loading-text,
 .upload-form.htmx-request .idle-text,
+.paste-form.htmx-request .idle-text,
 .qa-form.htmx-request .idle-text {
     display: none;
 }
 
 .upload-form.htmx-request .loading-text,
+.paste-form.htmx-request .loading-text,
 .qa-form.htmx-request .loading-text {
     display: inline;
 }
 
 .upload-form,
+.paste-form,
 .qa-form,
 .report-actions form {
     display: grid;
     gap: 10px;
+}
+
+.intake-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+.sample-links {
+    display: grid;
+    gap: 10px;
+}
+
+@media (max-width: 720px) {
+    .intake-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 10px 11px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--text);
+    font: 600 0.92rem/1.35 ui-sans-serif, system-ui, sans-serif;
+    resize: vertical;
 }
 
 label {

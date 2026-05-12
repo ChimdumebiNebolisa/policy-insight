@@ -14,6 +14,8 @@ import com.policyinsight.service.SampleReportService;
 import jakarta.servlet.http.Cookie;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -67,6 +69,20 @@ class SampleControllerFailureTests {
         var sampleJob = policyJobRepository.findByDemoKey(SampleReportService.SAMPLE_DEMO_KEY).orElseThrow();
         org.assertj.core.api.Assertions.assertThat(sampleJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
         org.assertj.core.api.Assertions.assertThat(reportRepository.findByJobId(sampleJob.getId())).isPresent();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "vendor-agreement",
+            "privacy-policy",
+            "employment-policy",
+            "campus-student-policy"
+    })
+    void namedSamplesStayDeterministicAndGeminiFree(String sampleKey) throws Exception {
+        mockMvc.perform(get("/sample/" + sampleKey))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("/report/*"));
+        verifyNoInteractions(aiAnalyzer);
     }
 
     private void resetSampleJob() {

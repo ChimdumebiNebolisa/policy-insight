@@ -21,6 +21,8 @@ app:
     provider: ${APP_AI_PROVIDER:mock}
   upload:
     max-bytes: ${APP_UPLOAD_MAX_BYTES:10485760}
+  paste:
+    max-chars: ${APP_PASTE_MAX_CHARS:500000}
   owner-token:
     ttl-minutes: ${APP_OWNER_TOKEN_TTL_MINUTES:120}
   share:
