@@ -10,6 +10,7 @@ public record StatusView(
         UUID reportId,
         String safeErrorMessage,
         boolean fallbackAvailable,
+        boolean retryAvailable,
         Instant createdAt,
         Instant updatedAt
 ) {

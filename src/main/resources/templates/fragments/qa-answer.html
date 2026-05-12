@@ -7,3 +7,14 @@
         <span class="unsupported-chip" th:if="${answer.unsupported()}">Unsupported citation</span>
     </div>
 </article>
+
+<article th:fragment="qaHistoryItem(qa)" class="answer-card qa-history-item">
+    <p class="qa-question" th:text="${qa.question()}">Question</p>
+    <p th:text="${qa.answer().answer()}">Answer</p>
+    <div class="claim-meta">
+        <a class="citation-chip" th:each="id : ${qa.answer().chunkIds()}"
+           th:href="${'#source-' + id}" th:title="${id}"
+           th:text="${reportView.sourceLabel(id)}">Source</a>
+        <span class="unsupported-chip" th:if="${qa.answer().unsupported()}">Unsupported citation</span>
+    </div>
+</article>

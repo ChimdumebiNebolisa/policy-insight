@@ -13,11 +13,14 @@ import com.policyinsight.TestPdfFactory;
 import com.policyinsight.ai.AiAnalyzer;
 import com.policyinsight.ai.AiAnalyzerException;
 import com.policyinsight.ai.GeminiAnalyzer;
+import com.policyinsight.ai.dto.CitedClaim;
+import com.policyinsight.ai.dto.RiskReport;
 import com.policyinsight.model.JobStatus;
 import com.policyinsight.model.PolicyJob;
 import com.policyinsight.repository.DocumentChunkRepository;
 import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
+import java.util.List;
 import jakarta.servlet.http.Cookie;
 import java.util.Arrays;
 import java.util.UUID;
@@ -48,6 +51,48 @@ class UploadFailureFallbackTests {
 
     @MockBean
     AiAnalyzer aiAnalyzer;
+
+    @Test
+    void retryTriggersNewAnalysisAfterFailure() throws Exception {
+        when(aiAnalyzer.generateReport(anyList()))
+                .thenThrow(new AiAnalyzerException("first call fails"))
+                .thenReturn(successReport());
+
+        MvcResult upload = mockMvc.perform(multipart("/upload").file(pdf()))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie ownerCookie = ownerCookie(upload);
+        PolicyJob job = policyJobRepository.findAll().getLast();
+        waitForStatus(job.getId(), JobStatus.FAILED);
+
+        mockMvc.perform(get("/status/" + job.getId()).cookie(ownerCookie))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Retry AI analysis")));
+
+        mockMvc.perform(post("/retry/" + job.getId()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/retry/" + job.getId()).cookie(ownerCookie))
+                .andExpect(status().isOk());
+
+        waitForStatus(job.getId(), JobStatus.COMPLETED);
+        assertThat(reportRepository.findByJobId(job.getId())).isPresent();
+    }
+
+    @Test
+    void retryDeniedIfJobIsNotFailed() throws Exception {
+        when(aiAnalyzer.generateReport(anyList())).thenReturn(successReport());
+
+        MvcResult upload = mockMvc.perform(multipart("/upload").file(pdf()))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie ownerCookie = ownerCookie(upload);
+        PolicyJob job = policyJobRepository.findAll().getLast();
+        waitForStatus(job.getId(), JobStatus.COMPLETED);
+
+        mockMvc.perform(post("/retry/" + job.getId()).cookie(ownerCookie))
+                .andExpect(status().isBadRequest());
+    }
 
     @Test
     void uploadFailureKeepsExtractedSourcesAndShowsSafeFallbackOption() throws Exception {
@@ -130,6 +175,11 @@ class UploadFailureFallbackTests {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Demo fallback. Not live AI analysis.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Ask a question")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Cited evidence")));
+    }
+
+    private static RiskReport successReport() {
+        CitedClaim claim = new CitedClaim("Test claim.", List.of(), false);
+        return new RiskReport("Test overview.", List.of(claim), List.of(claim), List.of(), List.of(), List.of(claim));
     }
 
     private MockMultipartFile pdf() throws Exception {

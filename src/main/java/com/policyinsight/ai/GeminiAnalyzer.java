@@ -110,12 +110,20 @@ public class GeminiAnalyzer implements AiAnalyzer {
 
     private String reportPrompt(List<DocumentChunk> chunks) {
         return """
-                Generate a JSON risk report for the policy document chunks below.
-                Return only JSON matching these fields:
-                documentOverview: string
-                summaryBullets, obligations, restrictions, terminationTriggers, riskTaxonomy:
-                arrays of objects with text:string, chunkIds:array of UUID strings, unsupported:false
-                Every claim must cite one or more exact chunk IDs from the provided chunks.
+                Generate a JSON risk and compliance report for the document chunks below.
+                The document may be a contract, agreement, policy, employment document, or any legal/policy text.
+                Return only valid JSON matching these exact fields — no markdown, no commentary:
+                documentOverview: string (1–3 sentences describing the document type and purpose)
+                summaryBullets: executive summary points and key questions the reader should ask
+                obligations: key obligations, costs, payment terms, deadlines, and notice requirements
+                restrictions: restrictions, prohibited actions, data handling, privacy, and confidentiality terms
+                terminationTriggers: termination and renewal triggers, missing or unclear language, and recommended next steps
+                riskTaxonomy: risks, red flags, one-sided clauses, and items requiring legal or professional review
+                Each of the five arrays contains objects with:
+                  text: string
+                  chunkIds: array of UUID strings (must match exactly one or more chunk IDs from the provided chunks)
+                  unsupported: false
+                Every claim must cite at least one exact chunk ID from the provided chunks.
 
                 Chunks:
                 %s

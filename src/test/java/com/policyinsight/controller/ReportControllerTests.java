@@ -1,6 +1,8 @@
 package com.policyinsight.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -10,6 +12,7 @@ import com.policyinsight.TestPdfFactory;
 import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
 import jakarta.servlet.http.Cookie;
+import org.springframework.http.MediaType;
 import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -34,6 +37,53 @@ class ReportControllerTests {
     PolicyJobRepository policyJobRepository;
 
     @Test
+    void reportContainsTechnicalDetails() throws Exception {
+        UploadFixture fixture = upload("10.1.0.1");
+
+        mockMvc.perform(get("/report/" + fixture.reportId()).cookie(fixture.ownerCookie()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("How this was analyzed")))
+                .andExpect(content().string(containsString("sections extracted")))
+                .andExpect(content().string(containsString("Report generated")));
+    }
+
+    @Test
+    void ownerCanExportMarkdown() throws Exception {
+        UploadFixture fixture = upload("10.1.0.2");
+
+        mockMvc.perform(get("/report/" + fixture.reportId() + "/export.md").cookie(fixture.ownerCookie()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("text/markdown")))
+                .andExpect(content().string(containsString("# PolicyInsight Report")))
+                .andExpect(content().string(containsString("## Summary")))
+                .andExpect(content().string(containsString("## Key Obligations")));
+    }
+
+    @Test
+    void exportRequiresOwnerCookie() throws Exception {
+        UploadFixture fixture = upload("10.1.0.3");
+
+        mockMvc.perform(get("/report/" + fixture.reportId() + "/export.md"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void citationChipsLinkToMatchingSourceCards() throws Exception {
+        UploadFixture fixture = upload("10.1.0.4");
+
+        String body = mockMvc.perform(get("/report/" + fixture.reportId()).cookie(fixture.ownerCookie()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("href=\"#source-")))
+                .andExpect(content().string(containsString("id=\"source-")))
+                .andReturn().getResponse().getContentAsString();
+
+        int chipCount = countOccurrences(body, "href=\"#source-");
+        int cardCount = countOccurrences(body, "id=\"source-");
+        assertThat(chipCount).isGreaterThan(0);
+        assertThat(cardCount).isGreaterThan(0);
+    }
+
+    @Test
     void reportRequiresOwnerCookie() throws Exception {
         UploadFixture fixture = upload();
 
@@ -50,7 +100,7 @@ class ReportControllerTests {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Risk report")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Report sections")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Review closely")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Operational term")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Obligation")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Cited evidence")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Short excerpts from sources cited by the report.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"#source-")))
@@ -62,14 +112,32 @@ class ReportControllerTests {
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("fallback"))));
     }
 
+    private int countOccurrences(String text, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(needle, index)) >= 0) {
+            count++;
+            index += needle.length();
+        }
+        return count;
+    }
+
     private UploadFixture upload() throws Exception {
+        return upload("127.0.0.1");
+    }
+
+    private UploadFixture upload(String remoteAddr) throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "policy.pdf",
                 "application/pdf",
                 TestPdfFactory.pdfWithText("This policy requires written notice before termination.")
         );
-        MvcResult result = mockMvc.perform(multipart("/upload").file(file))
+        MvcResult result = mockMvc.perform(multipart("/upload").file(file)
+                        .with(request -> {
+                            request.setRemoteAddr(remoteAddr);
+                            return request;
+                        }))
                 .andExpect(status().isOk())
                 .andReturn();
         Cookie ownerCookie = Arrays.stream(result.getResponse().getCookies())

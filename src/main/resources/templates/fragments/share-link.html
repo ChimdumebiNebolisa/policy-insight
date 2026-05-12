@@ -1,5 +1,30 @@
 <div th:fragment="shareLink" class="share-panel">
     <p class="section-kicker">Shared report link created</p>
     <a th:href="${share.url()}" th:text="${share.url()}">Shared report</a>
-    <p class="fine-print">Anyone with this link can view the read-only report until it expires.</p>
+    <p class="fine-print" th:if="${share.expiresAtDisplay() != null && !share.expiresAtDisplay().isEmpty()}">
+        Expires <span th:text="${share.expiresAtDisplay()}">date</span>. Anyone with this link can view the read-only report.
+    </p>
+    <p class="fine-print" th:unless="${share.expiresAtDisplay() != null && !share.expiresAtDisplay().isEmpty()}">
+        Anyone with this link can view the read-only report until it expires.
+    </p>
+    <div class="share-controls">
+        <form th:hx-post="@{/share/{id}/revoke(id=${shareReportId})}"
+              hx-target="closest .share-panel" hx-swap="outerHTML" method="post">
+            <button class="button button-secondary" type="submit">Revoke link</button>
+        </form>
+        <form th:hx-post="@{/share/{id}/regenerate(id=${shareReportId})}"
+              hx-target="closest .share-panel" hx-swap="outerHTML" method="post">
+            <button class="button button-secondary" type="submit">Regenerate link</button>
+        </form>
+    </div>
+</div>
+
+<div th:fragment="revokeResult" class="share-panel share-panel-revoked">
+    <p class="section-kicker">Link revoked</p>
+    <p class="muted">The shared link has been revoked. Anyone who had the old link can no longer access the report.</p>
+    <form th:if="${shareReportId != null}"
+          th:hx-post="@{/share/{id}(id=${shareReportId})}"
+          hx-target="closest .share-panel" hx-swap="outerHTML" method="post">
+        <button class="button button-secondary" type="submit">Create new share link</button>
+    </form>
 </div>

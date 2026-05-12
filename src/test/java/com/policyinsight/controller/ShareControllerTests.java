@@ -46,6 +46,64 @@ class ShareControllerTests {
     PolicyJobRepository policyJobRepository;
 
     @Test
+    void revokeShareLinkMakesItInvalid() throws Exception {
+        UploadFixture fixture = upload("10.2.0.1");
+        String token = tokenService.generateToken();
+        Report report = reportRepository.findById(fixture.reportId()).orElseThrow();
+        shareLinkRepository.save(new ShareLink(report, tokenService.hashToken(token), Instant.now().plusSeconds(3600)));
+
+        mockMvc.perform(get("/shared/" + token)).andExpect(status().isOk());
+
+        mockMvc.perform(post("/share/" + fixture.reportId() + "/revoke").cookie(fixture.ownerCookie()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Link revoked")));
+
+        mockMvc.perform(get("/shared/" + token)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void revokeRequiresOwnerCookie() throws Exception {
+        UploadFixture fixture = upload("10.2.0.2");
+
+        mockMvc.perform(post("/share/" + fixture.reportId() + "/revoke"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void regenerateShareLinkInvalidatesOldAndCreatesNew() throws Exception {
+        UploadFixture fixture = upload("10.2.0.3");
+        String oldToken = tokenService.generateToken();
+        Report report = reportRepository.findById(fixture.reportId()).orElseThrow();
+        shareLinkRepository.save(new ShareLink(report, tokenService.hashToken(oldToken), Instant.now().plusSeconds(3600)));
+
+        mockMvc.perform(get("/shared/" + oldToken)).andExpect(status().isOk());
+
+        mockMvc.perform(post("/share/" + fixture.reportId() + "/regenerate").cookie(fixture.ownerCookie()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/shared/")));
+
+        mockMvc.perform(get("/shared/" + oldToken)).andExpect(status().isNotFound());
+        assertThat(shareLinkRepository.countByReport_Id(fixture.reportId())).isEqualTo(1);
+    }
+
+    @Test
+    void regenerateRequiresOwnerCookie() throws Exception {
+        UploadFixture fixture = upload("10.2.0.4");
+
+        mockMvc.perform(post("/share/" + fixture.reportId() + "/regenerate"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shareResultShowsExpiresAt() throws Exception {
+        UploadFixture fixture = upload("10.2.0.5");
+
+        mockMvc.perform(post("/share/" + fixture.reportId()).cookie(fixture.ownerCookie()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Expires")));
+    }
+
+    @Test
     void createsShareLinkForOwner() throws Exception {
         UploadFixture fixture = upload();
 
@@ -55,7 +113,7 @@ class ShareControllerTests {
                 .andReturn();
 
         assertThat(result.getResponse().getContentAsString()).contains("Shared report link created");
-        assertThat(shareLinkRepository.count()).isEqualTo(1);
+        assertThat(shareLinkRepository.countByReport_Id(fixture.reportId())).isEqualTo(1);
     }
 
     @Test
@@ -92,13 +150,21 @@ class ShareControllerTests {
     }
 
     private UploadFixture upload() throws Exception {
+        return upload("127.0.0.1");
+    }
+
+    private UploadFixture upload(String remoteAddr) throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "policy.pdf",
                 "application/pdf",
                 TestPdfFactory.pdfWithText("This policy requires written notice before termination.")
         );
-        MvcResult result = mockMvc.perform(multipart("/upload").file(file))
+        MvcResult result = mockMvc.perform(multipart("/upload").file(file)
+                        .with(request -> {
+                            request.setRemoteAddr(remoteAddr);
+                            return request;
+                        }))
                 .andExpect(status().isOk())
                 .andReturn();
         Cookie ownerCookie = Arrays.stream(result.getResponse().getCookies())

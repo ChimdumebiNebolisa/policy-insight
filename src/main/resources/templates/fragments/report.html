@@ -19,6 +19,8 @@
             <button class="button button-primary" type="submit">Share</button>
         </form>
         <a class="button button-secondary" th:if="${ownerControls && !reportView.demo()}" href="#qa">Ask a question</a>
+        <a class="button button-secondary" th:if="${ownerControls && !reportView.demo()}"
+           th:href="@{/report/{id}/export.md(id=${reportView.reportId()})}" target="_blank">Export</a>
         <div id="share-result" aria-live="polite"></div>
     </div>
 </section>
@@ -27,10 +29,11 @@
     <nav class="section-nav" aria-label="Report sections">
         <a href="#overview">Overview</a>
         <a href="#summary">Summary</a>
-        <a href="#obligations">Obligations</a>
-        <a href="#restrictions">Restrictions</a>
-        <a href="#termination">Termination</a>
+        <a href="#obligations">Obligations &amp; Costs</a>
+        <a href="#restrictions">Restrictions &amp; Privacy</a>
+        <a href="#termination">Termination &amp; Gaps</a>
         <a href="#risks">Risks</a>
+        <a href="#tech-details">Details</a>
         <a href="#evidence">Evidence</a>
     </nav>
 
@@ -41,15 +44,15 @@
                 <p th:text="${reportView.report().documentOverview()}">Document overview</p>
             </article>
             <article>
-                <span>Top risks</span>
+                <span>Risk items</span>
                 <strong th:text="${#lists.size(reportView.report().riskTaxonomy())}">0</strong>
             </article>
             <article>
-                <span>Key obligations</span>
+                <span>Obligations &amp; costs</span>
                 <strong th:text="${#lists.size(reportView.report().obligations())}">0</strong>
             </article>
             <article>
-                <span>Termination terms</span>
+                <span>Termination &amp; gaps</span>
                 <strong th:text="${#lists.size(reportView.report().terminationTriggers())}">0</strong>
             </article>
         </section>
@@ -80,42 +83,61 @@
 
         <details id="summary" class="report-section" open>
             <summary>
-                <span>Summary</span>
+                <span>Executive summary</span>
                 <strong th:text="${#lists.size(reportView.report().summaryBullets()) + ' items'}">0 items</strong>
             </summary>
-            <div th:replace="~{fragments/report :: claims(${reportView.report().summaryBullets()}, 'Informational')}"></div>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().summaryBullets()}, 'Key point')}"></div>
         </details>
 
         <details id="obligations" class="report-section">
             <summary>
-                <span>Obligations</span>
+                <span>Obligations, costs &amp; deadlines</span>
                 <strong th:text="${#lists.size(reportView.report().obligations()) + ' items'}">0 items</strong>
             </summary>
-            <div th:replace="~{fragments/report :: claims(${reportView.report().obligations()}, 'Operational term')}"></div>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().obligations()}, 'Obligation')}"></div>
         </details>
 
         <details id="restrictions" class="report-section">
             <summary>
-                <span>Restrictions</span>
+                <span>Restrictions, privacy &amp; confidentiality</span>
                 <strong th:text="${#lists.size(reportView.report().restrictions()) + ' items'}">0 items</strong>
             </summary>
-            <div th:replace="~{fragments/report :: claims(${reportView.report().restrictions()}, 'Operational term')}"></div>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().restrictions()}, 'Restriction')}"></div>
         </details>
 
         <details id="termination" class="report-section">
             <summary>
-                <span>Termination terms</span>
+                <span>Termination, gaps &amp; next steps</span>
                 <strong th:text="${#lists.size(reportView.report().terminationTriggers()) + ' items'}">0 items</strong>
             </summary>
-            <div th:replace="~{fragments/report :: claims(${reportView.report().terminationTriggers()}, 'Operational term')}"></div>
+            <div th:replace="~{fragments/report :: claims(${reportView.report().terminationTriggers()}, 'Termination / gap')}"></div>
         </details>
 
         <details id="risks" class="report-section risk-section" open>
             <summary>
-                <span>Risks</span>
+                <span>Risks &amp; items to review</span>
                 <strong th:text="${#lists.size(reportView.report().riskTaxonomy()) + ' items'}">0 items</strong>
             </summary>
             <div th:replace="~{fragments/report :: claims(${reportView.report().riskTaxonomy()}, 'Review closely')}"></div>
+        </details>
+
+        <details id="tech-details" class="report-section">
+            <summary>
+                <span>How this was analyzed</span>
+            </summary>
+            <dl class="tech-details-list">
+                <dt>Document source</dt>
+                <dd th:text="${reportView.demo()} ? 'Fictional sample — demonstration only' : 'Uploaded document'"></dd>
+                <dt>Source sections</dt>
+                <dd th:text="${reportView.chunkCount() + ' sections extracted'}"></dd>
+                <dt>Report generated</dt>
+                <dd th:text="${reportView.createdAtDisplay()}"></dd>
+                <dt th:if="${reportView.fallback()}">Analysis type</dt>
+                <dd th:if="${reportView.fallback()}">Demo fallback — not live AI analysis</dd>
+                <dt th:unless="${reportView.fallback() || reportView.demo() || reportView.aiProviderLabel().isEmpty()}">AI analysis provider</dt>
+                <dd th:unless="${reportView.fallback() || reportView.demo() || reportView.aiProviderLabel().isEmpty()}"
+                    th:text="${reportView.aiProviderLabel()}"></dd>
+            </dl>
         </details>
 
         <section id="qa" class="qa-panel" th:if="${qaEnabled}">
@@ -138,7 +160,19 @@
                 </div>
             </form>
             <div id="qa-result" class="answer-stack" aria-live="polite">
-                <p class="empty-state">No questions yet.</p>
+                <th:block th:each="qa : ${reportView.qaHistory()}">
+                    <article class="answer-card qa-history-item">
+                        <p class="qa-question" th:text="${qa.question()}">Question</p>
+                        <p th:text="${qa.answer().answer()}">Answer</p>
+                        <div class="claim-meta">
+                            <a class="citation-chip" th:each="id : ${qa.answer().chunkIds()}"
+                               th:href="${'#source-' + id}" th:title="${id}"
+                               th:text="${reportView.sourceLabel(id)}">Source</a>
+                            <span class="unsupported-chip" th:if="${qa.answer().unsupported()}">Unsupported citation</span>
+                        </div>
+                    </article>
+                </th:block>
+                <p class="empty-state" th:if="${reportView.qaHistory() == null || reportView.qaHistory().isEmpty()}">No questions yet.</p>
             </div>
         </section>
         <section class="qa-panel" th:if="${!qaEnabled && reportView.demo()}">
@@ -154,7 +188,7 @@
             </div>
         </div>
         <div class="source-list">
-            <article class="source-card" th:each="item : ${reportView.citedEvidence()}" th:id="${'source-' + item.sourceId()}">
+            <article class="source-card" th:each="item : ${reportView.allCitedEvidence()}" th:id="${'source-' + item.sourceId()}">
                 <div class="source-meta">
                     <span th:text="${item.label()}">Source 1</span>
                     <span class="source-category" th:text="${item.category()}">Fees</span>

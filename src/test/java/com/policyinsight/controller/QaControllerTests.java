@@ -1,6 +1,7 @@
 package com.policyinsight.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -36,6 +37,21 @@ class QaControllerTests {
 
     @Autowired
     PolicyJobRepository policyJobRepository;
+
+    @Test
+    void qaHistoryRendersOnReportPage() throws Exception {
+        UploadFixture fixture = upload("10.3.0.1");
+
+        mockMvc.perform(post("/qa/" + fixture.reportId())
+                        .cookie(fixture.ownerCookie())
+                        .param("question", "What are the key contract terms?"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/report/" + fixture.reportId()).cookie(fixture.ownerCookie()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("What are the key contract terms?")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("qa-history-item")));
+    }
 
     @Test
     void answersAndSavesGroundedQuestion() throws Exception {
@@ -89,13 +105,21 @@ class QaControllerTests {
     }
 
     private UploadFixture upload() throws Exception {
+        return upload("127.0.0.1");
+    }
+
+    private UploadFixture upload(String remoteAddr) throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "policy.pdf",
                 "application/pdf",
                 TestPdfFactory.pdfWithText("This policy requires written notice before termination.")
         );
-        MvcResult result = mockMvc.perform(multipart("/upload").file(file))
+        MvcResult result = mockMvc.perform(multipart("/upload").file(file)
+                        .with(request -> {
+                            request.setRemoteAddr(remoteAddr);
+                            return request;
+                        }))
                 .andExpect(status().isOk())
                 .andReturn();
         Cookie ownerCookie = Arrays.stream(result.getResponse().getCookies())

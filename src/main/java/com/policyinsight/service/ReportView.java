@@ -1,5 +1,6 @@
 package com.policyinsight.service;
 
+import com.policyinsight.ai.dto.QaAnswer;
 import com.policyinsight.ai.dto.RiskReport;
 import com.policyinsight.model.DocumentChunk;
 import java.time.Instant;
@@ -21,7 +22,9 @@ public record ReportView(
         boolean demo,
         boolean fallback,
         RiskReport report,
-        List<DocumentChunk> chunks
+        List<DocumentChunk> chunks,
+        List<QaInteractionView> qaHistory,
+        String aiProviderLabel
 ) {
 
     public String createdAtDisplay() {
@@ -60,17 +63,34 @@ public record ReportView(
         if (chunks == null || report == null) {
             return List.of();
         }
-        Set<UUID> citedIds = citedIds();
+        Set<UUID> citedIds = reportCitedIds();
         return chunks.stream()
                 .filter(chunk -> citedIds.contains(chunk.getId()))
                 .toList();
     }
 
     public List<EvidenceItem> citedEvidence() {
+        return buildEvidenceItems(reportCitedIds());
+    }
+
+    public List<EvidenceItem> allCitedEvidence() {
+        Set<UUID> citedIds = new HashSet<>(reportCitedIds());
+        if (qaHistory != null) {
+            for (QaInteractionView qa : qaHistory) {
+                if (qa.answer() != null && qa.answer().chunkIds() != null) {
+                    citedIds.addAll(qa.answer().chunkIds());
+                }
+            }
+        }
+        return buildEvidenceItems(citedIds);
+    }
+
+    private List<EvidenceItem> buildEvidenceItems(Set<UUID> citedIds) {
         if (chunks == null || report == null) {
             return List.of();
         }
-        return citedChunks().stream()
+        return chunks.stream()
+                .filter(chunk -> citedIds.contains(chunk.getId()))
                 .map(chunk -> new EvidenceItem(
                         chunk.getId(),
                         sourceLabel(chunk.getId()),
@@ -78,6 +98,10 @@ public record ReportView(
                         evidenceExcerpt(chunk.getTextContent())
                 ))
                 .toList();
+    }
+
+    public int chunkCount() {
+        return chunks == null ? 0 : chunks.size();
     }
 
     public List<ReviewCard> sampleReviewCards() {
@@ -236,8 +260,11 @@ public record ReportView(
         return text.toLowerCase();
     }
 
-    private Set<UUID> citedIds() {
+    private Set<UUID> reportCitedIds() {
         Set<UUID> ids = new HashSet<>();
+        if (report == null) {
+            return ids;
+        }
         Stream.of(
                         report.summaryBullets(),
                         report.obligations(),
@@ -257,5 +284,8 @@ public record ReportView(
     }
 
     public record EvidenceItem(UUID sourceId, String label, String category, String excerpt) {
+    }
+
+    public record QaInteractionView(String question, QaAnswer answer) {
     }
 }

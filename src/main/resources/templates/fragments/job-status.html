@@ -19,6 +19,15 @@
         <span th:classappend="${status.stepClass('COMPLETED')}">Completed</span>
     </div>
     <p class="muted" th:if="${status.safeErrorMessage()}" th:text="${status.safeErrorMessage()}">Processing failed.</p>
+    <form class="retry-form" th:if="${status.retryAvailable()}"
+          th:hx-post="@{/retry/{id}(id=${status.jobId()})}" hx-target="closest .status-card" hx-swap="outerHTML"
+          method="post">
+        <div class="retry-callout">
+            <p><strong>Retry AI analysis</strong></p>
+            <p class="muted">Attempt report generation again using the already-extracted source text.</p>
+        </div>
+        <button class="button button-primary" type="submit">Retry AI analysis</button>
+    </form>
     <form class="fallback-form" th:if="${status.fallbackAvailable()}"
           th:hx-post="@{/fallback/{id}(id=${status.jobId()})}" hx-target="closest .status-card" hx-swap="outerHTML"
           method="post">

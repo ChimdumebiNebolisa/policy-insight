@@ -50,12 +50,24 @@ public class ShareLinkService {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new NotFoundException("Report was not found."));
         String token = tokenService.generateToken();
+        Instant expiresAt = Instant.now().plus(shareProperties.ttlDays(), ChronoUnit.DAYS);
         shareLinkRepository.save(new ShareLink(
                 report,
                 tokenService.hashToken(token),
-                Instant.now().plus(shareProperties.ttlDays(), ChronoUnit.DAYS)
+                expiresAt
         ));
-        return new ShareResult(token, baseUrl + "/shared/" + token);
+        return new ShareResult(token, baseUrl + "/shared/" + token, expiresAt);
+    }
+
+    @Transactional
+    public void revokeShareLinks(UUID reportId) {
+        shareLinkRepository.deleteByReportId(reportId);
+    }
+
+    @Transactional
+    public ShareResult regenerateShareLink(UUID reportId, String baseUrl) {
+        shareLinkRepository.deleteByReportId(reportId);
+        return createShareLink(reportId, baseUrl);
     }
 
     @Transactional(readOnly = true)
@@ -65,15 +77,18 @@ public class ShareLinkService {
                     Report report = link.getReport();
                     List<DocumentChunk> chunks = documentChunkRepository.findByJobIdOrderByChunkIndex(report.getJob().getId());
                     RiskReport riskReport = fromJson(report.getContent());
+                    boolean isFallback = riskReport.documentOverview() != null
+                            && riskReport.documentOverview().startsWith(FallbackReportBuilder.FALLBACK_LABEL);
                     return new ReportView(
                             report.getId(),
                             report.getJob().getId(),
                             report.getCreatedAt(),
                             report.getJob().getDemoKey() != null,
-                            riskReport.documentOverview() != null
-                                    && riskReport.documentOverview().startsWith(FallbackReportBuilder.FALLBACK_LABEL),
+                            isFallback,
                             riskReport,
-                            chunks
+                            chunks,
+                            List.of(),
+                            ""
                     );
                 });
     }

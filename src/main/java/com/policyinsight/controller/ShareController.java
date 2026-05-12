@@ -30,6 +30,26 @@ public class ShareController {
                 .orElseThrow(() -> new AccessDeniedException("Share link is not available for this session."));
         ShareResult share = shareLinkService.createShareLink(reportId, baseUrl(request));
         model.addAttribute("share", share);
+        model.addAttribute("shareReportId", reportId);
+        return "fragments/share-link :: shareLink";
+    }
+
+    @PostMapping("/share/{reportId}/revoke")
+    public String revoke(@PathVariable UUID reportId, HttpServletRequest request, Model model) {
+        reportService.reportForOwner(reportId, request.getCookies())
+                .orElseThrow(() -> new AccessDeniedException("Share controls are not available for this session."));
+        shareLinkService.revokeShareLinks(reportId);
+        model.addAttribute("shareReportId", reportId);
+        return "fragments/share-link :: revokeResult";
+    }
+
+    @PostMapping("/share/{reportId}/regenerate")
+    public String regenerate(@PathVariable UUID reportId, HttpServletRequest request, Model model) {
+        reportService.reportForOwner(reportId, request.getCookies())
+                .orElseThrow(() -> new AccessDeniedException("Share controls are not available for this session."));
+        ShareResult share = shareLinkService.regenerateShareLink(reportId, baseUrl(request));
+        model.addAttribute("share", share);
+        model.addAttribute("shareReportId", reportId);
         return "fragments/share-link :: shareLink";
     }
 
