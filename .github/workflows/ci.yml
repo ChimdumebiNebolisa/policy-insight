@@ -29,6 +29,9 @@ jobs:
       - name: Make Maven wrapper executable
         run: chmod +x mvnw
 
+      - name: Maven version (wrapper download check)
+        run: ./mvnw --version
+
       - name: Run tests and integration tests
         run: ./mvnw --batch-mode verify -Pintegration-tests
 
