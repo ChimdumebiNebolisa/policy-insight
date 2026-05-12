@@ -1,5 +1,7 @@
 # PolicyInsight
 
+[![CI](https://github.com/ChimdumebiNebolisa/policy-insight/actions/workflows/ci.yml/badge.svg?branch=rebuild%2Fsimple-gemini-railway)](https://github.com/ChimdumebiNebolisa/policy-insight/actions/workflows/ci.yml?query=branch%3Arebuild%2Fsimple-gemini-railway)
+
 ## What this is
 
 PolicyInsight is a Spring Boot web app for reviewing policy, agreement, and contract PDFs. Users upload a PDF, the app extracts text with PDFBox, creates source sections, generates a structured report, validates citations back to source text, and supports shareable report links plus grounded Q&A for uploaded documents. It also includes a bundled deterministic sample report built from a committed fictional PDF so the demo path does not depend on live Gemini availability.
@@ -30,6 +32,14 @@ Authentication: Owner access cookies, expiring share links, and simple in-memory
 Deployment: Docker, Render, and Railway
 
 Other tools: PDFBox, Maven Wrapper, H2 for normal tests, Docker Compose for local PostgreSQL, and Testcontainers for optional PostgreSQL integration tests
+
+## CI and deployment
+
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on **push** and **pull_request** targeting branch **`rebuild/simple-gemini-railway`**. It uses Java 21 (Temurin), caches Maven dependencies, runs **`./mvnw --batch-mode verify -Pintegration-tests`**, uploads **Surefire** and **Failsafe** report directories as a workflow artifact when the test job fails, then runs **`docker build -t policy-insight:ci .`** in a follow-up job.
+
+Use **`.\mvnw.cmd`** on Windows and **`./mvnw`** on Linux, macOS, and in CI. The workflow does **not** call live Gemini or read production secrets; integration tests use **mock** AI. Set **`DATABASE_URL`**, **`APP_TOKEN_SECRET`**, **`GEMINI_API_KEY`**, and related variables only on your hosting provider (for example Render or Railway), not in GitHub Actions.
+
+For continuous deployment, connect the repo to **Render** or **Railway** and enable auto-deploy from **`rebuild/simple-gemini-railway`** so the platform builds the same [`Dockerfile`](Dockerfile). That path does not require a deploy token in GitHub.
 
 ## Setup
 
@@ -157,8 +167,8 @@ The integration profile uses Docker to start PostgreSQL and verify Flyway/schema
 
 Current verified result:
 
-- `.\mvnw.cmd clean test`: 60 tests, 0 failures, 0 errors
-- `.\mvnw.cmd verify -Pintegration-tests`: build success; in this environment Docker was unavailable, so `PostgresIntegrationIT` skipped cleanly through Testcontainers
+- `.\mvnw.cmd clean test`: **84** tests (Surefire), 0 failures, 0 errors
+- `.\mvnw.cmd verify -Pintegration-tests`: build success; **4** additional Testcontainers integration tests run when Docker is available (as on GitHub Actions), otherwise `PostgresIntegrationIT` skips cleanly via `@Testcontainers(disabledWithoutDocker = true)`
 
 What is tested:
 
@@ -309,6 +319,8 @@ System overview:
 docker compose up -d
 docker compose down
 ```
+
+On Linux or macOS, use `./mvnw` instead of `.\mvnw.cmd` (same goals as above).
 
 ## License
 
