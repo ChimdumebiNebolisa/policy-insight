@@ -29,6 +29,9 @@ public class SampleReportService {
 
     public static final String DEFAULT_SAMPLE_KEY = "vendor-agreement";
     public static final String SAMPLE_DEMO_KEY = "fictional-business-agreement-deterministic-v1";
+    public static final String PRIVACY_POLICY_DEMO_KEY = "privacy-policy-deterministic-v1";
+    public static final String EMPLOYMENT_POLICY_DEMO_KEY = "employment-policy-deterministic-v1";
+    public static final String CAMPUS_STUDENT_POLICY_DEMO_KEY = "campus-student-policy-deterministic-v1";
     private static final Logger LOGGER = LoggerFactory.getLogger(SampleReportService.class);
     private static final Map<String, SampleDefinition> SAMPLE_DEFINITIONS = Map.of(
             DEFAULT_SAMPLE_KEY, new SampleDefinition(
@@ -36,15 +39,15 @@ public class SampleReportService {
                     "samples/fictional_business_agreement.pdf"
             ),
             "privacy-policy", new SampleDefinition(
-                    "privacy-policy-deterministic-v1",
+                    PRIVACY_POLICY_DEMO_KEY,
                     "samples/privacy_policy_sample.txt"
             ),
             "employment-policy", new SampleDefinition(
-                    "employment-policy-deterministic-v1",
+                    EMPLOYMENT_POLICY_DEMO_KEY,
                     "samples/employment_policy_sample.txt"
             ),
             "campus-student-policy", new SampleDefinition(
-                    "campus-student-policy-deterministic-v1",
+                    CAMPUS_STUDENT_POLICY_DEMO_KEY,
                     "samples/campus_student_policy_sample.txt"
             )
     );

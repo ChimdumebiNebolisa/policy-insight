@@ -2,45 +2,55 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
 <section th:fragment="reportHeader(shared, ownerControls)" class="report-header-panel">
-    <div>
-        <a class="back-link" href="/">Back to upload</a>
-        <p class="section-kicker" th:text="${shared} ? 'Shared read-only report' : (${reportView.demo()} ? 'Fictional sample' : 'PolicyInsight report')">PolicyInsight report</p>
-        <h1 th:text="${reportView.demo()} ? 'Fictional business agreement review' : 'Risk report'">Risk report</h1>
-        <div class="meta-row">
-            <span th:text="${reportView.createdAtDisplay()}">Created recently</span>
+    <div class="report-header-main">
+        <a class="back-link" href="/">Back to home</a>
+        <p class="section-kicker" th:text="${shared} ? 'Shared read-only report' : (${reportView.demo()} ? 'Fictional sample report' : 'Your analysis workspace')">PolicyInsight report</p>
+        <h1 th:text="${reportView.reportHeadline()}">Policy analysis report</h1>
+        <p class="report-doc-name" th:if="${reportView.demo()}" th:text="${reportView.displayDocumentTitle()}">Sample title</p>
+        <div class="meta-row badge-row-wrap">
+            <span class="meta-muted" th:text="${reportView.createdAtDisplay()}">Created recently</span>
             <span class="badge">Citation-grounded</span>
+            <span class="badge badge-neutral" th:if="${!reportView.demo() && !reportView.fallback()}">Your document</span>
             <span class="badge badge-warning" th:if="${reportView.demo()}">Fictional sample. Demonstration only.</span>
             <span class="badge badge-warning" th:if="${reportView.fallback()}">Demo fallback. Not live AI analysis.</span>
+            <span class="badge badge-neutral" th:text="${reportView.jobStatusDisplay()}">Completed</span>
         </div>
     </div>
     <div class="report-actions">
         <form th:if="${ownerControls}" th:hx-post="@{/share/{id}(id=${reportView.reportId()})}"
               hx-target="#share-result" hx-swap="innerHTML" method="post">
-            <button class="button button-primary" type="submit">Share</button>
+            <button class="button button-ghost" type="submit">Share</button>
         </form>
         <a class="button button-secondary" th:if="${ownerControls && !reportView.demo()}" href="#qa">Ask a question</a>
         <a class="button button-secondary" th:if="${ownerControls && !reportView.demo()}"
-           th:href="@{/report/{id}/export.md(id=${reportView.reportId()})}" target="_blank">Export</a>
+           th:href="@{/report/{id}/export.md(id=${reportView.reportId()})}" target="_blank" rel="noopener">Export Markdown</a>
         <div id="share-result" aria-live="polite"></div>
     </div>
 </section>
 
 <section th:fragment="reportBody(qaEnabled)" class="report-workspace">
-    <nav class="section-nav" aria-label="Report sections">
-        <a href="#overview">Overview</a>
-        <a href="#summary">Summary</a>
-        <a href="#obligations">Obligations &amp; Costs</a>
-        <a href="#restrictions">Restrictions &amp; Privacy</a>
-        <a href="#termination">Termination &amp; Gaps</a>
-        <a href="#risks">Risks</a>
-        <a href="#tech-details">Details</a>
-        <a href="#evidence">Evidence</a>
-    </nav>
+    <aside id="evidence" class="evidence-panel" aria-label="Source evidence">
+        <div class="section-heading evidence-heading">
+            <div>
+                <h2>Source evidence</h2>
+                <p class="evidence-lede">Matching excerpts from the document text cited in this report. Click any citation chip in the analysis to jump here.</p>
+            </div>
+        </div>
+        <div class="source-list">
+            <article class="source-card" th:each="item : ${reportView.allCitedEvidence()}" th:id="${'source-' + item.sourceId()}">
+                <div class="source-meta">
+                    <span class="source-section-label" th:text="${item.label()}">Section 1 of 4</span>
+                    <span class="source-category" th:text="${item.category()}">Fees</span>
+                </div>
+                <p class="source-excerpt" th:text="${item.excerpt()}">Source text</p>
+            </article>
+        </div>
+    </aside>
 
     <div class="report-main">
         <section id="overview" class="summary-strip" aria-label="Report summary">
             <article>
-                <span>Overview</span>
+                <span>Executive snapshot</span>
                 <p th:text="${reportView.report().documentOverview()}">Document overview</p>
             </article>
             <article>
@@ -60,9 +70,9 @@
         <section class="guided-review" th:if="${!reportView.sampleReviewCards().isEmpty()}" aria-labelledby="guided-review-title">
             <div class="section-heading">
                 <div>
-                    <span>Guided demo</span>
-                    <h2 id="guided-review-title">Review focus areas</h2>
-                    <p>Key sample findings with cited sources.</p>
+                    <span>Sample walkthrough</span>
+                    <h2 id="guided-review-title">Guided sample highlights</h2>
+                    <p>Representative findings for this fictional document, each linked to cited sections.</p>
                 </div>
             </div>
             <div class="review-card-track" aria-label="Sample review cards">
@@ -75,7 +85,7 @@
                     </div>
                     <div class="claim-meta">
                         <a class="citation-chip" th:each="id : ${card.sourceIds()}"
-                           th:href="${'#source-' + id}" th:title="${id}" th:text="${reportView.sourceLabel(id)}">Source</a>
+                           th:href="${'#source-' + id}" th:title="${id}" th:text="${reportView.sourceLabel(id)}">Section</a>
                     </div>
                 </article>
             </div>
@@ -91,7 +101,7 @@
 
         <details id="obligations" class="report-section">
             <summary>
-                <span>Obligations, costs &amp; deadlines</span>
+                <span>Key obligations &amp; operational impact</span>
                 <strong th:text="${#lists.size(reportView.report().obligations()) + ' items'}">0 items</strong>
             </summary>
             <div th:replace="~{fragments/report :: claims(${reportView.report().obligations()}, 'Obligation')}"></div>
@@ -99,7 +109,7 @@
 
         <details id="restrictions" class="report-section">
             <summary>
-                <span>Restrictions, privacy &amp; confidentiality</span>
+                <span>Restrictions &amp; privacy</span>
                 <strong th:text="${#lists.size(reportView.report().restrictions()) + ' items'}">0 items</strong>
             </summary>
             <div th:replace="~{fragments/report :: claims(${reportView.report().restrictions()}, 'Restriction')}"></div>
@@ -107,7 +117,7 @@
 
         <details id="termination" class="report-section">
             <summary>
-                <span>Termination, gaps &amp; next steps</span>
+                <span>Termination, gaps &amp; follow-ups</span>
                 <strong th:text="${#lists.size(reportView.report().terminationTriggers()) + ' items'}">0 items</strong>
             </summary>
             <div th:replace="~{fragments/report :: claims(${reportView.report().terminationTriggers()}, 'Termination / gap')}"></div>
@@ -115,23 +125,29 @@
 
         <details id="risks" class="report-section risk-section" open>
             <summary>
-                <span>Risks &amp; items to review</span>
+                <span>Risk items</span>
                 <strong th:text="${#lists.size(reportView.report().riskTaxonomy()) + ' items'}">0 items</strong>
             </summary>
             <div th:replace="~{fragments/report :: claims(${reportView.report().riskTaxonomy()}, 'Review closely')}"></div>
         </details>
 
-        <details id="tech-details" class="report-section">
+        <details id="tech-details" class="report-section report-section-muted">
             <summary>
-                <span>How this was analyzed</span>
+                <span>Technical details</span>
             </summary>
             <dl class="tech-details-list">
+                <dt>Intake</dt>
+                <dd th:text="${reportView.intakeSummary()}"></dd>
                 <dt>Document source</dt>
-                <dd th:text="${reportView.demo()} ? 'Fictional sample — demonstration only' : 'Uploaded document'"></dd>
+                <dd th:text="${reportView.demo()} ? 'Fictional sample — demonstration only' : 'User-submitted text (original PDFs are not stored)'"></dd>
                 <dt>Source sections</dt>
-                <dd th:text="${reportView.chunkCount() + ' sections extracted'}"></dd>
+                <dd th:text="${reportView.chunkCount() + ' sections extracted from the document'}"></dd>
                 <dt>Report generated</dt>
                 <dd th:text="${reportView.createdAtDisplay()}"></dd>
+                <dt>Job status</dt>
+                <dd th:text="${reportView.jobStatusDisplay()}"></dd>
+                <dt th:if="${reportView.demo() && !reportView.fallback()}">Sample mode</dt>
+                <dd th:if="${reportView.demo() && !reportView.fallback()}">Deterministic catalog report (no live model call for this sample)</dd>
                 <dt th:if="${reportView.fallback()}">Analysis type</dt>
                 <dd th:if="${reportView.fallback()}">Demo fallback — not live AI analysis</dd>
                 <dt th:unless="${reportView.fallback() || reportView.demo() || reportView.aiProviderLabel().isEmpty()}">AI analysis provider</dt>
@@ -167,7 +183,7 @@
                         <div class="claim-meta">
                             <a class="citation-chip" th:each="id : ${qa.answer().chunkIds()}"
                                th:href="${'#source-' + id}" th:title="${id}"
-                               th:text="${reportView.sourceLabel(id)}">Source</a>
+                               th:text="${reportView.sourceLabel(id)}">Section</a>
                             <span class="unsupported-chip" th:if="${qa.answer().unsupported()}">Unsupported citation</span>
                         </div>
                     </article>
@@ -175,28 +191,22 @@
                 <p class="empty-state" th:if="${reportView.qaHistory() == null || reportView.qaHistory().isEmpty()}">No questions yet.</p>
             </div>
         </section>
-        <section class="qa-panel" th:if="${!qaEnabled && reportView.demo()}">
-            <p class="muted">Q&amp;A is available for uploaded documents.</p>
+        <section class="qa-panel qa-panel-muted" th:if="${!qaEnabled && reportView.demo()}">
+            <p class="muted">Q&amp;A is available for uploaded documents. Open your own PDF or pasted text to ask grounded follow-ups.</p>
         </section>
     </div>
 
-    <aside id="evidence" class="evidence-panel">
-        <div class="section-heading">
-            <div>
-                <h2>Cited evidence</h2>
-                <p>Short excerpts from sources cited by the report.</p>
-            </div>
-        </div>
-        <div class="source-list">
-            <article class="source-card" th:each="item : ${reportView.allCitedEvidence()}" th:id="${'source-' + item.sourceId()}">
-                <div class="source-meta">
-                    <span th:text="${item.label()}">Source 1</span>
-                    <span class="source-category" th:text="${item.category()}">Fees</span>
-                </div>
-                <p th:text="${item.excerpt()}">Source text</p>
-            </article>
-        </div>
-    </aside>
+    <nav class="section-nav" aria-label="Report sections">
+        <a href="#overview">Snapshot</a>
+        <a href="#summary">Executive summary</a>
+        <a href="#obligations">Obligations</a>
+        <a href="#restrictions">Restrictions</a>
+        <a href="#termination">Termination</a>
+        <a href="#risks">Risks</a>
+        <a href="#evidence">Evidence</a>
+        <a href="#qa" th:if="${qaEnabled}">Q&amp;A</a>
+        <a href="#tech-details">Technical</a>
+    </nav>
 </section>
 
 <div th:fragment="claims(claims, tone)" class="claim-list">
@@ -205,7 +215,7 @@
         <p th:text="${claim.text()}">Claim text</p>
         <div class="claim-meta">
             <a class="citation-chip" th:each="id : ${claim.chunkIds()}"
-               th:href="${'#source-' + id}" th:title="${id}" th:text="${reportView.sourceLabel(id)}">Source</a>
+               th:href="${'#source-' + id}" th:title="${id}" th:text="${reportView.sourceLabel(id)}">Section</a>
             <span class="unsupported-chip" th:if="${claim.unsupported()}">Unsupported</span>
         </div>
     </article>

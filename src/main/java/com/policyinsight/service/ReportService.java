@@ -195,7 +195,9 @@ public class ReportService {
                 riskReport,
                 chunks,
                 qaHistory,
-                aiProviderLabel()
+                aiProviderLabel(),
+                job.getDemoKey(),
+                job.getStatus()
         ));
     }
 

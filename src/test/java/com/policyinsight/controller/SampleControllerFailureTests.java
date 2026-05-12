@@ -60,7 +60,7 @@ class SampleControllerFailureTests {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Fictional sample. Demonstration only.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Cedar Ridge Data Solutions")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source 1")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Section 1")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Gemini API request failed"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("mock"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("fallback"))));

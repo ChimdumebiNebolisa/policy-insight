@@ -63,7 +63,7 @@ class QaControllerTests {
                         .param("question", "What should I review?"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Answer based on saved document source text")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source 1")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Section 1")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("chunk"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("mock"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("fallback"))));

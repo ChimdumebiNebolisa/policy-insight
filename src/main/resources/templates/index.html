@@ -4,58 +4,103 @@
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
-<main class="utility-shell">
-    <section class="utility-panel" aria-labelledby="page-title">
-        <div class="intro-block">
+<main class="utility-shell landing-shell">
+    <section class="landing-hero" aria-labelledby="page-title">
+        <div class="landing-hero-copy">
+            <p class="eyebrow">AI-assisted document review</p>
             <h1 id="page-title">PolicyInsight</h1>
-            <p class="subtitle">Review policy and agreement PDFs with AI-generated reports linked to source text.</p>
-            <p>Upload a PDF or paste plain text to identify obligations, restrictions, termination terms, and risk points, then ask follow-up questions against the document.</p>
+            <p class="subtitle">Turn policies, agreements, and contracts into a citation-backed analysis you can scan, share, and question—without storing your original PDF.</p>
+            <p class="landing-lede">Upload a PDF, paste text, or open a fictional sample. Every finding links to the exact source section so you can trust what you are reading.</p>
+        </div>
+        <ul class="benefits-row" aria-label="Product benefits">
+            <li><strong>Citations first</strong><span>Claims point to the passages they came from.</span></li>
+            <li><strong>Evidence panel</strong><span>Jump from any chip to the matching excerpt.</span></li>
+            <li><strong>Share results</strong><span>Read-only links for stakeholders.</span></li>
+            <li><strong>Grounded Q&amp;A</strong><span>Ask follow-ups on your own uploads.</span></li>
+        </ul>
+    </section>
+
+    <section class="utility-panel intake-deck" aria-labelledby="intake-heading">
+        <div class="panel-heading">
+            <h2 id="intake-heading">Start in three ways</h2>
+            <p class="muted">Pick the path that fits your workflow. Text is extracted for analysis; original PDFs are not kept.</p>
         </div>
 
-        <div class="option-grid">
-            <section id="upload" class="option-panel" aria-labelledby="upload-title">
-                <div>
-                    <h2 id="upload-title">Analyze your document</h2>
-                    <p>PDF (max <span th:text="${maxUploadMb}">10</span> MB) or pasted text (max <span th:text="${maxPasteChars}">500000</span> characters). Uploads are discarded after text extraction.</p>
+        <div class="intake-three">
+            <article class="intake-card" aria-labelledby="upload-card-title">
+                <div class="intake-card-head">
+                    <span class="intake-step">1</span>
+                    <h3 id="upload-card-title">Upload a PDF</h3>
+                    <p class="muted">Best for signed agreements and published policies.</p>
                 </div>
-                <div class="intake-row">
-                    <form class="upload-form" hx-post="/upload" hx-target="#job-status" hx-swap="innerHTML"
-                          enctype="multipart/form-data" method="post">
-                        <label for="file">Upload a PDF</label>
-                        <input id="file" name="file" type="file" accept="application/pdf" required>
-                        <button class="button button-primary" type="submit">
-                            <span class="idle-text">Analyze PDF</span>
-                            <span class="loading-text">Analyzing PDF...</span>
-                        </button>
-                    </form>
-                    <form class="paste-form" hx-post="/paste" hx-target="#job-status" hx-swap="innerHTML" method="post">
-                        <label for="paste-text">Or paste document text</label>
-                        <textarea id="paste-text" name="text" rows="8" required
-                                  th:attr="maxlength=${maxPasteChars}"
-                                  placeholder="Paste policy or agreement text here"></textarea>
-                        <button class="button button-primary" type="submit">
-                            <span class="idle-text">Analyze pasted text</span>
-                            <span class="loading-text">Analyzing text...</span>
-                        </button>
-                    </form>
-                </div>
-                <div id="job-status" aria-live="polite"></div>
-            </section>
+                <form class="upload-form" hx-post="/upload" hx-target="#job-status" hx-swap="innerHTML"
+                      enctype="multipart/form-data" method="post">
+                    <label for="file">Choose file</label>
+                    <input id="file" name="file" type="file" accept="application/pdf" required>
+                    <button class="button button-primary" type="submit">
+                        <span class="idle-text">Analyze PDF</span>
+                        <span class="loading-text">Analyzing PDF...</span>
+                    </button>
+                </form>
+                <p class="fine-print">Max <span th:text="${maxUploadMb}">10</span> MB. Text only is retained for processing.</p>
+            </article>
 
-            <section class="option-panel" aria-labelledby="sample-title">
-                <div>
-                    <h2 id="sample-title">Open sample report</h2>
-                    <p>View a fictional sample report without uploading a file.</p>
+            <article class="intake-card" aria-labelledby="paste-card-title">
+                <div class="intake-card-head">
+                    <span class="intake-step">2</span>
+                    <h3 id="paste-card-title">Paste document text</h3>
+                    <p class="muted">Useful for drafts, redlines, or text exported from other tools.</p>
                 </div>
-                <div class="sample-links">
-                    <a class="button button-primary" href="/sample">Vendor agreement sample</a>
-                    <a class="button button-secondary" href="/sample/privacy-policy">Privacy policy sample</a>
-                    <a class="button button-secondary" href="/sample/employment-policy">Employment policy sample</a>
-                    <a class="button button-secondary" href="/sample/campus-student-policy">Campus/student policy sample</a>
+                <form class="paste-form" hx-post="/paste" hx-target="#job-status" hx-swap="innerHTML" method="post">
+                    <label for="paste-text">Document text</label>
+                    <textarea id="paste-text" name="text" rows="8" required
+                              th:attr="maxlength=${maxPasteChars}"
+                              placeholder="Paste policy, handbook, or contract text here"></textarea>
+                    <button class="button button-primary" type="submit">
+                        <span class="idle-text">Analyze pasted text</span>
+                        <span class="loading-text">Analyzing text...</span>
+                    </button>
+                </form>
+                <p class="fine-print">Up to <span th:text="${maxPasteChars}">500000</span> characters.</p>
+            </article>
+
+            <article class="intake-card intake-card-samples" id="samples" aria-labelledby="sample-deck-title">
+                <div class="intake-card-head">
+                    <span class="intake-step">3</span>
+                    <h3 id="sample-deck-title">Try a sample</h3>
+                    <p class="muted">Deterministic fictional documents—no API keys required.</p>
                 </div>
+                <ul class="sample-deck">
+                    <li>
+                        <a class="sample-deck-link sample-deck-primary" href="/sample">
+                            <span class="sample-deck-name">Vendor agreement</span>
+                            <span class="sample-deck-desc">Services, fees, liability, and termination clauses.</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="sample-deck-link" href="/sample/privacy-policy">
+                            <span class="sample-deck-name">Privacy policy</span>
+                            <span class="sample-deck-desc">Collection, retention, security, and user rights.</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="sample-deck-link" href="/sample/employment-policy">
+                            <span class="sample-deck-name">Employment policy</span>
+                            <span class="sample-deck-desc">Conduct, payroll timing, remote work, and discipline.</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="sample-deck-link" href="/sample/campus-student-policy">
+                            <span class="sample-deck-name">Campus / student policy</span>
+                            <span class="sample-deck-desc">Reporting, housing rules, appeals, and conduct.</span>
+                        </a>
+                    </li>
+                </ul>
                 <p class="fine-print">Fictional sample. Demonstration only.</p>
-            </section>
+            </article>
         </div>
+
+        <div id="job-status" class="job-status-slot" aria-live="polite"></div>
     </section>
 
     <p class="legal-note">PolicyInsight supports document review and does not provide legal advice.</p>

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.policyinsight.ai.dto.RiskReport;
 import com.policyinsight.config.ShareProperties;
 import com.policyinsight.model.DocumentChunk;
+import com.policyinsight.model.JobStatus;
+import com.policyinsight.model.PolicyJob;
 import com.policyinsight.model.Report;
 import com.policyinsight.model.ShareLink;
 import com.policyinsight.repository.DocumentChunkRepository;
@@ -79,16 +81,19 @@ public class ShareLinkService {
                     RiskReport riskReport = fromJson(report.getContent());
                     boolean isFallback = riskReport.documentOverview() != null
                             && riskReport.documentOverview().startsWith(FallbackReportBuilder.FALLBACK_LABEL);
+                    PolicyJob job = report.getJob();
                     return new ReportView(
                             report.getId(),
-                            report.getJob().getId(),
+                            job.getId(),
                             report.getCreatedAt(),
-                            report.getJob().getDemoKey() != null,
+                            job.getDemoKey() != null,
                             isFallback,
                             riskReport,
                             chunks,
                             List.of(),
-                            ""
+                            "",
+                            job.getDemoKey(),
+                            job.getStatus() != null ? job.getStatus() : JobStatus.COMPLETED
                     );
                 });
     }

@@ -42,7 +42,7 @@ class ReportControllerTests {
 
         mockMvc.perform(get("/report/" + fixture.reportId()).cookie(fixture.ownerCookie()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("How this was analyzed")))
+                .andExpect(content().string(containsString("Technical details")))
                 .andExpect(content().string(containsString("sections extracted")))
                 .andExpect(content().string(containsString("Report generated")));
     }
@@ -97,14 +97,14 @@ class ReportControllerTests {
 
         mockMvc.perform(get("/report/" + fixture.reportId()).cookie(fixture.ownerCookie()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Risk report")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Policy analysis report")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Report sections")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Review closely")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Obligation")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Cited evidence")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Short excerpts from sources cited by the report.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source evidence")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Matching excerpts from the document text cited in this report.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"#source-")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source 1")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Section 1")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Ask a question")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Grounded Q&amp;A")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("chunk"))))

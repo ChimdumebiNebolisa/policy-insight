@@ -62,8 +62,9 @@ class UploadFailureFallbackTests {
                 .andExpect(status().isOk())
                 .andReturn();
         Cookie ownerCookie = ownerCookie(upload);
-        PolicyJob job = policyJobRepository.findAll().getLast();
-        waitForStatus(job.getId(), JobStatus.FAILED);
+        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
+        waitForStatus(jobId, JobStatus.FAILED);
+        PolicyJob job = policyJobRepository.findById(jobId).orElseThrow();
 
         mockMvc.perform(get("/status/" + job.getId()).cookie(ownerCookie))
                 .andExpect(status().isOk())
@@ -87,8 +88,9 @@ class UploadFailureFallbackTests {
                 .andExpect(status().isOk())
                 .andReturn();
         Cookie ownerCookie = ownerCookie(upload);
-        PolicyJob job = policyJobRepository.findAll().getLast();
-        waitForStatus(job.getId(), JobStatus.COMPLETED);
+        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
+        waitForStatus(jobId, JobStatus.COMPLETED);
+        PolicyJob job = policyJobRepository.findById(jobId).orElseThrow();
 
         mockMvc.perform(post("/retry/" + job.getId()).cookie(ownerCookie))
                 .andExpect(status().isBadRequest());
@@ -104,9 +106,9 @@ class UploadFailureFallbackTests {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("source section(s) extracted")))
                 .andReturn();
         Cookie ownerCookie = ownerCookie(upload);
-        PolicyJob job = policyJobRepository.findAll().getLast();
-        waitForStatus(job.getId(), JobStatus.FAILED);
-        job = policyJobRepository.findById(job.getId()).orElseThrow();
+        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
+        waitForStatus(jobId, JobStatus.FAILED);
+        PolicyJob job = policyJobRepository.findById(jobId).orElseThrow();
 
         assertThat(job.getStatus()).isEqualTo(JobStatus.FAILED);
         assertThat(job.getSafeErrorMessage()).isEqualTo(GeminiAnalyzer.SAFE_ANALYSIS_FAILURE_MESSAGE);
@@ -142,9 +144,9 @@ class UploadFailureFallbackTests {
                 .andExpect(status().isOk())
                 .andReturn();
         Cookie ownerCookie = ownerCookie(upload);
-        PolicyJob job = policyJobRepository.findAll().getLast();
+        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
 
-        MvcResult statusResult = mockMvc.perform(get("/status/" + job.getId()).cookie(ownerCookie))
+        MvcResult statusResult = mockMvc.perform(get("/status/" + jobId).cookie(ownerCookie))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("hx-target=\"#job-status\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("hx-swap=\"innerHTML\"")))
@@ -164,17 +166,17 @@ class UploadFailureFallbackTests {
                 .andExpect(status().isOk())
                 .andReturn();
         Cookie ownerCookie = ownerCookie(upload);
-        PolicyJob job = policyJobRepository.findAll().getLast();
-        waitForStatus(job.getId(), JobStatus.FAILED);
+        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
+        waitForStatus(jobId, JobStatus.FAILED);
 
-        mockMvc.perform(post("/fallback/" + job.getId()).cookie(ownerCookie))
+        mockMvc.perform(post("/fallback/" + jobId).cookie(ownerCookie))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/report/" + reportRepository.findByJobId(job.getId()).orElseThrow().getId()).cookie(ownerCookie))
+        mockMvc.perform(get("/report/" + reportRepository.findByJobId(jobId).orElseThrow().getId()).cookie(ownerCookie))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Demo fallback. Not live AI analysis.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Ask a question")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Cited evidence")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Source evidence")));
     }
 
     private static RiskReport successReport() {
@@ -196,6 +198,33 @@ class UploadFailureFallbackTests {
                 .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    /**
+     * Resolves the job id from the owner cookie name ({@code PI_OWNER_} + UUID without dashes).
+     * Avoids {@code findAll().getLast()}, which is undefined order and can pick another job when the
+     * in-memory DB already contains rows from other tests.
+     */
+    private static UUID jobIdFromOwnerCookie(Cookie ownerCookie) {
+        String name = ownerCookie.getName();
+        String prefix = "PI_OWNER_";
+        if (!name.startsWith(prefix)) {
+            throw new IllegalStateException("Expected owner cookie name to start with " + prefix + ", got: " + name);
+        }
+        String hex = name.substring(prefix.length());
+        if (hex.length() != 32) {
+            throw new IllegalStateException("Expected 32 hex chars in owner cookie name, got length " + hex.length());
+        }
+        String uuid = hex.substring(0, 8)
+                + "-"
+                + hex.substring(8, 12)
+                + "-"
+                + hex.substring(12, 16)
+                + "-"
+                + hex.substring(16, 20)
+                + "-"
+                + hex.substring(20, 32);
+        return UUID.fromString(uuid);
     }
 
     private int countOccurrences(String text, String needle) {

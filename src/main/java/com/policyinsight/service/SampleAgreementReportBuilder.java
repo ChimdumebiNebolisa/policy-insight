@@ -89,7 +89,7 @@ public class SampleAgreementReportBuilder {
                 "The employment policy defines attendance, conduct, disciplinary process, and manager approvals for leave, remote work, and conflicts of interest.",
                 List.of(
                         claim("Employees must complete annual conduct training by March 31.", "annual conduct training by March 31", sources),
-                        claim("Timesheets must be submitted by Monday 10:00 AM local time.", "Monday 10:00 AM local time", sources),
+                        claim("Timesheets must be submitted by Monday 10:00 AM local time, and payroll adjustments depend on approved timesheets.", "Monday 10:00 AM local time", sources),
                         claim("Unauthorized overtime may result in corrective action.", "unauthorized overtime may result in corrective action", sources)
                 ),
                 List.of(
@@ -105,7 +105,7 @@ public class SampleAgreementReportBuilder {
                         claim("Policy violations involving harassment can result in immediate termination.", "harassment may result in immediate termination", sources)
                 ),
                 List.of(
-                        claim("Late manager approvals may delay payroll adjustments.", "payroll adjustments depend on approved timesheets", sources),
+                        claim("Late manager approvals may delay payroll adjustments when timesheets are late; payroll adjustments depend on approved timesheets.", "payroll adjustments depend on approved timesheets", sources),
                         claim("Cross-border remote work restrictions may impact staffing continuity.", "remote work from unapproved countries is not allowed", sources)
                 )
         );

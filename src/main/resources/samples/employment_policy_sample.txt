@@ -1,13 +1,100 @@
-Northbridge Employment Policy (Fictional)
+Northbridge Analytics Employment Policy (Fictional — Demonstration Document)
 
-Employees must complete annual conduct training by March 31 each calendar year.
-Timesheets must be submitted by Monday 10:00 AM local time, and payroll adjustments depend on approved timesheets.
+This handbook section applies to all Northbridge Analytics employees and contractors with system access unless a separate written agreement explicitly overrides it. Northbridge Analytics is a fictional employer used only for product demonstrations.
 
-Managers must acknowledge leave requests within five (5) business days and document approvals in the HR portal.
-Employees must disclose conflicts of interest in writing within five (5) business days of identifying a conflict.
+1. Purpose and scope
+This policy defines attendance expectations, conduct standards, disciplinary processes, and manager approvals for leave, remote work, expense reimbursements, and conflicts of interest. Managers are responsible for consistent application and documentation.
 
-Employees are prohibited from storing confidential customer data on personal devices.
-Remote work from unapproved countries is not allowed without written compliance authorization.
+2. Attendance and punctuality
+Employees are expected to maintain regular attendance and notify their manager for unexpected absences as soon as practicable. Patterns of unexcused absences may trigger coaching.
 
-Unauthorized overtime may result in corrective action through progressive discipline up to termination.
-Policy violations involving harassment may result in immediate termination.
+3. Training and certifications
+Employees must complete annual conduct training by March 31 each calendar year. Failure to complete training on time may result in suspension of certain system privileges until completion.
+
+4. Time reporting
+Timesheets must be submitted by Monday 10:00 AM local time, and payroll adjustments depend on approved timesheets. Managers must reject inaccurate timesheets with written reasons and allow prompt correction.
+
+5. Leave and accommodations
+Managers must acknowledge leave requests within five (5) business days and document approvals in the HR portal. Medical and disability accommodation requests are handled through the accommodations team under applicable law.
+
+6. Conflicts of interest
+Employees must disclose conflicts of interest in writing within five (5) business days of identifying a conflict. Conflicts include financial interests in suppliers, board roles with competitors, and personal relationships that could influence procurement decisions.
+
+7. Confidentiality and data handling
+Employees are prohibited from storing confidential customer data on personal devices. Work devices must use approved endpoint protection and disk encryption. Customer data may only be exported when required for contracted deliverables and must follow the data handling checklist.
+
+8. Remote work and travel
+Remote work from unapproved countries is not allowed without written compliance authorization from Legal and Security. Short-term travel requires pre-approval if it involves accessing production systems from new locations.
+
+9. Workplace conduct
+Harassment, discrimination, and retaliation are prohibited. Policy violations involving harassment may result in immediate termination following a good-faith investigation.
+
+10. Discipline
+Unauthorized overtime may result in corrective action through progressive discipline up to termination, depending on severity and repetition. Progressive discipline includes verbal coaching, written warning, performance improvement plan, and termination.
+
+11. Expenses and approvals
+Expense reports must be submitted within thirty days with itemized receipts. Personal expenses are not reimbursable. Managers must approve expenses within five business days of submission.
+
+12. Side projects
+Paid outside employment must be disclosed and cannot compete with Northbridge business or use Northbridge resources without written approval.
+
+13. Social media
+Employees may not disclose confidential projects or customers on social platforms. Public statements that could be attributed to Northbridge must align with communications guidelines.
+
+14. Equipment return
+Upon separation, employees must return laptops, badges, and tokens within three business days unless otherwise coordinated with IT.
+
+15. Investigations
+Northbridge may place employees on administrative leave with pay during investigations when warranted to protect employees or evidence integrity.
+
+16. Whistleblower protections
+Reports made in good faith through approved channels will be investigated promptly. Retaliation against reporters is prohibited.
+
+17. Recordkeeping
+HR maintains disciplinary records according to the records retention schedule. Employees may request copies of their own personnel documents subject to legal limitations.
+
+18. Policy updates
+Material updates are communicated through the intranet and email. Continued employment after the effective date constitutes acknowledgment unless a jurisdiction requires explicit consent.
+
+19. Supplemental operational guidance (fictional)
+Managers should document performance discussions within two business days. HR business partners may advise on complex cases involving multiple jurisdictions.
+
+Contractors must follow equivalent data handling rules through their vendor agreements. Contractors do not receive Northbridge stock options unless separately contracted.
+
+Interns must complete a shortened training track but still complete harassment prevention modules.
+
+Volunteer activities using Northbridge name require marketing approval.
+
+Gifts from vendors above nominal value must be declined or donated per the gifts policy.
+
+Political activity may not occur during paid work hours or using company resources.
+
+Drug and alcohol misuse that impairs safety may result in immediate removal from client sites.
+
+Client background checks may be required for certain roles; refusal may limit assignments.
+
+Travel per diems follow the published schedule; exceptions require CFO approval.
+
+Workplace visitors must sign in and wear badges.
+
+Emergency evacuation drills occur quarterly.
+
+IT may remotely wipe lost devices reported within the required window.
+
+Employees may request flexible schedules where business needs allow.
+
+Breaches of this policy may be referenced in performance reviews when relevant.
+
+Northbridge may update security tooling to address new threats without individual consent where enterprise agreements permit.
+
+Employees on performance improvement plans must meet documented milestones.
+
+Second jobs that create fatigue risks may be limited if they affect safety-sensitive duties.
+
+Customer-facing employees must follow brand voice guidelines in written communications.
+
+Internal transfers require manager alignment and HR processing.
+
+Sabbaticals are available only in certain regions as described in regional supplements.
+
+This fictional policy is labeled for demonstration use only.

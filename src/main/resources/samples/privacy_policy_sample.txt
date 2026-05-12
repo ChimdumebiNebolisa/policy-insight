@@ -1,13 +1,107 @@
-BrightLeaf Services Privacy Policy (Fictional)
+BrightLeaf Services Privacy Policy (Fictional — Demonstration Document)
 
-We collect account profile details, device diagnostics, and service interaction logs to provide support and improve platform reliability.
-We collect account profile details only for account operations, fraud prevention, and product quality.
-We do not sell personal data to third-party advertisers.
+Effective date: January 1, 2026. This policy describes how BrightLeaf Services, Inc. (“BrightLeaf,” “we,” or “us”) collects, uses, shares, retains, and protects information when you use the BrightLeaf productivity suite, support portals, and related websites (collectively, the “Services”). This is a fictional document for product demonstration only and does not describe a real company.
 
-We retain personal data for twenty-four (24) months from the last account activity unless legal hold requests may suspend deletion.
-Users may request deletion through privacy@brightleaf.example after identity verification, and we respond to verified requests within forty-five (45) days.
+1. Who this policy covers
+This policy applies to customers, authorized users, trial participants, and visitors who interact with our Services. If you use the Services on behalf of an organization, that organization’s agreement with us may include additional or different terms.
 
-Security teams monitor security logs for unauthorized access and investigate incidents under documented procedures.
-Access to raw support transcripts is restricted to trained support leads.
+2. Information we collect
+We collect account profile details, device diagnostics, and service interaction logs to provide support and improve platform reliability. Account profile details include name, work email, role, organization name, and billing contact information. Device diagnostics include browser type, operating system version, approximate region derived from IP address, crash identifiers, and performance timings. Service interaction logs include feature usage counts, workflow timestamps, and error codes that do not include free-form user content unless you voluntarily submit it in a support ticket.
 
-If we materially change this policy, we notify users at least thirty (30) days before new terms take effect.
+We collect account profile details only for account operations, fraud prevention, and product quality. We do not sell personal data to third-party advertisers.
+
+3. How we use information
+We use collected information to authenticate users, deliver contracted features, detect abuse, troubleshoot incidents, and communicate service updates. We may aggregate or de-identify information for analytics that cannot reasonably be re-identified.
+
+4. Sharing and subprocessors
+We share personal data with subprocessors that provide hosting, email delivery, payment processing, and customer support tooling under written agreements that require appropriate security measures. We do not sell personal data to third-party advertisers. We do not allow subprocessors to use customer personal data for their own marketing.
+
+5. Retention and deletion
+We retain personal data for twenty-four (24) months from the last account activity unless legal hold requests may suspend deletion timelines for specific records. Backups may persist for a limited technical period after deletion requests are honored in primary systems.
+
+Users may request deletion through privacy@brightleaf.example after identity verification, and we respond to verified requests within forty-five (45) days. If a request cannot be fulfilled because of a conflict with our legal obligations, we explain the limitation in writing.
+
+6. Security
+Security teams monitor security logs for unauthorized access and investigate incidents under documented procedures. Access to raw support transcripts is restricted to trained support leads. We maintain encryption for data in transit using industry-standard protocols and encrypt sensitive fields at rest where technically feasible.
+
+7. International transfers
+Where personal data is transferred across borders, we rely on appropriate safeguards such as standard contractual clauses or equivalent mechanisms required by applicable law.
+
+8. Your choices and rights
+Depending on your location, you may have rights to access, correct, delete, or restrict processing of your personal data, and to object to certain processing. You may exercise rights by contacting privacy@brightleaf.example with sufficient detail for us to validate your request.
+
+9. Policy changes
+If we materially change this policy, we notify users at least thirty (30) days before new terms take effect, except where a shorter period is required by law or where changes solely increase protections. Continued use after the effective date constitutes acceptance unless applicable law requires express consent.
+
+10. Children’s data
+The Services are not directed to children under sixteen, and we do not knowingly collect personal data from children without appropriate parental authorization.
+
+11. Contact
+Questions about this fictional policy may be directed to privacy@brightleaf.example. This document is provided solely to illustrate how PolicyInsight summarizes and cites policy text.
+
+12. Supplemental operational detail (fictional)
+BrightLeaf may create derived metrics from usage patterns to prioritize reliability investments. Derived metrics do not include customer file contents from integrated storage providers unless you explicitly enable optional analytics features in workspace settings.
+
+Support teams may reference ticket metadata such as priority, product area, and resolution codes. Ticket metadata is retained according to the retention schedule in Section 5. BrightLeaf maintains a vendor risk review at least annually for subprocessors with access to personal data.
+
+Incident response playbooks require containment, eradication, recovery, and post-incident review steps. Customers may receive notifications when an incident materially affects the confidentiality of their data, consistent with contractual commitments.
+
+For enterprise customers, data processing terms may specify additional audit rights, data localization options, and breach notification windows. Those terms control when they conflict with this general policy.
+
+BrightLeaf may refuse manifestly unfounded or excessive requests, explaining the refusal under applicable law. Customers may appeal denials through the escalation path described in their order form.
+
+BrightLeaf does not use email contents for training third-party advertising models. Optional product-improvement programs that use de-identified snippets require separate opt-in where required by law.
+
+BrightLeaf may retain billing records for seven years where tax regulations apply, even if other personal data is deleted earlier.
+
+BrightLeaf may disclose information to law enforcement when legally compelled and after a good-faith review of the demand. Customers will receive notice unless legally prohibited.
+
+BrightLeaf may update subprocessors by posting an updated list and, for material changes, providing thirty days’ notice before the new subprocessor processes personal data, unless an emergency replacement is required for security reasons.
+
+BrightLeaf may use cookies and similar technologies for session management, preferences, and fraud prevention. You can control cookie settings through your browser, though some features may not function without necessary cookies.
+
+BrightLeaf may measure email engagement such as open rates for operational communications. Marketing communications include unsubscribe links where required.
+
+BrightLeaf may pseudonymize identifiers in analytics pipelines to reduce re-identification risk while preserving troubleshooting value.
+
+BrightLeaf may contractually prohibit customers from using the Services to collect sensitive categories of data without additional safeguards agreed in writing.
+
+BrightLeaf may suspend accounts for repeated violations of acceptable use policies that create security or privacy risk for other customers.
+
+BrightLeaf may provide aggregate statistics to customers about their own workspaces without including other customers’ data.
+
+BrightLeaf may document retention decisions in internal records to support audits and regulatory inquiries.
+
+BrightLeaf may offer regional hosting options subject to availability and additional fees described in order documentation.
+
+BrightLeaf may require multi-factor authentication for administrator roles to reduce account takeover risk.
+
+BrightLeaf may log administrative actions taken by customer admins for accountability and forensic purposes.
+
+BrightLeaf may delete dormant trial accounts after notice periods described in trial terms.
+
+BrightLeaf may refuse service to individuals or organizations on restricted party lists as required by trade compliance laws.
+
+BrightLeaf may use penetration testing and vulnerability scanning on its own infrastructure according to a published schedule with safeguards to avoid customer data exposure.
+
+BrightLeaf may publish transparency reports summarizing aggregate government requests without identifying individuals.
+
+BrightLeaf may coordinate with customers on joint communications following incidents that affect shared integrations.
+
+BrightLeaf may maintain separate environments for production, staging, and development to reduce accidental data mixing.
+
+BrightLeaf may require customers to maintain accurate billing contacts to ensure lawful basis for transactional messages.
+
+BrightLeaf may archive resolved support tickets according to retention rules while redacting certain attachments upon request where technically feasible.
+
+BrightLeaf may offer data export tools for administrators to download workspace artifacts in standard formats.
+
+BrightLeaf may restrict API access when anomalous traffic patterns suggest credential compromise.
+
+BrightLeaf may update security baselines as threats evolve, communicating material changes through release notes.
+
+BrightLeaf may participate in industry privacy working groups that do not involve sharing identifiable customer data.
+
+BrightLeaf may test disaster recovery procedures periodically to validate backup integrity.
+
+BrightLeaf may label this document as fictional wherever it appears in demonstrations to avoid confusion with real policies.

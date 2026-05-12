@@ -6,6 +6,7 @@
     <title th:text="${title}">PolicyInsight</title>
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <link rel="stylesheet" href="/css/app.css">
+    <script src="/js/citation-nav.js" defer></script>
 </head>
 <body>
 <header th:fragment="nav" class="app-header">
@@ -14,7 +15,8 @@
             <span>PolicyInsight</span>
         </a>
         <div class="nav-links">
-            <a href="/sample">Sample report</a>
+            <a href="/#samples">Samples</a>
+            <a href="/sample">Open sample</a>
         </div>
     </nav>
 </header>
