@@ -110,9 +110,12 @@ class PostgresIntegrationIT {
         assertThat(documentChunkRepository.findByJobIdOrderByChunkIndex(job.getId()))
                 .extracting(DocumentChunk::getId)
                 .containsExactly(chunk.getId());
-        assertThat(reportRepository.findByJobId(job.getId())).contains(report);
+        assertThat(reportRepository.findByJobId(job.getId()))
+                .map(Report::getId)
+                .contains(report.getId());
         assertThat(shareLinkRepository.findByTokenHashAndExpiresAtAfter(tokenHash, Instant.now()))
-                .contains(shareLink);
+                .map(ShareLink::getId)
+                .contains(shareLink.getId());
 
         assertThatThrownBy(() -> jdbcTemplate.update("""
                 insert into document_chunks (id, job_id, chunk_index, text_content)
