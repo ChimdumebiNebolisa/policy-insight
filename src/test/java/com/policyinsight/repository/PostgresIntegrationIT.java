@@ -38,6 +38,7 @@ class PostgresIntegrationIT {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
         registry.add("app.token-secret", () -> "postgres-integration-test-secret-value");
         registry.add("app.ai.provider", () -> "mock");
         registry.add("app.cleanup.enabled", () -> "false");
