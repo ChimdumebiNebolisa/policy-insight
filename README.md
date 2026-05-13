@@ -4,42 +4,76 @@
 
 ## What this is
 
-PolicyInsight is a Spring Boot web app for reviewing policy, agreement, and contract PDFs. Users upload a PDF, the app extracts text with PDFBox, creates source sections, generates a structured report, validates citations back to source text, and supports shareable report links plus grounded Q&A for uploaded documents. It also includes a bundled deterministic sample report built from a committed fictional PDF so the demo path does not depend on live Gemini availability.
+PolicyInsight is a **Spring Boot 3** web application for reviewing **policies, agreements, and contracts**. Users can **upload a PDF** or **paste plain text**; the backend extracts text, splits it into stored source sections, runs **AI-backed or mock** report generation, **validates citations** against those chunks, and serves a **structured report** with **source-backed evidence** in the browser. **Owner cookies** gate access to private jobs and reports; **expiring share links** expose read-only reports. **Grounded Q&A** is available on completed **user-submitted** reports (not on the deterministic sample-only path).
 
 ## Problem it solves
 
-Reviewing contracts and policy documents manually is slow when the goal is to identify the operational terms quickly. This app reduces that friction by extracting the text, organizing the document into source sections, producing a readable report with cited evidence, and allowing follow-up questions against the uploaded document instead of forcing users to scan the full PDF by hand.
+People often need to understand long policies, agreements, or contracts without reading every line. PolicyInsight reduces that friction by **extracting text**, **chunking** source material, producing a **structured report**, **checking cited chunk IDs** against stored excerpts, and surfacing **evidence** next to claims so results are easier to **review**, **share**, and **follow up with questions** tied to the saved document text.
+
+## Demo
+
+Live demo:
+
+Not currently included in this README.
+
+Screenshots:
+
+Not currently included in this README.
+
+Video/GIF:
+
+Not currently included in this README.
 
 ## Features
 
-- Upload PDF documents, validate them, extract text with PDFBox, and split the text into source sections without storing the original file
-- Generate structured reports for uploaded documents, then validate cited sources before saving the final report
-- Open a deterministic Gemini-free sample report built from `src/main/resources/samples/fictional_business_agreement.pdf`
-- Create shareable report links and ask grounded Q&A questions for uploaded documents
+Implemented in this repository:
+
+- **PDF upload**: validate file type/size, extract text with **Apache PDFBox**, chunk into source sections; **original PDF bytes are not persisted** (only extracted text in PostgreSQL).
+- **Pasted text intake**: `POST /paste` with configurable maximum length (`APP_PASTE_MAX_CHARS` / `app.paste.max-chars`).
+- **Structured reports** for uploads: async pipeline with persisted job statuses (`UPLOADED`, `TEXT_EXTRACTED`, `BUILDING_AI_REPORT`, `VALIDATING_CITATIONS`, `COMPLETED`, `FAILED`, etc.).
+- **Citation validation** against stored `document_chunks` before persisting the final report JSON.
+- **Source evidence** in the report UI (cited excerpts aligned with report sections).
+- **Deterministic fictional samples** (no live Gemini): bundled PDF and text under `src/main/resources/samples/`. Entry points include `GET /sample`, `GET /sample-report`, and `GET /sample/{sampleKey}` for keys such as `vendor-agreement` (default), `privacy-policy`, `employment-policy`, and `campus-student-policy`.
+- **Grounded Q&A** on **upload-generated** reports via `POST /qa/{reportId}` (owner cookie required).
+- **Share links**: create, revoke, regenerate; **read-only** shared view at `GET /shared/{token}`.
+- **Markdown export** for owners: `GET /report/{reportId}/export.md`.
+- **Upload failure UX**: safe error messages, optional **retry** (`POST /retry/{jobId}`) and **demo-style fallback** from extracted text (`POST /fallback/{jobId}`) when analysis fails.
+- **Owner-cookie access model** (`PI_OWNER_<jobIdWithoutDashes>`) plus **HMAC-stored** share token hashes (not raw tokens in the database).
+- **In-memory per-IP rate limiting** for upload, paste, and Q&A (MVP-style; resets on restart and is per instance).
+- **Scheduled cleanup** for old jobs, related data (cascades), and expired share links (configurable retention and delays).
+- **JSON job status API** for polling: `GET /api/jobs/{jobId}/status` (same owner cookie as HTML status).
+- **CI**: GitHub Actions runs **Maven verify** (unit + Testcontainers integration profile) and a **Docker image build**; see [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+- **Container deploy**: multi-stage [`Dockerfile`](Dockerfile); [`render.yaml`](render.yaml) for **Render**; [`railway.json`](railway.json) for **Railway**-style Dockerfile deploy with `/health` (no claim that either platform is currently provisioned for you).
 
 ## Tech stack
 
-Frontend: Thymeleaf and HTMX
+Frontend:
 
-Backend: Java 21 and Spring Boot
+Thymeleaf, HTMX, CSS (`src/main/resources/static/css/`).
 
-Database: PostgreSQL with Flyway migrations
+Backend:
 
-AI/API: Google Gemini or local mock analysis
+Java **21**, **Spring Boot 3.3** (Maven, `mvnw` / `mvnw.cmd`).
 
-Authentication: Owner access cookies, expiring share links, and simple in-memory rate limiting
+Database:
 
-Deployment: Docker, Render, and Railway
+**PostgreSQL** with **Flyway** migrations (`src/main/resources/db/migration/`). **H2** is used for the default **Surefire** test profile (`src/test/resources/application.yml`). **Testcontainers** PostgreSQL is used when the **integration-tests** Maven profile runs with Docker available.
 
-Other tools: PDFBox, Maven Wrapper, H2 for normal tests, Docker Compose for local PostgreSQL, and Testcontainers for optional PostgreSQL integration tests
+AI/API:
 
-## CI and deployment
+**Google Gemini** when `APP_AI_PROVIDER=gemini` (see `app.gemini.*` in [`application.yml`](src/main/resources/application.yml)); **mock** analyzer for local/CI defaults (`APP_AI_PROVIDER=mock`). Default model property is `gemini-2.5-flash` unless overridden by `GEMINI_MODEL`.
 
-GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on **push** and **pull_request** targeting branch **`rebuild/simple-gemini-railway`**. It uses Java 21 (Temurin), caches Maven dependencies, runs **`./mvnw --batch-mode verify -Pintegration-tests`**, uploads **Surefire** and **Failsafe** report directories as a workflow artifact when the test job fails, then runs **`docker build -t policy-insight:ci .`** in a follow-up job.
+Authentication:
 
-Use **`.\mvnw.cmd`** on Windows and **`./mvnw`** on Linux, macOS, and in CI. The workflow does **not** call live Gemini or read production secrets; integration tests use **mock** AI. Set **`DATABASE_URL`**, **`APP_TOKEN_SECRET`**, **`GEMINI_API_KEY`**, and related variables only on your hosting provider (for example Render or Railway), not in GitHub Actions.
+**No full user accounts.** Access is **HTTP-only owner cookies** set on upload/paste/sample flows, plus **unguessable share tokens** for read-only shared reports. This is session-style ownership, not OAuth or password login.
 
-For continuous deployment, connect the repo to **Render** or **Railway** and enable auto-deploy from **`rebuild/simple-gemini-railway`** so the platform builds the same [`Dockerfile`](Dockerfile). That path does not require a deploy token in GitHub.
+Deployment:
+
+**Docker** (see `Dockerfile`, `docker compose` for local Postgres). **Render** blueprint (`render.yaml`) and **Railway** Dockerfile config (`railway.json`) are present; you supply secrets and database URLs on the host. `DATABASE_URL` (non-JDBC) is mapped to Spring datasource properties via `DatabaseUrlEnvironmentPostProcessor` when `SPRING_DATASOURCE_URL` is not set.
+
+Other tools:
+
+Apache **PDFBox**, **Maven Wrapper**, **GitHub Actions**, **Flyway**, **JUnit 5**.
 
 ## Setup
 
@@ -50,42 +84,38 @@ git clone https://github.com/ChimdumebiNebolisa/policy-insight.git
 cd policy-insight
 ```
 
-### 2. Install dependencies
+### 2. Prerequisites
 
-This project uses Java 21, Docker for local PostgreSQL, and the Maven Wrapper for builds and tests. You do not need npm for this app.
+- **Java 21** (Temurin or equivalent).
+- **Docker** (recommended): for `docker compose` local PostgreSQL and for `./mvnw verify -Pintegration-tests` (Testcontainers). Plain `./mvnw test` uses H2 and does not require Docker.
+
+### 3. Local database (optional but typical for dev)
+
+From the repo root:
 
 ```powershell
 docker compose up -d
-.\mvnw.cmd test
 ```
 
-### 3. Add environment variables
+Compose maps host port **55432** → container `5432` (avoids clashing with a local Postgres on `5432`). Credentials match [`docker-compose.yml`](docker-compose.yml): database/user/password `policyinsight`.
 
-Environment variables used by this app:
+### 4. Environment variables
 
-```text
-SPRING_DATASOURCE_URL
-SPRING_DATASOURCE_USERNAME
-SPRING_DATASOURCE_PASSWORD
-DATABASE_URL
-APP_TOKEN_SECRET
-APP_AI_PROVIDER
-GEMINI_API_KEY
-GEMINI_MODEL
-GEMINI_TIMEOUT_SECONDS
-APP_UPLOAD_MAX_BYTES
-APP_OWNER_TOKEN_TTL_MINUTES
-APP_SHARE_TTL_DAYS
-APP_CLEANUP_ENABLED
-APP_RETENTION_COMPLETED_DAYS
-APP_RETENTION_FAILED_DAYS
-APP_RETENTION_EXPIRED_SHARE_DAYS
-APP_JOB_STALE_MINUTES
-APP_CLEANUP_FIXED_DELAY_MS
-PORT
-```
+Spring reads [`src/main/resources/application.yml`](src/main/resources/application.yml). Commonly set:
 
-Local mock mode for Windows PowerShell:
+| Variable | Role |
+|----------|------|
+| `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | JDBC connection (defaults target `localhost:5432` if unset; use `55432` with the provided Compose mapping). |
+| `DATABASE_URL` | Render/Heroku-style URL; applied when Spring datasource URL is not already set (see `DatabaseUrlEnvironmentPostProcessor`). |
+| `APP_TOKEN_SECRET` | HMAC secret for owner tokens; must meet app validation (not short/default in production-style runs). |
+| `APP_AI_PROVIDER` | `mock` or `gemini`. |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TIMEOUT_SECONDS` | Gemini client configuration when `APP_AI_PROVIDER=gemini`. |
+| `APP_UPLOAD_MAX_BYTES`, `APP_PASTE_MAX_CHARS` | Upload and paste size limits. |
+| `APP_OWNER_TOKEN_TTL_MINUTES`, `APP_SHARE_TTL_DAYS` | Owner cookie lifetime and default share expiry. |
+| `APP_CLEANUP_ENABLED`, `APP_RETENTION_*`, `APP_JOB_STALE_MINUTES`, `APP_CLEANUP_FIXED_DELAY_MS` | Scheduled cleanup behavior. |
+| `PORT` | HTTP port (default `8080`; Docker `ENTRYPOINT` respects `PORT`). |
+
+**Local mock example (PowerShell):**
 
 ```powershell
 $env:SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:55432/policyinsight"
@@ -95,232 +125,101 @@ $env:APP_TOKEN_SECRET="replace-with-a-long-random-secret-that-is-not-short"
 $env:APP_AI_PROVIDER="mock"
 ```
 
-Production Gemini mode:
+**Gemini example (illustrative; set on your host, not in CI):**
 
 ```text
-DATABASE_URL=<Render internal Postgres URL>
-APP_TOKEN_SECRET=<long random secret>
 APP_AI_PROVIDER=gemini
-GEMINI_API_KEY=<your Gemini key>
+GEMINI_API_KEY=<your key>
 GEMINI_MODEL=gemini-2.5-flash-lite
 GEMINI_TIMEOUT_SECONDS=180
-APP_UPLOAD_MAX_BYTES=10485760
-APP_OWNER_TOKEN_TTL_MINUTES=120
-APP_SHARE_TTL_DAYS=7
-APP_CLEANUP_ENABLED=true
-APP_RETENTION_COMPLETED_DAYS=30
-APP_RETENTION_FAILED_DAYS=7
-APP_RETENTION_EXPIRED_SHARE_DAYS=0
-APP_JOB_STALE_MINUTES=30
-APP_CLEANUP_FIXED_DELAY_MS=3600000
 ```
 
-Recommended production values:
-
-- `APP_AI_PROVIDER=gemini`
-- `GEMINI_MODEL=gemini-2.5-flash-lite`
-- `GEMINI_TIMEOUT_SECONDS=180`
-
-Recommended local value:
-
-- `APP_AI_PROVIDER=mock`
-
-Render note:
-
-Render free instances can be slow or cold-started, so the deployed app worked more reliably with `GEMINI_MODEL=gemini-2.5-flash-lite` and `GEMINI_TIMEOUT_SECONDS=180` instead of a heavier model and shorter timeout.
-
-Important local note:
-
-The Docker Compose PostgreSQL host port is `55432`, not `5432`, because a local Windows PostgreSQL installation may already be using `5432`.
-
-### 4. Run the app locally
-
-Start PostgreSQL:
-
-```powershell
-docker compose up -d
-```
-
-Run the app:
+### 5. Run the application
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-Open the local URL shown in the terminal, typically `http://localhost:8080`.
+On Linux/macOS use `./mvnw`. Open `http://localhost:8080` (or the host/port your platform assigns).
 
 ## Testing
 
-Run normal tests:
-
 ```powershell
 .\mvnw.cmd test
+.\mvnw.cmd clean test
 ```
 
-Run optional PostgreSQL integration tests with Testcontainers:
+Runs **Surefire** with **H2** (no Docker required).
 
 ```powershell
 .\mvnw.cmd verify -Pintegration-tests
 ```
 
-The integration profile uses Docker to start PostgreSQL and verify Flyway/schema behavior against the real database engine. Normal `.\mvnw.cmd test` does not require Docker.
+Runs unit tests plus **Failsafe** / Testcontainers-backed PostgreSQL checks when Docker is available; integration tests skip cleanly without Docker where configured.
 
-Current verified result:
+**CI (Ubuntu):** `./mvnw --batch-mode verify -Pintegration-tests`, then `docker build -t policy-insight:ci .` in a dependent job. Failed runs upload Surefire/Failsafe report directories as an artifact.
 
-- `.\mvnw.cmd clean test`: **84** tests (Surefire), 0 failures, 0 errors
-- `.\mvnw.cmd verify -Pintegration-tests`: build success; **4** additional Testcontainers integration tests run when Docker is available (as on GitHub Actions), otherwise `PostgresIntegrationIT` skips cleanly via `@Testcontainers(disabledWithoutDocker = true)`
+## HTTP surface (summary)
 
-What is tested:
+| Method | Path | Notes |
+|--------|------|--------|
+| `GET` | `/` | Landing: upload + paste + sample links. |
+| `POST` | `/upload` | Multipart PDF; returns HTMX upload-started fragment; sets owner cookie. |
+| `POST` | `/paste` | Form URL-encoded text; same pattern. |
+| `GET` | `/status/{jobId}` | Owner-only status fragment (HTMX polling when in progress). |
+| `POST` | `/retry/{jobId}`, `/fallback/{jobId}` | Owner-only; failed-job retry or deterministic fallback report. |
+| `GET` | `/report/{reportId}` | Owner-only report page. |
+| `GET` | `/report/{reportId}/export.md` | Owner-only Markdown export. |
+| `GET` | `/sample`, `/sample-report` | Redirect to default deterministic sample report. |
+| `GET` | `/sample/{sampleKey}` | Named deterministic sample (see Features). |
+| `POST` | `/share/{reportId}` (+ `/revoke`, `/regenerate`) | Owner-only share management fragments. |
+| `GET` | `/shared/{token}` | Read-only shared report. |
+| `POST` | `/qa/{reportId}` | Owner-only Q&A fragment. |
+| `GET` | `/api/jobs/{jobId}/status` | JSON job status (owner cookie). |
+| `GET` | `/health` | Liveness-style check (Actuator health exposed as configured). |
 
-- application context
-- repositories and Flyway migrations
-- PDF extraction
-- sample report path
-- citation validation
-- upload flow and async status polling
-- share links
-- Q&A behavior
-- cleanup behavior
-- JSON job status API
-- Gemini error handling where covered
+Most responses are **HTML** (pages or HTMX fragments), not a full public REST API.
 
-## Endpoints
+## How it works (short)
 
-PolicyInsight is primarily a server-rendered Thymeleaf/HTMX app. Most endpoints return full HTML pages or HTML fragments, not JSON REST responses.
-
-Browser pages:
-
-- `GET /`: full landing/upload page
-- `GET /report/{reportId}`: owner-only report page
-- `GET /shared/{token}`: read-only shared report page
-- `GET /sample` or `GET /sample-report`: sample report redirect
-- `GET /health`: lightweight deployment health check
-
-HTMX fragments:
-
-- `POST /upload`: multipart PDF upload; creates a job and starts in-process async report generation
-- `GET /status/{jobId}`: owner-only status fragment
-- `POST /share/{reportId}`: owner-only share-link fragment
-- `POST /qa/{reportId}`: owner-only Q&A answer fragment
-
-Small JSON API:
-
-- `GET /api/jobs/{jobId}/status`: owner-only job status JSON using the same owner cookie as `/status/{jobId}`
-- This is a small job-status endpoint for polling/debugging; it is not a full REST API for the product.
-
-Example:
-
-```powershell
-curl.exe -i http://localhost:8080/api/jobs/<jobId>/status --cookie "PI_OWNER_<job>=<owner-token>"
-```
-
-Response:
-
-```json
-{
-  "jobId": "uuid",
-  "status": "UPLOADED|TEXT_EXTRACTED|BUILDING_AI_REPORT|VALIDATING_CITATIONS|PROCESSING|COMPLETED|FAILED",
-  "reportId": "uuid-or-null",
-  "message": "safe user-facing status message",
-  "createdAt": "timestamp",
-  "updatedAt": "timestamp"
-}
-```
-
-## How it works
-
-For this project:
-
-1. User uploads a PDF.
-2. Backend creates a database-backed `policy_jobs` row, validates the PDF, extracts text with PDFBox, and stores extracted source chunks in PostgreSQL.
-3. The job moves through persisted statuses such as `UPLOADED`, `TEXT_EXTRACTED`, `BUILDING_AI_REPORT`, `VALIDATING_CITATIONS`, `COMPLETED`, or `FAILED`.
-4. An in-process async worker asks Gemini or the mock analyzer to generate a structured report.
-5. Citation validation checks referenced source chunk IDs before the report is saved.
-6. The UI polls status through HTMX, and owners can view, share, or ask questions against completed uploaded reports.
-
-The sample report path is separate from uploaded analysis. It loads the committed fictional PDF at `src/main/resources/samples/fictional_business_agreement.pdf`, uses a deterministic report builder, does not use Gemini, and does not show Q&A.
-
-## Architecture
-
-Key directories:
-
-```txt
-src/main/java/com/policyinsight/      Application code
-src/main/resources/templates/         Thymeleaf pages and fragments
-src/main/resources/static/            CSS assets
-src/main/resources/samples/           Bundled deterministic sample PDF
-src/main/resources/db/migration/      Flyway migrations
-src/test/                             Test suite
-```
-
-```mermaid
-flowchart LR
-    U[User] --> F[Thymeleaf + HTMX UI]
-    F --> C[Spring MVC Controllers]
-    C --> S[Services]
-    S --> P[PDFBox Extraction + Chunking]
-    S --> G[Google Gemini]
-    S --> D[Deterministic Sample Builder]
-    S --> V[Citation Validation]
-    V --> DB[(PostgreSQL)]
-    S --> DB
-    C --> T[Owner Cookies + Share Links]
-
-    D --> DB
-    P --> DB
-```
-
-System overview:
-
-- `Frontend`: Server-rendered Thymeleaf pages with HTMX for upload submission, status polling, share-link fragments, and Q&A partial updates.
-- `Backend`: Spring Boot handles PDF validation, text extraction, chunking, async report generation, citation validation, report access, share links, Q&A, and scheduled cleanup.
-- `Database`: PostgreSQL stores jobs, extracted source chunks, reports, share links, and saved Q&A interactions.
-- `External services`: Google Gemini is used for uploaded-document analysis and uploaded-document Q&A when `APP_AI_PROVIDER=gemini`.
-- `Deployment`: The app is packaged as a Dockerized Spring Boot service and deployed to Render with a Postgres database and `/health` health check.
+1. **Upload or paste** creates a `policy_jobs` row, stores **chunked** `document_chunks`, and kicks off **async** report generation.
+2. **Gemini or mock** returns structured report JSON; the service validates **cited chunk IDs**, then saves a `reports` row and marks the job complete.
+3. The **Thymeleaf + HTMX** UI polls `/status/{jobId}` until completion or failure; owners can **share**, **export**, or **ask questions** on completed uploads.
+4. **Samples** use fixed classpath documents and a **deterministic builder**—separate code path from live Gemini uploads.
 
 ## Retention and cleanup
 
-- Original PDFs are discarded after text extraction, but extracted chunks, reports, Q&A history, jobs, and share-link hashes are stored in PostgreSQL.
-- Scheduled cleanup is enabled by default and runs in-process on a fixed delay.
-- Expired share links are deleted after `APP_RETENTION_EXPIRED_SHARE_DAYS`.
-- Non-demo in-progress jobs older than `APP_JOB_STALE_MINUTES` are marked `FAILED` with a safe timeout message. They are not retried automatically.
-- Non-demo failed jobs older than `APP_RETENTION_FAILED_DAYS` and completed jobs older than `APP_RETENTION_COMPLETED_DAYS` are deleted from `policy_jobs`; database cascades remove related chunks, reports, Q&A, and share links.
-- Demo/sample jobs are preserved by excluding rows with a non-null `demo_key`.
-- Because cleanup is in-process, it only runs while the app is up and is not a substitute for a durable background worker.
+- Cleanup is **in-process** (`@Scheduled`), gated by `APP_CLEANUP_ENABLED` and `APP_CLEANUP_FIXED_DELAY_MS`.
+- Stale non-demo in-progress jobs can be marked failed (`APP_JOB_STALE_MINUTES`).
+- Completed and failed jobs are deleted after retention windows; **CASCADE** removes chunks, reports, Q&A, and share links. Demo jobs are identified by **`demo_key`** and excluded from destructive cleanup paths as implemented.
 
-## Security notes
+## Security notes (high level)
 
-- Uploaded PDFs are read in memory for text extraction and are not stored.
-- Direct report pages require the owner cookie created during upload or sample report creation.
-- Public report access is only through `/shared/{token}`.
-- Share tokens are generated with `SecureRandom`; only HMAC hashes are stored.
-- AI and user-generated text is rendered through escaped Thymeleaf expressions.
-- Upload and Q&A are protected with simple in-memory per-IP rate limiting. This resets on restart and is per app instance, so use shared rate limiting before scaling horizontally.
-- Citation validation verifies that cited chunk IDs exist for the document. It does not prove semantic support inside the cited chunk.
-- Live Gemini mode rejects the default or short `APP_TOKEN_SECRET`.
+- No raw share tokens in the database (hashes only). Owner tokens are hashed similarly.
+- Thymeleaf escapes dynamic content in normal templates.
+- Rate limits are **best-effort per instance**; not a substitute for edge rate limiting at scale.
 
 ## Known limitations
 
-- Render free instances may be slow or cold start.
-- Live Gemini analysis depends on valid Gemini credentials and may timeout if model or timeout settings are misconfigured.
-- Citation validation is source-reference based, not deep semantic proof.
-- Uploaded PDFs are not malware-scanned.
-- In-memory rate limiting is MVP-level and resets on restart.
-- Async report generation and cleanup are in-process, not durable external workers or a distributed queue.
-- Uploaded PDFs are text-extracted with PDFBox only; there is no OCR pipeline for scanned/image-only PDFs.
-- The sample report is a deterministic demo path for one bundled fictional document, not a live analysis run.
+- **No OCR** for scanned PDFs (PDFBox text extraction only).
+- **Citation validation** checks chunk ID references, not deep semantic entailment.
+- **Async work and cleanup** run inside the web process—no external queue or worker tier in this repo.
+- **Gemini** availability, quotas, and latency depend on your key and model settings.
+- **Free-tier** hosts may cold-start or run slowly.
 
-## Useful Commands
+## Useful commands
 
 ```powershell
-.\mvnw.cmd test
-.\mvnw.cmd verify -Pintegration-tests
-.\mvnw.cmd spring-boot:run
 docker compose up -d
 docker compose down
+.\mvnw.cmd test
+.\mvnw.cmd clean test
+.\mvnw.cmd verify -Pintegration-tests
+.\mvnw.cmd spring-boot:run
+docker build -t policy-insight:local .
 ```
 
-On Linux or macOS, use `./mvnw` instead of `.\mvnw.cmd` (same goals as above).
+Use `./mvnw` on Unix-like systems.
 
 ## License
 
