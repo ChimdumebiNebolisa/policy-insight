@@ -38,6 +38,7 @@ class PostgresIntegrationIT {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
         registry.add("app.token-secret", () -> "postgres-integration-test-secret-value");
         registry.add("app.ai.provider", () -> "mock");
         registry.add("app.cleanup.enabled", () -> "false");
@@ -109,9 +110,12 @@ class PostgresIntegrationIT {
         assertThat(documentChunkRepository.findByJobIdOrderByChunkIndex(job.getId()))
                 .extracting(DocumentChunk::getId)
                 .containsExactly(chunk.getId());
-        assertThat(reportRepository.findByJobId(job.getId())).contains(report);
+        assertThat(reportRepository.findByJobId(job.getId()))
+                .map(Report::getId)
+                .contains(report.getId());
         assertThat(shareLinkRepository.findByTokenHashAndExpiresAtAfter(tokenHash, Instant.now()))
-                .contains(shareLink);
+                .map(ShareLink::getId)
+                .contains(shareLink.getId());
 
         assertThatThrownBy(() -> jdbcTemplate.update("""
                 insert into document_chunks (id, job_id, chunk_index, text_content)
