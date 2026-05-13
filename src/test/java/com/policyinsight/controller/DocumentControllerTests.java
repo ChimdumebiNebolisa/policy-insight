@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.policyinsight.TestOwnerCookie;
 import com.policyinsight.TestPdfFactory;
 import com.policyinsight.config.PasteProperties;
 import com.policyinsight.model.JobStatus;
@@ -100,7 +101,9 @@ class DocumentControllerTests {
                 .contains("hx-swap=\"innerHTML\"");
         assertThat(countOccurrences(result.getResponse().getContentAsString(), "class=\"status-card\"")).isEqualTo(1);
 
-        PolicyJob job = policyJobRepository.findAll().getLast();
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(cookies);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
+        PolicyJob job = policyJobRepository.findById(jobId).orElseThrow();
         assertThat(job.getStatus()).isIn(
                 JobStatus.TEXT_EXTRACTED,
                 JobStatus.BUILDING_AI_REPORT,
@@ -141,7 +144,9 @@ class DocumentControllerTests {
                 .contains("hx-swap=\"innerHTML\"");
         assertThat(countOccurrences(result.getResponse().getContentAsString(), "class=\"status-card\"")).isEqualTo(1);
 
-        PolicyJob job = policyJobRepository.findAll().getLast();
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(cookies);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
+        PolicyJob job = policyJobRepository.findById(jobId).orElseThrow();
         assertThat(job.getStatus()).isIn(
                 JobStatus.TEXT_EXTRACTED,
                 JobStatus.BUILDING_AI_REPORT,

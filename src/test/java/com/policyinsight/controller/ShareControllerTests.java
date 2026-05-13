@@ -7,16 +7,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.policyinsight.TestOwnerCookie;
 import com.policyinsight.TestPdfFactory;
 import com.policyinsight.model.Report;
 import com.policyinsight.model.ShareLink;
-import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
 import com.policyinsight.repository.ShareLinkRepository;
 import com.policyinsight.security.TokenService;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,9 +40,6 @@ class ShareControllerTests {
 
     @Autowired
     TokenService tokenService;
-
-    @Autowired
-    PolicyJobRepository policyJobRepository;
 
     @Test
     void revokeShareLinkMakesItInvalid() throws Exception {
@@ -167,11 +163,8 @@ class ShareControllerTests {
                         }))
                 .andExpect(status().isOk())
                 .andReturn();
-        Cookie ownerCookie = Arrays.stream(result.getResponse().getCookies())
-                .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
-                .findFirst()
-                .orElseThrow();
-        UUID jobId = policyJobRepository.findAll().getLast().getId();
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(result);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
         return new UploadFixture(waitForReport(jobId), ownerCookie);
     }
 

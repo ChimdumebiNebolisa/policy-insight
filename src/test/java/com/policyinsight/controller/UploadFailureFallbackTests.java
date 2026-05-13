@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.policyinsight.TestOwnerCookie;
 import com.policyinsight.TestPdfFactory;
 import com.policyinsight.ai.AiAnalyzer;
 import com.policyinsight.ai.AiAnalyzerException;
@@ -22,7 +23,6 @@ import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
 import java.util.List;
 import jakarta.servlet.http.Cookie;
-import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,8 +61,8 @@ class UploadFailureFallbackTests {
         MvcResult upload = mockMvc.perform(multipart("/upload").file(pdf()))
                 .andExpect(status().isOk())
                 .andReturn();
-        Cookie ownerCookie = ownerCookie(upload);
-        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(upload);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
         waitForStatus(jobId, JobStatus.FAILED);
         PolicyJob job = policyJobRepository.findById(jobId).orElseThrow();
 
@@ -87,8 +87,8 @@ class UploadFailureFallbackTests {
         MvcResult upload = mockMvc.perform(multipart("/upload").file(pdf()))
                 .andExpect(status().isOk())
                 .andReturn();
-        Cookie ownerCookie = ownerCookie(upload);
-        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(upload);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
         waitForStatus(jobId, JobStatus.COMPLETED);
         PolicyJob job = policyJobRepository.findById(jobId).orElseThrow();
 
@@ -105,8 +105,8 @@ class UploadFailureFallbackTests {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("source section(s) extracted")))
                 .andReturn();
-        Cookie ownerCookie = ownerCookie(upload);
-        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(upload);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
         waitForStatus(jobId, JobStatus.FAILED);
         PolicyJob job = policyJobRepository.findById(jobId).orElseThrow();
 
@@ -143,8 +143,8 @@ class UploadFailureFallbackTests {
         MvcResult upload = mockMvc.perform(multipart("/upload").file(pdf()))
                 .andExpect(status().isOk())
                 .andReturn();
-        Cookie ownerCookie = ownerCookie(upload);
-        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(upload);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
 
         MvcResult statusResult = mockMvc.perform(get("/status/" + jobId).cookie(ownerCookie))
                 .andExpect(status().isOk())
@@ -165,8 +165,8 @@ class UploadFailureFallbackTests {
         MvcResult upload = mockMvc.perform(multipart("/upload").file(pdf()))
                 .andExpect(status().isOk())
                 .andReturn();
-        Cookie ownerCookie = ownerCookie(upload);
-        UUID jobId = jobIdFromOwnerCookie(ownerCookie);
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(upload);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
         waitForStatus(jobId, JobStatus.FAILED);
 
         mockMvc.perform(post("/fallback/" + jobId).cookie(ownerCookie))
@@ -191,40 +191,6 @@ class UploadFailureFallbackTests {
                 "application/pdf",
                 TestPdfFactory.pdfWithText("This agreement requires written notice before termination. Payment is due within fifteen days.")
         );
-    }
-
-    private Cookie ownerCookie(MvcResult result) {
-        return Arrays.stream(result.getResponse().getCookies())
-                .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
-                .findFirst()
-                .orElseThrow();
-    }
-
-    /**
-     * Resolves the job id from the owner cookie name ({@code PI_OWNER_} + UUID without dashes).
-     * Avoids {@code findAll().getLast()}, which is undefined order and can pick another job when the
-     * in-memory DB already contains rows from other tests.
-     */
-    private static UUID jobIdFromOwnerCookie(Cookie ownerCookie) {
-        String name = ownerCookie.getName();
-        String prefix = "PI_OWNER_";
-        if (!name.startsWith(prefix)) {
-            throw new IllegalStateException("Expected owner cookie name to start with " + prefix + ", got: " + name);
-        }
-        String hex = name.substring(prefix.length());
-        if (hex.length() != 32) {
-            throw new IllegalStateException("Expected 32 hex chars in owner cookie name, got length " + hex.length());
-        }
-        String uuid = hex.substring(0, 8)
-                + "-"
-                + hex.substring(8, 12)
-                + "-"
-                + hex.substring(12, 16)
-                + "-"
-                + hex.substring(16, 20)
-                + "-"
-                + hex.substring(20, 32);
-        return UUID.fromString(uuid);
     }
 
     private int countOccurrences(String text, String needle) {

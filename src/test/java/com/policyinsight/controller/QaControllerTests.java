@@ -7,12 +7,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.policyinsight.TestOwnerCookie;
 import com.policyinsight.TestPdfFactory;
-import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.QaInteractionRepository;
 import com.policyinsight.repository.ReportRepository;
 import jakarta.servlet.http.Cookie;
-import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +33,6 @@ class QaControllerTests {
 
     @Autowired
     QaInteractionRepository qaInteractionRepository;
-
-    @Autowired
-    PolicyJobRepository policyJobRepository;
 
     @Test
     void qaHistoryRendersOnReportPage() throws Exception {
@@ -122,11 +118,8 @@ class QaControllerTests {
                         }))
                 .andExpect(status().isOk())
                 .andReturn();
-        Cookie ownerCookie = Arrays.stream(result.getResponse().getCookies())
-                .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
-                .findFirst()
-                .orElseThrow();
-        UUID jobId = policyJobRepository.findAll().getLast().getId();
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(result);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
         return new UploadFixture(waitForReport(jobId), ownerCookie);
     }
 

@@ -8,17 +8,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.policyinsight.TestOwnerCookie;
 import com.policyinsight.TestPdfFactory;
-import com.policyinsight.repository.PolicyJobRepository;
 import com.policyinsight.repository.ReportRepository;
 import jakarta.servlet.http.Cookie;
-import org.springframework.http.MediaType;
-import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -32,9 +31,6 @@ class ReportControllerTests {
 
     @Autowired
     ReportRepository reportRepository;
-
-    @Autowired
-    PolicyJobRepository policyJobRepository;
 
     @Test
     void reportContainsTechnicalDetails() throws Exception {
@@ -140,11 +136,8 @@ class ReportControllerTests {
                         }))
                 .andExpect(status().isOk())
                 .andReturn();
-        Cookie ownerCookie = Arrays.stream(result.getResponse().getCookies())
-                .filter(cookie -> cookie.getName().startsWith("PI_OWNER_"))
-                .findFirst()
-                .orElseThrow();
-        UUID jobId = policyJobRepository.findAll().getLast().getId();
+        Cookie ownerCookie = TestOwnerCookie.findOwnerCookie(result);
+        UUID jobId = TestOwnerCookie.jobIdFromOwnerCookie(ownerCookie);
         return new UploadFixture(waitForReport(jobId), ownerCookie);
     }
 
